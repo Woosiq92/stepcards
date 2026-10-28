@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageDraw
+import coach
 import pipeline
 from check import check
 
@@ -102,6 +103,17 @@ def reframe(run_id: str, n: int, t: int):
     card.update(frame_t=t, rep=t, box=box, box_prompt=used, box_touches_hand=touch)
     (d / "cards.json").write_text(json.dumps(data, ensure_ascii=False, indent=1))
     return card
+
+
+@app.post("/api/runs/{run_id}/coach")
+def coach_check(run_id: str, body: dict):
+    """따라 하기: 카메라 사진 몇 장으로 카드를 넘길지 정한다. 사진은 저장하지 않는다."""
+    data = read(run_dir(run_id), "cards.json")
+    frames = [f for f in body.get("frames", [])[-6:] if isinstance(f, str) and f.startswith("data:image/jpeg;base64,")]
+    cur = int(body.get("cur", 1))
+    if len(frames) < 2 or not 1 <= cur <= len(data["cards"]):
+        raise HTTPException(400, "사진이 부족하거나 카드 번호가 틀렸습니다")
+    return coach.check(data["cards"], cur, frames, int(body.get("prev_seen") or 0))
 
 
 if __name__ == "__main__":

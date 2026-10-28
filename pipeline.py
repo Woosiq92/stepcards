@@ -137,8 +137,10 @@ def split_steps(run, duration, frames, speech=()):
 
 # ④ 대표 사진 + SAM 강조(손과 겹치는 물건 상자를 고름)
 def sam_boxes(image, prompt):
+    """image는 파일 경로 또는 data URL(따라 하기 모드의 카메라 사진)."""
+    url = image if str(image).startswith("data:") else data_url(image)
     r = client.responses.create(model=SAM_MODEL, store=False, input=[{"role": "user", "content": [
-        {"type": "input_text", "text": prompt}, {"type": "input_image", "image_url": data_url(image)}]}])
+        {"type": "input_text", "text": prompt}, {"type": "input_image", "image_url": url}]}])
     return [tuple(map(int, m)) for m in BOX.findall(r.output_text or "")]
 
 
