@@ -7,3 +7,6 @@ __pycache__/
 samples/
 demo/node_modules/
 demo/out/
+.DS_Store
+*.log
+demo/tts/
