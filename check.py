@@ -1,7 +1,7 @@
 # 단계 JSON 검사기: 모델 없이 코드 규칙으로만 판정한다
 import re
 
-KEYS = ("start", "end", "rep", "ko", "en", "object")
+KEYS = ("start", "end", "rep", "ko", "en", "object", "look")
 KO_MAX, EN_MAX = 25, 60
 GAP_WARN = 15
 TWO_ACTIONS = re.compile(r"[가-힣]+(고|며|면서)\s")  # "꽂고 저어주세요"처럼 동작이 이어지는 문장
@@ -36,6 +36,8 @@ def check(steps, duration):
             problems.append(f"{i}단계: 한국어 문장이 비어 있습니다.")
         elif len(ko.replace(" ", "")) > KO_MAX:
             problems.append(f"{i}단계: 한국어 문장이 깁니다({len(ko.replace(' ', ''))}자, {KO_MAX}자 이하): {ko}")
+        elif not ko.rstrip(".").endswith("세요"):
+            problems.append(f"{i}단계: 한국어 문장은 '~세요'로 끝나야 합니다: {ko}")
         elif TWO_ACTIONS.search(ko + " "):
             problems.append(f"{i}단계: 한 문장에 동작이 둘 이상입니다. 두 단계로 나누세요: {ko}")
         if len(str(s["en"])) > EN_MAX:

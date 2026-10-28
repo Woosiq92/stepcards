@@ -17,12 +17,13 @@ BOX = re.compile(r"<\|box;x1=(\d+);y1=(\d+);x2=(\d+);y2=(\d+)")
 PROMPT = """These are frames taken once per second from a video of an adult doing a task with their hands. Each frame is preceded by its time t in seconds. The video is {duration} seconds long.
 Split the video into steps a learner would follow. Skip intro/outro shots with no action.
 Rules:
-- One physical action per step. "ko" is one short plain Korean sentence with one verb, at most 25 characters (no "~하고 ~하세요").
+- One physical action per step. "ko" is one short plain Korean sentence with one verb, at most 25 characters, ending with "~세요" (e.g. "우유를 부으세요."; no "~하고 ~하세요").
 - "en" is the same action in short plain English.
 - start and end are whole seconds, end inclusive. Each step starts after the previous step's end. start <= rep <= end.
-- rep is the second where the action is most clearly visible.
-- "object" is the main thing in the hand, in short English words a vision model can find (e.g. "small glass pitcher").
-Return only JSON: {{"steps":[{{"start":0,"end":0,"rep":0,"ko":"","en":"","object":""}}]}}"""
+- rep is a second in the middle of the action where the hand is on the object (not after the action has finished).
+- "object" is the main thing in the hand, in short English words (e.g. "small glass pitcher").
+- "look" describes only how that object looks, without its name: shape, color, material (e.g. "thin silver rod with a round tip").
+Return only JSON: {{"steps":[{{"start":0,"end":0,"rep":0,"ko":"","en":"","object":"","look":""}}]}}"""
 
 
 class Run:
@@ -109,29 +110,50 @@ def overlap(a, b):
     return max(w, 0) * max(h, 0)
 
 
+def grab(run, t, out):
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(t), "-i", str(run.video), "-frames:v", "1",
+                    "-vf", "scale=-2:720", "-q:v", "3", str(out)], check=True)
+
+
+def find_box(img, s):
+    """이름 → 생김새 → 이름 마지막 단어 순으로 찾고, 손과 가장 많이 겹치는 상자를 고른다."""
+    hands = sam_boxes(img, "hand")
+    for prompt in dict.fromkeys([s["object"], s["look"], s["object"].split()[-1]]):
+        found = sam_boxes(img, prompt)
+        if found:
+            box = max(found, key=lambda b: max((overlap(b, h) for h in hands), default=0))
+            return box, prompt, any(overlap(box, h) for h in hands)
+    return None, None, False
+
+
 def highlight(run, steps):
     cards_dir = run.path("cards")
     cards_dir.mkdir(exist_ok=True)
     cards = []
     for i, s in enumerate(steps, 1):
         img = cards_dir / f"{i:02d}.jpg"
-        subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(s["rep"]), "-i", str(run.video), "-frames:v", "1",
-                        "-vf", "scale=-2:720", "-q:v", "3", str(img)], check=True)
-        hands = sam_boxes(img, "hand")
-        box, used = None, None
-        for prompt in dict.fromkeys([s["object"], s["object"].split()[-1]]):  # 전체 이름 → 마지막 단어
-            found = sam_boxes(img, prompt)
-            if found:
-                box = max(found, key=lambda b: max((overlap(b, h) for h in hands), default=0))
-                used = prompt
+        # 대표 시각 → 구간 1/4·1/2·3/4 지점. 손과 물건이 겹치는 첫 사진을 쓴다
+        times = list(dict.fromkeys([s["rep"]] + [round(s["start"] + (s["end"] - s["start"]) * k / 4) for k in (1, 2, 3)]))
+        best = None
+        for t in times:
+            tmp = cards_dir / f"{i:02d}_t{t}.jpg"
+            grab(run, t, tmp)
+            box, used, touch = find_box(tmp, s)
+            if best is None or (box and not best[1]) or (touch and not best[3]):
+                best = (t, box, used, touch, tmp)
+            if touch:
                 break
-        touch = bool(box and any(overlap(box, h) for h in hands))
+        t, box, used, touch, tmp = best
+        tmp.replace(img)
+        for f in cards_dir.glob(f"{i:02d}_t*.jpg"):
+            f.unlink()
         if box:
             pic = Image.open(img).convert("RGB")
             ImageDraw.Draw(pic).rectangle(box, outline=(255, 140, 0), width=6)
             pic.save(cards_dir / f"{i:02d}_hl.jpg", quality=85)
-        cards.append({**s, "n": i, "image": f"cards/{i:02d}.jpg", "box": box, "box_prompt": used, "box_touches_hand": touch})
-        run.log("highlight", f"{i}단계 '{s['object']}': " + (f"상자 찾음({used}, 손과 {'겹침' if touch else '안 겹침'})" if box else "못 찾음"))
+        cards.append({**s, "n": i, "image": f"cards/{i:02d}.jpg", "frame_t": t, "box": box, "box_prompt": used, "box_touches_hand": touch})
+        moved = f", 사진 {s['rep']}→{t}초" if t != s["rep"] else ""
+        run.log("highlight", f"{i}단계 '{s['object']}': " + (f"상자 찾음({used}, 손과 {'겹침' if touch else '안 겹침'}{moved})" if box else f"못 찾음{moved}"))
     return cards
 
 

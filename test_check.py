@@ -4,7 +4,7 @@ from check import check
 
 
 def step(start, end, rep=None, ko="컵을 드세요.", en="Pick up the cup.", obj="cup"):
-    return {"start": start, "end": end, "rep": start if rep is None else rep, "ko": ko, "en": en, "object": obj}
+    return {"start": start, "end": end, "rep": start if rep is None else rep, "ko": ko, "en": en, "object": obj, "look": "clear glass"}
 
 
 def test_clean_steps_pass():
@@ -26,6 +26,11 @@ def test_two_actions_and_length():
     assert any("동작이 둘" in x for x in p) and any("깁니다" in x for x in p)
 
 
+def test_sentence_must_end_with_seyo():
+    p, _ = check([step(0, 5, ko="빨대를 꽂는다."), step(6, 10)], 20)
+    assert any("세요" in x for x in p)
+
+
 def test_gap_is_warning_not_problem():
     p, w = check([step(0, 5), step(30, 40)], 60)
     assert p == [] and len(w) == 1
@@ -38,7 +43,7 @@ def test_missing_keys():
 
 def test_catches_real_overlap_from_exp4():
     raw = Path("runs/exp4/run1.json").read_text().strip().removeprefix("```json").removesuffix("```")
-    p, _ = check(json.loads(raw)["steps"], 193)
+    p, _ = check([{**s, "look": "-"} for s in json.loads(raw)["steps"]], 193)
     assert any("14·15단계" in x and "겹칩니다" in x for x in p)
 
 
