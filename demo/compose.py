@@ -34,6 +34,15 @@ make_min = (prog[-1]["t"] - prog[0]["t"]) / 60
 make_cost = sum(e.get("cost", 0) for e in prog)
 video_sec = next(int(m.group(1)) for e in prog if (m := re.search(r"영상 (\d+)초", e["msg"])))
 
+# 이번 실행에서 실제로 일어난 일만 말한다
+splits = [e for e in prog if e["stage"] == "split" and "n" in e]
+if len(splits) > 1 and not splits[-1]["problems"]:
+    RUN_NOTE = "In this run, the first answer broke a rule. The checker sent back the reason, and the next answer passed. "
+elif splits and not splits[-1]["problems"]:
+    RUN_NOTE = "In this run, every step passed the checks on the first try. "
+else:
+    RUN_NOTE = "In this run, a few issues were left for the teacher to check. "
+
 SEGMENTS = [
     ("slide_title", None,
      "StepCards. Special-education teachers turn every job skill into picture cards by hand: film, pause, screenshot, write, print. "
@@ -45,7 +54,7 @@ SEGMENTS = [
      "We drop in the video. Muse Voice Transcribe writes down what was said. "
      "Muse Spark splits the video into one-action steps, with times and plain Korean and English sentences. "
      "Code checks every step: overlapping times, long sentences, two actions in one card, even Korean spelling. "
-     "In this run, the first answer had a step that ended before it began. The checker caught it, the model got the reason, and the second answer passed. "
+     + RUN_NOTE +
      "Then SAM 3.1 outlines the object in the worker's hand."),
     ("edit", "edit.mp4",
      "The teacher stays in charge. Every edit saves and is checked again. "
