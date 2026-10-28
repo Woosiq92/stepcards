@@ -12,7 +12,7 @@ def check(steps, duration):
     problems, warnings = [], []
     if not isinstance(steps, list) or len(steps) < 2:
         return ["단계가 2개 미만입니다."], warnings
-    prev = None
+    timed = []  # 시각이 숫자인 (번호, 단계)
     for i, s in enumerate(steps, 1):
         missing = [k for k in KEYS if k not in s]
         if missing:
@@ -26,11 +26,7 @@ def check(steps, duration):
             problems.append(f"{i}단계: 구간 {start}~{end}초가 영상(0~{duration}초) 밖이거나 끝이 시작보다 빠릅니다.")
         if not (start <= rep <= end):
             problems.append(f"{i}단계: 대표 시각 {rep}초가 구간 {start}~{end}초 밖입니다.")
-        if prev:
-            if start <= prev["end"]:
-                problems.append(f"{i - 1}·{i}단계: 구간이 겹칩니다({prev['start']}~{prev['end']}초와 {start}~{end}초). 다음 단계는 앞 단계 끝 다음 초부터 시작해야 합니다.")
-            elif start - prev["end"] > GAP_WARN:
-                warnings.append(f"{i - 1}·{i}단계 사이 {prev['end']}~{start}초가 비어 있습니다.")
+        timed.append((i, s))
         ko = str(s["ko"]).strip()
         if not ko:
             problems.append(f"{i}단계: 한국어 문장이 비어 있습니다.")
@@ -42,5 +38,11 @@ def check(steps, duration):
             problems.append(f"{i}단계: 한 문장에 동작이 둘 이상입니다. 두 단계로 나누세요: {ko}")
         if len(str(s["en"])) > EN_MAX:
             problems.append(f"{i}단계: 영어 문장이 깁니다({EN_MAX}자 이하): {s['en']}")
-        prev = s
+    # 겹침·빈 구간은 시간순으로 본다. 사람이 카드 순서를 바꿔도 영상 속 시간은 그대로이기 때문
+    timed.sort(key=lambda x: x[1]["start"])
+    for (a, p), (b, s) in zip(timed, timed[1:]):
+        if s["start"] <= p["end"]:
+            problems.append(f"{a}·{b}단계: 구간이 겹칩니다({p['start']}~{p['end']}초와 {s['start']}~{s['end']}초). 다음 단계는 앞 단계 끝 다음 초부터 시작해야 합니다.")
+        elif s["start"] - p["end"] > GAP_WARN:
+            warnings.append(f"{a}·{b}단계 사이 {p['end']}~{s['start']}초가 비어 있습니다.")
     return problems, warnings

@@ -87,7 +87,7 @@ def split_steps(run, duration, frames):
         except (ValueError, KeyError, TypeError) as e:
             steps, problems, warnings = None, [f"JSON 형식이 아닙니다: {e}"], []
         run.log("split", f"{attempt + 1}번째 시도: 단계 {len(steps or [])}개, 문제 {len(problems)}개 ({time.time() - t0:.0f}초, ${cost:.3f})",
-                problems=problems, warnings=warnings, cost=round(cost, 4))
+                n=len(steps or []), problems=problems, warnings=warnings, cost=round(cost, 4))
         if not problems:
             break
         feedback = ("Your previous answer had these problems. Fix them and return the full JSON again.\n- "
@@ -155,7 +155,7 @@ def highlight(run, steps):
             pic.save(cards_dir / f"{i:02d}_hl.jpg", quality=85)
         cards.append({**s, "n": i, "image": f"cards/{i:02d}.jpg", "frame_t": t, "box": box, "box_prompt": used, "box_touches_hand": touch})
         moved = f", 사진 {s['rep']}→{t}초" if t != s["rep"] else ""
-        run.log("highlight", f"{i}단계 '{s['object']}': " + (f"상자 찾음({used}, 손과 {'겹침' if touch else '안 겹침'}{moved})" if box else f"못 찾음{moved}"))
+        run.log("highlight", f"{i}단계 '{s['object']}': " + (f"상자 찾음({used}, 손과 {'겹침' if touch else '안 겹침'}{moved})" if box else f"못 찾음{moved}"), i=i, total=len(steps))
     return cards
 
 
@@ -163,6 +163,14 @@ def main(video, fresh=False):
     run = Run(video)
     run.events = []  # 진행판은 이번 실행만 보여 준다
     run.log("start", f"{run.video.name} → {run.dir.name}")
+    try:
+        build(run, fresh)
+    except Exception as e:
+        run.log("error", f"멈췄어요: {type(e).__name__}: {str(e)[:200]}")
+        raise
+
+
+def build(run, fresh):
     duration, frames = extract(run)
     steps_file = run.path("steps.json")
     if steps_file.exists() and not fresh:

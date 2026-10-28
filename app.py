@@ -39,7 +39,10 @@ def runs():
     for d in sorted(RUNS.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
         prog = read(d, "progress.json") if d.is_dir() else None
         if prog:
-            out.append({"id": d.name, "video": prog["video"], "done": (d / "cards.json").exists()})
+            data = read(d, "cards.json")
+            cs = data["cards"] if data else []
+            out.append({"id": d.name, "video": prog["video"], "done": data is not None, "count": len(cs),
+                        "issues": len(data["problems"]) if data else 0, "thumb": cs[0]["image"] if cs else None})
     return out
 
 

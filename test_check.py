@@ -31,6 +31,11 @@ def test_sentence_must_end_with_seyo():
     assert any("세요" in x for x in p)
 
 
+def test_reordered_cards_are_not_overlap():
+    p, _ = check([step(6, 10), step(0, 5)], 20)
+    assert p == []
+
+
 def test_gap_is_warning_not_problem():
     p, w = check([step(0, 5), step(30, 40)], 60)
     assert p == [] and len(w) == 1
