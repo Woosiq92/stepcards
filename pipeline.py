@@ -37,7 +37,7 @@ class Run:
 
     def log(self, stage, msg, **extra):
         self.events.append({"t": round(time.time(), 1), "stage": stage, "msg": msg, **extra})
-        self.progress.write_text(json.dumps({"video": self.video.name, "events": self.events}, ensure_ascii=False, indent=1))
+        self.progress.write_text(json.dumps({"video": self.video.name, "video_path": str(self.video), "events": self.events}, ensure_ascii=False, indent=1))
         print(f"[{stage}] {msg}")
 
     def path(self, name):
@@ -110,8 +110,8 @@ def overlap(a, b):
     return max(w, 0) * max(h, 0)
 
 
-def grab(run, t, out):
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(t), "-i", str(run.video), "-frames:v", "1",
+def grab(video, t, out):
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(t), "-i", str(video), "-frames:v", "1",
                     "-vf", "scale=-2:720", "-q:v", "3", str(out)], check=True)
 
 
@@ -137,7 +137,7 @@ def highlight(run, steps):
         best = None
         for t in times:
             tmp = cards_dir / f"{i:02d}_t{t}.jpg"
-            grab(run, t, tmp)
+            grab(run.video, t, tmp)
             box, used, touch = find_box(tmp, s)
             if best is None or (box and not best[1]) or (touch and not best[3]):
                 best = (t, box, used, touch, tmp)
@@ -159,6 +159,7 @@ def highlight(run, steps):
 
 def main(video, fresh=False):
     run = Run(video)
+    run.events = []  # 진행판은 이번 실행만 보여 준다
     run.log("start", f"{run.video.name} → {run.dir.name}")
     duration, frames = extract(run)
     steps_file = run.path("steps.json")
@@ -173,7 +174,7 @@ def main(video, fresh=False):
         run.log("highlight", "저장된 카드 사용(캐시)")
     else:
         cards = highlight(run, result["steps"])
-        cards_file.write_text(json.dumps({"status": result["status"], "problems": result["problems"],
+        cards_file.write_text(json.dumps({"duration": duration, "status": result["status"], "problems": result["problems"],
                                           "warnings": result["warnings"], "cards": cards}, ensure_ascii=False, indent=1))
     run.log("done", f"완료: {run.dir}")
 
