@@ -72,7 +72,7 @@ def test_retry_feeds_problems_back(tmp_path, monkeypatch):
     def create(**kw):
         sent.append(kw["input"][0]["content"][-1]["text"])
         text = bad if len(sent) == 1 else good
-        return types.SimpleNamespace(output_text=text, usage=types.SimpleNamespace(input_tokens=1, output_tokens=1))
+        return types.SimpleNamespace(output_text=text, output=[], usage=types.SimpleNamespace(input_tokens=1, output_tokens=1))
 
     monkeypatch.setattr(pipeline, "client", types.SimpleNamespace(responses=types.SimpleNamespace(create=create)))
     video = tmp_path / "v.mp4"

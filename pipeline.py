@@ -98,11 +98,67 @@ def listen(run):
     return turns
 
 
+# ②-1 "더 가까이 보기" 도구: 경계가 애매하면 모델이 스스로 그 구간을 1초에 4장으로 다시 본다
+LOOK_MAX_CALLS, LOOK_MAX_SPAN, LOOK_FPS = 6, 8, 2
+LOOK_TOOL = {"type": "function", "name": "look_closer",
+             "description": f"See {LOOK_FPS} frames per second for a short part of the video (at most {LOOK_MAX_SPAN} seconds). "
+                            "Use it when you are unsure where a step starts or ends, or when a short action may hide between the 1-second frames.",
+             "parameters": {"type": "object", "additionalProperties": False, "required": ["start", "end"],
+                            "properties": {"start": {"type": "number"}, "end": {"type": "number"}}}}
+LOOK_HINT = (f"You may call look_closer up to {LOOK_MAX_CALLS} times before answering if a boundary is unclear. "
+             "Then answer with the JSON only.")
+
+
+def look_closer(run, start, end):
+    start = max(0.0, float(start))
+    end = min(start + LOOK_MAX_SPAN, max(start + 0.5, float(end)))
+    out = run.path(f"look/{start:.1f}-{end:.1f}")
+    if not out.exists():
+        out.mkdir(parents=True)
+        subprocess.run(["ffmpeg", "-v", "error", "-ss", str(start), "-t", str(end - start), "-i", str(run.video),
+                        "-vf", f"fps={LOOK_FPS},scale=-2:360", "-q:v", "6", str(out / "f%03d.jpg")], check=True)
+    parts = []
+    for k, f in enumerate(sorted(out.glob("*.jpg"))):
+        parts += [{"type": "input_text", "text": f"t={start + k / LOOK_FPS:.2f}s"}, {"type": "input_image", "image_url": data_url(f)}]
+    return start, end, parts
+
+
+def ask_steps(run, content, look):
+    """단계 JSON 요청. look이면 look_closer 도구를 주고, 모델이 부르면 사진을 붙여 다시 묻는다(최대 LOOK_MAX_CALLS번)."""
+    messages = [{"role": "user", "content": content + ([{"type": "input_text", "text": LOOK_HINT}] if look else [])}]
+    cost, calls = 0.0, 0
+    for _ in range(LOOK_MAX_CALLS + 4):  # Meta API는 tool_choice "auto"만 받아서, 한도를 넘으면 도구 대신 "지금 답하라"를 돌려준다
+        kw = {"tools": [LOOK_TOOL]} if look else {}
+        r = client.responses.create(model=STEP_MODEL, input=messages, store=False, **kw)
+        cost += r.usage.input_tokens * PRICE_IN + r.usage.output_tokens * PRICE_OUT
+        fcs = [o for o in r.output if o.type == "function_call"]
+        if not fcs:
+            return r.output_text, cost
+        messages += [o.model_dump(exclude_none=True) for o in r.output if o.type in ("function_call", "reasoning")]
+        for fc in fcs:
+            if calls >= LOOK_MAX_CALLS:
+                messages.append({"type": "function_call_output", "call_id": fc.call_id,
+                                 "output": "No more looks are available. Answer now with the JSON only."})
+                continue
+            args = json.loads(fc.arguments or "{}")
+            start, end, parts = look_closer(run, args.get("start", 0), args.get("end", 0))
+            calls += 1
+            run.log("look", f"{start:.1f}~{end:.1f}초를 1초에 {LOOK_FPS}장으로 다시 봄", start=start, end=end)
+            messages.append({"type": "function_call_output", "call_id": fc.call_id,
+                             "output": f"{len(parts) // 2} frames from {start:.1f}s to {end:.1f}s are in the next message."})
+            messages.append({"role": "user", "content": parts})
+    raise RuntimeError("look_closer 반복이 끝나지 않음")
+
+
 # ②③ 단계 나누기 + 검사, 걸리면 이유를 붙여 다시
-def split_steps(run, duration, frames, speech=()):
+def split_steps(run, duration, frames, speech=(), look=False, every=1):
+    """every>1이면 every초 간격의 거친 사진만 주고, 경계는 look_closer로 확대해 찾게 한다."""
     content = []
-    for i, p in enumerate(frames):
-        content += [{"type": "input_text", "text": f"t={i}s"}, {"type": "input_image", "image_url": data_url(p)}]
+    for i, p in enumerate(frames[::every]):
+        content += [{"type": "input_text", "text": f"t={i * every}s"}, {"type": "input_image", "image_url": data_url(p)}]
+    if every > 1:
+        content.append({"type": "input_text", "text": f"These overview frames are {every} seconds apart, so short steps and exact boundaries "
+                        f"are not visible. Use look_closer on each part where a step starts or ends to get exact times."})
     if speech:  # 동작·시간은 사진으로, 양·재료 이름은 말에서
         lines = "\n".join(f"[{t['start']:.1f}-{t['end']:.1f}s] {t['text']}" for t in speech)
         content.append({"type": "input_text", "text": "What the person said while doing it (times in seconds). Decide actions and times "
@@ -114,12 +170,10 @@ def split_steps(run, duration, frames, speech=()):
     for attempt in range(1 + MAX_RETRY):
         ask = content if feedback is None else content + [{"type": "input_text", "text": feedback}]
         t0 = time.time()
-        r = client.responses.create(model=STEP_MODEL, input=[{"role": "user", "content": ask}], store=False)
-        u = r.usage
-        cost = u.input_tokens * PRICE_IN + u.output_tokens * PRICE_OUT
-        run.path(f"steps_try{attempt + 1}.txt").write_text(r.output_text)
+        text, cost = ask_steps(run, ask, look)
+        run.path(f"steps_try{attempt + 1}.txt").write_text(text)
         try:
-            steps = parse_json(r.output_text)
+            steps = parse_json(text)
             problems, warnings = check(steps, duration)
         except (ValueError, KeyError, TypeError) as e:
             steps, problems, warnings = None, [f"JSON 형식이 아닙니다: {e}"], []
@@ -128,7 +182,7 @@ def split_steps(run, duration, frames, speech=()):
         if not problems:
             break
         feedback = ("Your previous answer had these problems. Fix them and return the full JSON again.\n- "
-                    + "\n- ".join(problems) + "\nPrevious answer:\n" + r.output_text)
+                    + "\n- ".join(problems) + "\nPrevious answer:\n" + text)
     status = "ok" if not problems else "needs_review"
     if status == "needs_review":
         run.log("split", "다시 시도해도 남은 문제가 있어 사람 확인 필요로 표시")
@@ -216,18 +270,18 @@ def highlight(run, steps):
     return cards
 
 
-def main(video, fresh=False):
+def main(video, fresh=False, look=False):
     run = Run(video)
     run.events = []  # 진행판은 이번 실행만 보여 준다
     run.log("start", f"{run.video.name} → {run.dir.name}")
     try:
-        build(run, fresh)
+        build(run, fresh, look)
     except Exception as e:
         run.log("error", f"멈췄어요: {type(e).__name__}: {str(e)[:200]}")
         raise
 
 
-def build(run, fresh):
+def build(run, fresh, look=False):
     duration, frames = extract(run)
     speech = listen(run)
     steps_file = run.path("steps.json")
@@ -235,7 +289,7 @@ def build(run, fresh):
         result = json.loads(steps_file.read_text())
         run.log("split", "저장된 단계 사용(캐시)")
     else:
-        result = split_steps(run, duration, frames, speech)
+        result = split_steps(run, duration, frames, speech, look)
         steps_file.write_text(json.dumps(result, ensure_ascii=False, indent=1))
     cards_file = run.path("cards.json")
     if cards_file.exists() and not fresh:
@@ -248,4 +302,4 @@ def build(run, fresh):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], fresh="--fresh" in sys.argv)
+    main(sys.argv[1], fresh="--fresh" in sys.argv, look="--look" in sys.argv)
