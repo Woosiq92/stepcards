@@ -144,6 +144,7 @@
   .coachv .exit { z-index:5; }
   .cstart { position:absolute; inset:0; background:rgba(20,20,20,.94); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; z-index:4; text-align:center; padding:20px; }
   .cstart .t { font-size:32px; font-weight:800; } .cstart .d { color:#bbb; max-width:520px; }
+  .cstart .seg { background:transparent; border-color:#555; } .cstart .seg button { color:#bbb; } .cstart .seg button.on { background:var(--accent); color:#fff; }
   [hidden] { display:none !important; }
   @media (max-width:720px) {
     .choices.three { grid-template-columns:1fr; } .coachv .cam { width:130px; }
@@ -596,11 +597,26 @@ function coach() {
       <div class="t">${T("따라 하기", "Coach mode")}</div>
       <div class="d">${T("카메라가 손과 물건을 보고, 지금 할 카드를 띄워 줘요.<br>언제든 이전·다음 단추로 직접 넘길 수 있어요. 카메라 사진은 저장하지 않아요.",
         "The camera watches hands and objects and shows the card for the current step.<br>Back and Next always work by hand. Camera frames are never stored.")}</div>
+      <div class="seg" id="cwhere" hidden>
+        <button class="on" onclick="coachWhere(false)">${T("Meta API", "Meta API")}</button>
+        <button onclick="coachWhere(true)">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button>
+      </div>
+      <div class="d" id="cwhered" hidden></div>
       <button class="navb next" onclick="coachCamera()">${T("카메라 켜기", "Turn on camera")}</button>
       <label class="linkbtn" style="color:#ffb36b;cursor:pointer">${T("영상 파일로 시험하기", "Try with a video file")}<input type="file" accept="video/*" hidden onchange="coachFile(this.files[0])"></label>
     </div>
   </div>`;
   coachCard();
+  C.local = false;
+  fetch("/api/local").then(r => r.json()).then(d => { if (d.ready && $("#cwhere")) { $("#cwhere").hidden = false; coachWhere(false); } }).catch(() => {});
+}
+function coachWhere(local) {
+  C.local = local;
+  $("#cwhere").querySelectorAll("button").forEach((b, i) => b.classList.toggle("on", i === +local));
+  $("#cwhered").hidden = false;
+  $("#cwhered").innerHTML = local
+    ? T("공개 가중치 모델이 이 맥에서 판단해요. 카메라 사진이 맥 밖으로 나가지 않아요. 물건 확인(SAM)은 건너뛰어요.", "An open-weight model decides on this Mac. Camera frames never leave it. The object check (SAM) is skipped.")
+    : T("Muse Spark가 단계를 보고, SAM 3.1이 손에 든 물건을 한 번 더 확인해요.", "Muse Spark reads the step and SAM 3.1 double-checks the object in hand.");
 }
 function coachCard() {
   const cs = S.data.cards, c = cs[S.idx];
@@ -638,7 +654,7 @@ async function coachLoop() {
   while (C.running && S.view === "coach") {
     const cs = S.data.cards, cur = S.idx + 1;
     if (C.buf.length >= 2 && cur < cs.length) {
-      const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev }) });
+      const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev, local: C.local }) });
       if (!C.running || S.idx + 1 !== cur) continue;  // 그 사이 사람이 직접 넘겼으면 결과는 버린다
       if (!r.ok) { pill(T("판단하지 못했어요 · 다시 보는 중", "No answer · watching again")); }
       else {
@@ -650,8 +666,8 @@ async function coachLoop() {
         }
         else if (d.decision === "again") {
           $("#cagain").hidden = false; clearTimeout(C.againTimer); C.againTimer = setTimeout(() => { const a = $("#cagain"); if (a) a.hidden = true; }, 4000);
-          pill(T(`지켜보는 중 · ${d.latency}초`, `Watching · ${d.latency} s`));
-        } else pill(T(`지켜보는 중 · ${d.latency}초`, `Watching · ${d.latency} s`));
+          pill(T(`지켜보는 중 · ${d.latency}초${C.local ? " · 이 맥" : ""}`, `Watching · ${d.latency} s${C.local ? " · this Mac" : ""}`));
+        } else pill(T(`지켜보는 중 · ${d.latency}초${C.local ? " · 이 맥" : ""}`, `Watching · ${d.latency} s${C.local ? " · this Mac" : ""}`));
       }
     } else if (cur === cs.length) pill(T("마지막 카드예요", "Last card"));
     await new Promise(r => setTimeout(r, 1500));

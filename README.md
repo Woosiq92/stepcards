@@ -31,7 +31,9 @@ The interface is available in Korean and English (switch at the top right). Card
 | `sam-3.1` | outlining the object in hand; confirming the object before Coach mode moves on |
 | `muse-voice-transcribe-1.0` | transcribing what the demonstrator says (`/v1/asr/transcribe`, endpointing mode) |
 
-All calls go to the Meta Model API (`https://api.meta.ai/v1`).
+| `Muse Glimmer 30B` (open weights) | optional Coach mode on this Mac: step recognition runs locally, camera frames never leave the computer |
+
+All other calls go to the Meta Model API (`https://api.meta.ai/v1`).
 
 ## Measured so far
 
@@ -41,6 +43,8 @@ From runs recorded in this build (small samples, see notes):
 - 3 min 13 s latte video → 15–17 cards for about $0.09–0.12 per run (4 runs).
 - The checker sent a step back to the model in 1 of 8 full runs so far; that run passed on the second try.
 - Coach mode, replaying a video as the camera: about 3.6 s per decision (two frames, minimal reasoning; 4 frames with default reasoning took 9–11 s), about $0.08 per minute.
+
+- Coach mode on this Mac with Muse Glimmer 30B (Q4 GGUF, llama.cpp, 48 GB Apple Silicon): reached the last card in the same replay test at about 4.7 s per decision, $0. Glimmer writes a long reasoning trace first (18–21 s per answer); pre-filling the start of the JSON answer skips it with about the same accuracy (Glimmer 15 and 13 of 16 cards, Muse Spark 15 and 14, on two single-frame-pair tests). The SAM check is skipped in this mode because SAM runs on the API.
 
 Not measured yet: time to make the same cards by hand, and step accuracy against a teacher's own task analysis.
 
@@ -54,6 +58,14 @@ python3 -m venv .venv
 echo 'MODEL_API_KEY=...' > .env          # never commit this file
 .venv/bin/python app.py                  # http://127.0.0.1:8790
 ```
+
+Optional, Coach mode on this Mac: download `Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf` and `mmproj-Muse-Glimmer-30B-Q4_K_M.gguf` from `meta-models/Muse-Glimmer-30B-GGUF`, then
+
+```bash
+llama-server -m Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf --mmproj mmproj-Muse-Glimmer-30B-Q4_K_M.gguf -c 8192 -ngl 99 --port 8791
+```
+
+The Coach screen shows "On this Mac (Muse Glimmer)" when that server is running.
 
 Command line only: `.venv/bin/python pipeline.py video.mp4 [--fresh]`. Results go to `runs/<hash of the video>/` (not committed).
 
@@ -77,7 +89,7 @@ Tests for the checker: `.venv/bin/python -m pytest -q test_check.py`
 - Runs locally; videos and cards stay on the machine (`runs/`).
 - Do not use videos of students. Our tests and demo use adult demonstrations only.
 - Coach mode never stores camera frames and keeps no records of the learner.
-- For school use, the plan is to run open-weight models inside the school so student video never leaves it.
+- For school use, Coach mode can run on Muse Glimmer on the school's own computer so student video never leaves it.
 
 ## Credits
 

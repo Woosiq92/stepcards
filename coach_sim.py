@@ -1,5 +1,5 @@
 # 따라 하기 모의 시험: 영상을 카메라 대신 흘려보내며, 카드가 제때 넘어가는지·응답 시간·1분당 비용을 잰다
-# 사용: .venv/bin/python coach_sim.py <실행 폴더 id> [확인 간격 초=2] [사진 수=4]
+# 사용: .venv/bin/python coach_sim.py <실행 폴더 id> [확인 간격 초=2] [사진 수=4] [local = 이 맥의 Glimmer]
 import base64, json, sys
 from pathlib import Path
 import coach
@@ -7,6 +7,7 @@ import coach
 run = Path("runs") / sys.argv[1]
 every = float(sys.argv[2]) if len(sys.argv) > 2 else 2
 k = int(sys.argv[3]) if len(sys.argv) > 3 else 4
+local = len(sys.argv) > 4 and sys.argv[4] == "local"
 cards = json.loads((run / "cards.json").read_text())["cards"]
 frames = sorted((run / "frames").glob("*.jpg"))
 url = lambda i: "data:image/jpeg;base64," + base64.b64encode(frames[i].read_bytes()).decode()
@@ -14,7 +15,7 @@ url = lambda i: "data:image/jpeg;base64," + base64.b64encode(frames[i].read_byte
 t, cur, log, total, lat, prev = float(cards[0]["start"]), 1, [], 0.0, [], 0
 while t < len(frames) - 1 and cur <= len(cards):
     i = int(t)
-    r = coach.check(cards, cur, [url(j) for j in range(max(0, i - k + 1), i + 1)], prev)
+    r = coach.check(cards, cur, [url(j) for j in range(max(0, i - k + 1), i + 1)], prev, local)
     prev = r["seen"]
     total += r["cost"]; lat.append(r["latency"])
     t += max(every, r["latency"])  # 판단하는 동안에도 영상은 흘러간다

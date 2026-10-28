@@ -143,7 +143,13 @@ def coach_check(run_id: str, body: dict):
     cur = int(body.get("cur", 1))
     if len(frames) < 2 or not 1 <= cur <= len(data["cards"]):
         raise HTTPException(400, "사진이 부족하거나 카드 번호가 틀렸습니다")
-    return coach.check(data["cards"], cur, frames, int(body.get("prev_seen") or 0))
+    return coach.check(data["cards"], cur, frames, int(body.get("prev_seen") or 0), bool(body.get("local")))
+
+
+@app.get("/api/local")
+def local_status():
+    """이 맥에 Muse Glimmer 서버가 떠 있는지(따라 하기 선택지에 씀)"""
+    return {"ready": coach.local_ready()}
 
 
 if __name__ == "__main__":
