@@ -14,9 +14,6 @@ RUNS = ROOT / "runs"
 UPLOADS = ROOT / "samples" / "uploads"
 app = FastAPI()
 app.mount("/runs", StaticFiles(directory=RUNS), name="runs")  # 결과 폴더만 공개(리포 전체 X)
-BRAND = ROOT / "static" / "brand"  # 기관 로고(리포에 올리지 않음). 없으면 화면에서 숨김
-BRAND.mkdir(parents=True, exist_ok=True)
-app.mount("/brand", StaticFiles(directory=BRAND), name="brand")
 
 
 def run_dir(run_id):
