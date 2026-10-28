@@ -155,6 +155,8 @@
 <header>
   <span class="logo" onclick="go({})">StepCards</span>
   <nav class="steps" id="steps"></nav>
+  <span style="flex:1"></span>
+  <span class="seg" id="uiseg"></span>
 </header>
 <main id="main"></main>
 
@@ -165,7 +167,14 @@ const fmt = t => `${Math.floor(t / 60)}:${String(Math.round(t) % 60).padStart(2,
 const pad = (n, w = 2) => String(n).padStart(w, "0");
 const S = { run: null, view: "home", data: null, idx: 0, poll: null, busy: new Set(), open: new Set(), strip: new Set(),
             saveTimer: null, saving: Promise.resolve(), saveState: "saved" };
-let lang = (() => { try { return localStorage.getItem("lang") || "ko"; } catch { return "ko"; } })();
+let lang = (() => { try { return localStorage.getItem("lang") || "ko"; } catch { return "ko"; } })();  // 카드 글자
+let ui = (() => {  // 화면 글자: 주소의 ?ui= → 저장된 값 → 브라우저 언어
+  const q = new URLSearchParams(location.search).get("ui");
+  if (q === "ko" || q === "en") return q;
+  try { return localStorage.getItem("ui") || (navigator.language.startsWith("ko") ? "ko" : "en"); } catch { return "ko"; }
+})();
+const T = (ko, en) => ui === "en" ? en : ko;
+function setUi(v) { ui = v; try { localStorage.setItem("ui", v); } catch {} document.documentElement.lang = v; route(); }
 
 function go(p) { location.hash = p.run ? new URLSearchParams(p).toString() : ""; }
 window.addEventListener("hashchange", route);
@@ -180,6 +189,8 @@ async function route() {
   if (run && !S.data) { const r = await fetch(`/api/runs/${run}/cards`); if (r.ok) S.data = await r.json(); }
   if (["edit", "use", "tablet", "coach"].includes(S.view) && !S.data) S.view = "making";
   document.body.classList.toggle("tabmode", S.view === "tablet" || S.view === "coach");
+  document.documentElement.lang = ui;
+  $("#uiseg").innerHTML = [["ko", "한국어"], ["en", "English"]].map(([v, l]) => `<button class="${ui === v ? "on" : ""}" onclick="setUi('${v}')">${l}</button>`).join("");
   header();
   ({ home, making, edit, use, tablet, coach })[S.view]();
 }
@@ -187,7 +198,7 @@ async function route() {
 /* 위쪽 1·2·3 단계 표시 */
 function header() {
   const done = !!S.data, cur = ["tablet", "coach"].includes(S.view) ? "use" : S.view === "home" ? "making" : S.view;
-  const items = [["making", "영상 넣기"], ["edit", "카드 확인·고치기"], ["use", "인쇄·태블릿"]];
+  const items = [["making", T("영상 넣기", "Add video")], ["edit", T("카드 확인·고치기", "Check & edit")], ["use", T("인쇄·태블릿", "Print · Tablet · Coach")]];
   $("#steps").innerHTML = items.map(([v, l], i) => {
     const ok = (v === "making" && done) || (v === "edit" && done && cur === "use" && !(S.data.problems || []).length);
     const off = !S.run || (v !== "making" && !done);
@@ -220,24 +231,25 @@ function toast(msg, label, act) {
 async function home() {
   const runs = await (await fetch("/api/runs")).json();
   $("#main").innerHTML = `
-    <h2>영상 하나로 따라 하기 카드 만들기</h2>
-    <p class="sub">손으로 하는 일을 한 번 보여 주는 영상을 넣으면, 동작마다 사진 한 장과 짧은 문장이 붙은 카드가 만들어져요.</p>
+    <h2>${T("영상 하나로 따라 하기 카드 만들기", "Turn one demonstration video into step cards")}</h2>
+    <p class="sub">${T("손으로 하는 일을 한 번 보여 주는 영상을 넣으면, 동작마다 사진 한 장과 짧은 문장이 붙은 카드가 만들어져요.",
+      "Add a video of someone doing a hands-on task once. You get one card per action, each with a photo and a short sentence.")}</p>
     <label class="drop" id="drop">
       <input type="file" accept="video/*" id="file" hidden>
       <div class="plus">+</div>
-      <div class="big">영상을 여기에 끌어다 놓거나, 눌러서 고르세요</div>
-      <div class="muted">1~5분 · 손과 물건이 잘 보이게 · 학생이 나오는 영상은 넣지 마세요</div>
+      <div class="big">${T("영상을 여기에 끌어다 놓거나, 눌러서 고르세요", "Drop a video here, or click to choose one")}</div>
+      <div class="muted">${T("1~5분 · 손과 물건이 잘 보이게 · 학생이 나오는 영상은 넣지 마세요", "1–5 minutes · hands and objects clearly visible · no videos of students")}</div>
     </label>
     <div class="flow">
-      <div><strong>1. 영상 넣기</strong><br><span class="muted">1~2분 뒤 카드가 나와요.</span></div>
-      <div><strong>2. 확인·고치기</strong><br><span class="muted">문장을 누르면 바로 고쳐지고, 저장은 저절로 돼요.</span></div>
-      <div><strong>3. 인쇄·태블릿</strong><br><span class="muted">A4에 6장씩 뽑거나, 한 장씩 넘겨 봐요.</span></div>
+      <div><strong>${T("1. 영상 넣기", "1. Add video")}</strong><br><span class="muted">${T("몇 분 뒤 카드가 나와요.", "Cards are ready in a few minutes.")}</span></div>
+      <div><strong>${T("2. 확인·고치기", "2. Check & edit")}</strong><br><span class="muted">${T("문장을 누르면 바로 고쳐지고, 저장은 저절로 돼요.", "Click a sentence to edit it. Saving is automatic.")}</span></div>
+      <div><strong>${T("3. 인쇄·태블릿", "3. Use")}</strong><br><span class="muted">${T("A4에 6장씩 뽑거나, 한 장씩 넘겨 보거나, 카메라로 따라 해요.", "Print six per A4 page, flip through on a tablet, or follow along with the camera.")}</span></div>
     </div>
-    ${runs.length ? `<h3>지난 카드 묶음</h3><div class="past">${runs.map(r => `
+    ${runs.length ? `<h3>${T("지난 카드 묶음", "Previous card sets")}</h3><div class="past">${runs.map(r => `
       <a class="pastcard" href="#run=${r.id}&view=${r.done ? "edit" : "making"}">
         ${r.thumb ? `<img src="/runs/${r.id}/${r.thumb}" alt="">` : '<div class="ph"></div>'}
         <div class="pt"><strong>${esc(r.video)}</strong>
-        <span class="muted">${r.done ? `카드 ${r.count}장${r.issues ? ` · <span class="red">확인할 곳 ${r.issues}</span>` : " · 확인 끝"}` : "만드는 중"}</span></div>
+        <span class="muted">${r.done ? `${T(`카드 ${r.count}장`, `${r.count} cards`)}${r.issues ? ` · <span class="red">${T(`확인할 곳 ${r.issues}`, `${r.issues} to check`)}</span>` : T(" · 확인 끝", " · all checks passed")}` : T("만드는 중", "in progress")}</span></div>
       </a>`).join("")}</div>` : ""}`;
   const drop = $("#drop"), file = $("#file");
   file.onchange = () => file.files[0] && upload(file.files[0]);
@@ -246,11 +258,11 @@ async function home() {
   drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) upload(f); };
 }
 async function upload(f) {
-  if (!f.type.startsWith("video/")) return toast("영상 파일만 넣을 수 있어요.");
-  $("#drop").innerHTML = '<div class="big">영상을 올리는 중…</div>';
+  if (!f.type.startsWith("video/")) return toast(T("영상 파일만 넣을 수 있어요.", "Only video files can be added."));
+  $("#drop").innerHTML = `<div class="big">${T("영상을 올리는 중…", "Uploading…")}</div>`;
   const fd = new FormData(); fd.append("file", f);
   const r = await fetch("/api/upload", { method: "POST", body: fd });
-  if (!r.ok) { toast("올리지 못했어요. 다시 해 주세요."); return home(); }
+  if (!r.ok) { toast(T("올리지 못했어요. 다시 해 주세요.", "Upload failed. Please try again.")); return home(); }
   go({ run: (await r.json()).id, view: "making" });
 }
 
@@ -274,23 +286,23 @@ async function making() {
     const retried = splits.slice(0, -1);
     const last = splits.at(-1);
     $("#main").innerHTML = `
-      <h2>${done ? "카드가 다 만들어졌어요" : err ? "만들다가 멈췄어요" : "카드를 만들고 있어요"}</h2>
-      <p class="sub">${esc(p.video || "")}${done || err ? "" : " · 1~2분 걸려요. 이 창을 닫아도 계속 만들어져요."}</p>
+      <h2>${done ? T("카드가 다 만들어졌어요", "Your cards are ready") : err ? T("만들다가 멈췄어요", "Stopped with an error") : T("카드를 만들고 있어요", "Making your cards")}</h2>
+      <p class="sub">${esc(p.video || "")}${done || err ? "" : T(" · 몇 분 걸려요. 이 창을 닫아도 계속 만들어져요.", " · This takes a few minutes. It keeps going if you close this window.")}</p>
       ${err ? `<div class="issue">${esc(err.msg)}</div>` : ""}
-      ${done ? `<p><button class="btn primary big" onclick="openEdit()">카드 확인하러 가기 →</button></p>` : ""}
+      ${done ? `<p><button class="btn primary big" onclick="openEdit()">${T("카드 확인하러 가기 →", "Check the cards →")}</button></p>` : ""}
       <div class="stages">
-        <div class="stage ${s1}"><span class="ic"></span><div><strong>영상에서 1초마다 사진 뽑기</strong></div></div>
-        <div class="stage ${sL}"><span class="ic"></span><div><strong>영상 속 말 받아쓰기</strong>
-          ${listenEv ? `<div class="muted">${esc(listenEv.msg)}${listenEv.n ? " · 양과 재료 이름을 문장에 넣을 때 써요" : ""}</div>` : ""}</div></div>
-        <div class="stage ${s2}"><span class="ic"></span><div><strong>동작마다 단계를 나누고 문장 쓰기</strong>
-          ${last ? `<div class="muted">단계 ${last.n}개 · ${last.problems.length ? "고칠 곳이 남아 확인이 필요해요" : "규칙 검사 통과"}</div>` : ""}
-          ${retried.length ? `<div class="detail">규칙 검사에서 걸린 곳이 있어서, 이유를 알려 주고 다시 만들게 했어요.<ul>${retried.flatMap(s => s.problems).map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}</div></div>
-        <div class="stage ${s3}"><span class="ic"></span><div><strong>카드마다 사진을 고르고, 손에 든 물건에 테두리 그리기</strong>
+        <div class="stage ${s1}"><span class="ic"></span><div><strong>${T("영상에서 1초마다 사진 뽑기", "Take a frame every second")}</strong></div></div>
+        <div class="stage ${sL}"><span class="ic"></span><div><strong>${T("영상 속 말 받아쓰기", "Transcribe what was said (Muse Voice Transcribe)")}</strong>
+          ${listenEv ? `<div class="muted">${listenEv.n ? T(`말 ${listenEv.n}구간 받아씀 · 양과 재료 이름을 문장에 넣을 때 써요`, `${listenEv.n} speech turns · used for amounts and names in the sentences`) : T("영상에 말소리가 없음", "No speech in this video")}</div>` : ""}</div></div>
+        <div class="stage ${s2}"><span class="ic"></span><div><strong>${T("동작마다 단계를 나누고 문장 쓰기", "Split into one-action steps and write sentences (Muse Spark)")}</strong>
+          ${last ? `<div class="muted">${T(`단계 ${last.n}개`, `${last.n} steps`)} · ${last.problems.length ? T("고칠 곳이 남아 확인이 필요해요", "some issues remain for a person to check") : T("규칙 검사 통과", "passed the rule check")}</div>` : ""}
+          ${retried.length ? `<div class="detail">${T("규칙 검사에서 걸린 곳이 있어서, 이유를 알려 주고 다시 만들게 했어요.", "The rule check found a problem, so the model was told why and asked to try again.")}<ul>${retried.flatMap(s => s.problems).map(x => `<li>${esc(problemText(x, true))}</li>`).join("")}</ul></div>` : ""}</div></div>
+        <div class="stage ${s3}"><span class="ic"></span><div><strong>${T("카드마다 사진을 고르고, 손에 든 물건에 테두리 그리기", "Pick a photo per card and outline the object in hand (SAM 3.1)")}</strong>
           ${total && !done ? `<div class="prog"><i style="width:${hl.length / total * 100}%"></i></div><div class="muted">${hl.length} / ${total}</div>` : ""}</div></div>
       </div>
       ${hl.length ? `<div class="thumbs">${hl.map(e => `<img src="/runs/${S.run}/cards/${pad(e.i)}.jpg" alt="">`).join("")}</div>` : ""}
-      <details class="log" ${wasOpen ? "open" : ""}><summary>자세한 기록</summary>${ev.map(e => `<div>${esc(e.msg)}</div>`).join("")}
-        <div>모델 비용 합계 약 $${ev.reduce((s, e) => s + (e.cost || 0), 0).toFixed(3)}</div></details>`;
+      <details class="log" ${wasOpen ? "open" : ""}><summary>${T("자세한 기록", "Detailed log")}</summary>${ev.map(e => `<div>${esc(e.msg)}</div>`).join("")}
+        <div>${T("모델 비용 합계 약", "Model cost, about")} $${ev.reduce((s, e) => s + (e.cost || 0), 0).toFixed(3)}</div></details>`;
     if (done || err) clearInterval(S.poll);
   };
   await draw();
@@ -302,24 +314,32 @@ async function openEdit() {
 }
 
 /* ② 확인·고치기 */
+// 검사기 문장(한국어)을 쉬운 말로. [모양, 한국어, 영어]
 const FRIENDLY = [
-  [/겹칩니다/, "앞 카드와 시간이 겹쳐요. '시간·물건 고치기'에서 시작이나 끝을 바꿔 주세요."],
-  [/문장이 비어/, "문장을 써 주세요."],
-  [/한국어 문장이 깁니다/, "문장이 길어요. 25자 안으로 줄여 주세요."],
-  [/세요'로 끝나야/, "문장 끝을 '~세요'로 맞춰 주세요."],
-  [/동작이 둘/, "한 카드에는 동작 하나만 넣어요. 아래 '+ 여기에 카드 넣기'로 나눠 주세요."],
-  [/대표 시각/, "고른 장면이 이 카드 시간 밖에 있어요. '다른 장면 고르기'로 다시 골라 주세요."],
-  [/영상\(/, "시간이 영상 길이를 벗어났어요."],
-  [/영어 문장이 깁니다/, "영어 문장이 길어요."],
-  [/항목이 없습니다/, "빠진 내용이 있어요."],
-  [/맞춤법/, m => `맞춤법: ${m.match(/\('(.+)' → '(.+)'\)/).slice(1).join(" → ")} 로 고쳐 주세요.`],
+  [/겹칩니다/, "앞 카드와 시간이 겹쳐요. '시간·물건 고치기'에서 시작이나 끝을 바꿔 주세요.", "Overlaps another card in time. Change the start or end under 'Edit time & object'."],
+  [/문장이 비어/, "문장을 써 주세요.", "Write a sentence."],
+  [/한국어 문장이 깁니다/, "문장이 길어요. 25자 안으로 줄여 주세요.", "The Korean sentence is too long. Keep it within 25 characters."],
+  [/세요'로 끝나야/, "문장 끝을 '~세요'로 맞춰 주세요.", "End the Korean sentence with '~세요' (a polite instruction)."],
+  [/동작이 둘/, "한 카드에는 동작 하나만 넣어요. 아래 '+ 여기에 카드 넣기'로 나눠 주세요.", "One action per card. Split it with '+ Add a card here' below."],
+  [/대표 시각/, "고른 장면이 이 카드 시간 밖에 있어요. '다른 장면 고르기'로 다시 골라 주세요.", "The chosen photo is outside this card's time. Use 'Choose another frame'."],
+  [/영상\(/, "시간이 영상 길이를 벗어났거나 끝이 시작보다 빨라요.", "The time is outside the video, or the end comes before the start."],
+  [/영어 문장이 깁니다/, "영어 문장이 길어요.", "The English sentence is too long."],
+  [/항목이 없습니다/, "빠진 내용이 있어요.", "Something is missing."],
+  [/맞춤법/, m => `맞춤법: ${m.match(/\('(.+)' → '(.+)'\)/).slice(1).join(" → ")} 로 고쳐 주세요.`,
+             m => `Korean spelling: change ${m.match(/\('(.+)' → '(.+)'\)/).slice(1).join(" → ")}.`],
 ];
+function problemText(m, withStep) {
+  const hit = FRIENDLY.find(([re]) => re.test(m));
+  if (!hit) return m;
+  const f = ui === "en" ? hit[2] : hit[1], txt = typeof f === "function" ? f(m) : f;
+  const k = m.match(/^(\d+)(?:·(\d+))?단계/);
+  return withStep && k ? `${T(`${k[2] ? k[1] + "·" + k[2] : k[1]}단계: `, `Step ${k[2] ? k[1] + "–" + k[2] : k[1]}: `)}${txt}` : txt;
+}
 function issues() {
   const per = {}, global = [], gaps = {};
   for (const m of S.data.problems || []) {
     const k = m.match(/^(\d+)(?:·(\d+))?단계/);
-    const hit = FRIENDLY.find(([re]) => re.test(m));
-    const f = !hit ? m : typeof hit[1] === "function" ? hit[1](m) : hit[1];
+    const f = problemText(m);
     if (!k) { global.push(f); continue; }
     const i = +(k[2] || k[1]) - 1;
     (per[i] = per[i] || []).push(f);
@@ -331,55 +351,56 @@ function issues() {
   return { per, global, gaps };
 }
 function chipHtml(n) {
-  return n ? `<button class="chip bad" onclick="document.querySelector('.row.has-bad')?.scrollIntoView({behavior:'smooth',block:'center'})">확인할 곳 ${n}곳 ↓</button>`
-           : `<span class="chip ok">✓ 규칙 검사 통과</span>`;
+  return n ? `<button class="chip bad" onclick="document.querySelector('.row.has-bad')?.scrollIntoView({behavior:'smooth',block:'center'})">${T(`확인할 곳 ${n}곳 ↓`, `${n} to check ↓`)}</button>`
+           : `<span class="chip ok">${T("✓ 규칙 검사 통과", "✓ All rule checks passed")}</span>`;
 }
 function saveText() {
-  return { saved: "✓ 저장됨", dirty: "고치는 중…", saving: "저장 중…", error: "저장하지 못했어요. 서버가 켜져 있는지 확인해 주세요." }[S.saveState];
+  return { saved: T("✓ 저장됨", "✓ Saved"), dirty: T("고치는 중…", "Editing…"), saving: T("저장 중…", "Saving…"),
+           error: T("저장하지 못했어요. 서버가 켜져 있는지 확인해 주세요.", "Could not save. Check that the server is running.") }[S.saveState];
 }
 function edit() {
   const cs = S.data.cards, { per, global, gaps } = issues();
   const y = scrollY;
   $("#main").innerHTML = `
     <div class="toolbar">
-      <h2 style="margin:0">카드 ${cs.length}장</h2>
+      <h2 style="margin:0">${T(`카드 ${cs.length}장`, `${cs.length} cards`)}</h2>
       <span id="chip">${chipHtml(Object.keys(per).length + global.length)}</span>
       <span class="saved" id="saved">${saveText()}</span>
       <span style="flex:1"></span>
-      <button class="btn primary" onclick="go({run:S.run,view:'use'})">다 됐어요 → 인쇄·태블릿</button>
+      <button class="btn primary" onclick="go({run:S.run,view:'use'})">${T("다 됐어요 → 인쇄·태블릿", "Done → Print · Tablet · Coach")}</button>
     </div>
-    <p class="hint">문장을 누르면 바로 고쳐져요. 사진이 마음에 안 들면 '다른 장면 고르기'를 누르세요.</p>
+    <p class="hint">${T("문장을 누르면 바로 고쳐져요. 사진이 마음에 안 들면 '다른 장면 고르기'를 누르세요.", "Click a sentence to edit it. If a photo is not right, use 'Choose another frame'.")}</p>
     <div id="global">${global.map(g => `<div class="issue">${esc(g)}</div>`).join("")}</div>
     <div class="list">${cs.map((c, i) => rowHtml(c, i, per[i]) + between(i, gaps)).join("")}</div>`;
   document.querySelectorAll("textarea.say").forEach(autosize);
   scrollTo(0, y);
 }
 function rowHtml(c, i, iss = []) {
-  const open = S.open.has(c.n) || iss.some(x => /시간/.test(x)), strip = S.strip.has(c.n);
+  const open = S.open.has(c.n) || iss.some(x => /시간|time/i.test(x)), strip = S.strip.has(c.n);
   return `<div class="row ${iss.length ? "has-bad" : ""}" id="row${i}">
     <div class="n">${i + 1}</div>
     <div>
-      <div class="pic"><img src="${imgSrc(c)}" alt="" onerror="this.style.visibility='hidden'">${S.busy.has(c.n) ? '<div class="busy">장면을 바꾸는 중…</div>' : ""}</div>
-      <button class="linkbtn" onclick="toggle('strip',${c.n})">${strip ? "장면 고르기 닫기 ▲" : "다른 장면 고르기 ▼"}</button>
+      <div class="pic"><img src="${imgSrc(c)}" alt="" onerror="this.style.visibility='hidden'">${S.busy.has(c.n) ? `<div class="busy">${T("장면을 바꾸는 중…", "Changing the frame…")}</div>` : ""}</div>
+      <button class="linkbtn" onclick="toggle('strip',${c.n})">${strip ? T("장면 고르기 닫기 ▲", "Close frames ▲") : T("다른 장면 고르기 ▼", "Choose another frame ▼")}</button>
     </div>
     <div>
-      <textarea class="say" rows="1" placeholder="동작 하나를 짧게 써 주세요 (예: 우유를 부으세요.)" oninput="typed(${i},'ko',this)">${esc(c.ko)}</textarea>
+      <textarea class="say" rows="1" placeholder="${T("동작 하나를 짧게 써 주세요 (예: 우유를 부으세요.)", "Korean sentence, one action (e.g. 우유를 부으세요.)")}" oninput="typed(${i},'ko',this)">${esc(c.ko)}</textarea>
       <textarea class="say en" rows="1" placeholder="English sentence" oninput="typed(${i},'en',this)">${esc(c.en)}</textarea>
-      <div class="meta">영상 ${fmt(c.start)} ~ ${fmt(c.end)} · 손에 든 것: ${esc(c.object || "정하지 않음")}${c.box && !c.hl_off ? " (사진에 주황 테두리)" : ""}</div>
+      <div class="meta">${T("영상", "Video")} ${fmt(c.start)} ~ ${fmt(c.end)} · ${T("손에 든 것", "In hand")}: ${esc(c.object || T("정하지 않음", "not set"))}${c.box && !c.hl_off ? T(" (사진에 주황 테두리)", " (orange outline in photo)") : ""}</div>
       <div id="iss${i}">${iss.map(x => `<div class="issue">${esc(x)}</div>`).join("")}</div>
       <div class="actions">
-        <button class="btn" onclick="move(${i},-1)" ${i ? "" : "disabled"}>↑ 앞으로</button>
-        <button class="btn" onclick="move(${i},1)" ${i < S.data.cards.length - 1 ? "" : "disabled"}>↓ 뒤로</button>
-        <button class="btn" onclick="toggle('open',${c.n})">${open ? "시간·물건 닫기" : "시간·물건 고치기"}</button>
-        <button class="btn" onclick="del(${i})">카드 빼기</button>
+        <button class="btn" onclick="move(${i},-1)" ${i ? "" : "disabled"}>${T("↑ 앞으로", "↑ Up")}</button>
+        <button class="btn" onclick="move(${i},1)" ${i < S.data.cards.length - 1 ? "" : "disabled"}>${T("↓ 뒤로", "↓ Down")}</button>
+        <button class="btn" onclick="toggle('open',${c.n})">${open ? T("시간·물건 닫기", "Close") : T("시간·물건 고치기", "Edit time & object")}</button>
+        <button class="btn" onclick="del(${i})">${T("카드 빼기", "Remove card")}</button>
       </div>
       ${open ? `<div class="more">
-        <label>영상 <input type="number" min="0" value="${c.start}" onchange="setTime(${i},'start',this.value)">초부터
-          <input type="number" min="0" value="${c.end}" onchange="setTime(${i},'end',this.value)">초까지</label>
-        <label>손에 든 것(영어로) <input type="text" value="${esc(c.object)}" placeholder="예: glass cup" onchange="setObject(${i},this.value)">
-          <span class="muted">바꾸면 사진에서 다시 찾아요</span></label>
-        ${c.box ? `<label><input type="checkbox" ${c.hl_off ? "" : "checked"} onchange="setHl(${i},this.checked)"> 사진에 주황 테두리 보이기</label>`
-                : `<span class="muted">사진에서 이 물건을 찾지 못했어요. 이름을 바꾸거나 다른 장면을 골라 보세요.</span>`}
+        <label>${T("영상", "Video from")} <input type="number" min="0" value="${c.start}" onchange="setTime(${i},'start',this.value)">${T("초부터", "s to")}
+          <input type="number" min="0" value="${c.end}" onchange="setTime(${i},'end',this.value)">${T("초까지", "s")}</label>
+        <label>${T("손에 든 것(영어로)", "Object in hand (English)")} <input type="text" value="${esc(c.object)}" placeholder="${T("예: glass cup", "e.g. glass cup")}" onchange="setObject(${i},this.value)">
+          <span class="muted">${T("바꾸면 사진에서 다시 찾아요", "Changing it searches the photo again")}</span></label>
+        ${c.box ? `<label><input type="checkbox" ${c.hl_off ? "" : "checked"} onchange="setHl(${i},this.checked)"> ${T("사진에 주황 테두리 보이기", "Show the orange outline")}</label>`
+                : `<span class="muted">${T("사진에서 이 물건을 찾지 못했어요. 이름을 바꾸거나 다른 장면을 골라 보세요.", "This object was not found in the photo. Try another name or another frame.")}</span>`}
       </div>` : ""}
     </div>
     ${strip ? stripHtml(c, i) : ""}
@@ -389,15 +410,15 @@ function stripHtml(c, i) {
   const cur = c.frame_t ?? c.rep, step = Math.max(1, Math.ceil((c.end - c.start + 1) / 40));
   let h = "";
   for (let t = c.start; t <= c.end; t += step)
-    h += `<button class="${t === cur ? "cur" : ""}" onclick="reframe(${i},${t})" title="${fmt(t)} 장면으로 바꾸기"><img src="/runs/${S.run}/frames/f${pad(t + 1, 3)}.jpg" loading="lazy" alt=""><span>${fmt(t)}</span></button>`;
+    h += `<button class="${t === cur ? "cur" : ""}" onclick="reframe(${i},${t})" title="${T(`${fmt(t)} 장면으로 바꾸기`, `Use the frame at ${fmt(t)}`)}"><img src="/runs/${S.run}/frames/f${pad(t + 1, 3)}.jpg" loading="lazy" alt=""><span>${fmt(t)}</span></button>`;
   return `<div class="strip">${h}</div>`;
 }
 function between(i, gaps) {
   const last = i === S.data.cards.length - 1, g = gaps[i];
   return `<div class="between ${g ? "gap" : ""}" id="gap${i}">
-    ${g ? `<span class="note">영상 ${fmt(g[0])}~${fmt(g[1])}, ${g[1] - g[0]}초에는 카드가 없어요</span>` : ""}
-    <button class="btn" onclick="addCard(${i})">+ 여기에 카드 넣기</button>
-    ${last ? "" : `<button class="btn" onclick="merge(${i})">위아래 카드 하나로 합치기</button>`}
+    ${g ? `<span class="note">${T(`영상 ${fmt(g[0])}~${fmt(g[1])}, ${g[1] - g[0]}초에는 카드가 없어요`, `No card for ${fmt(g[0])}–${fmt(g[1])} (${g[1] - g[0]} s)`)}</span>` : ""}
+    <button class="btn" onclick="addCard(${i})">${T("+ 여기에 카드 넣기", "+ Add a card here")}</button>
+    ${last ? "" : `<button class="btn" onclick="merge(${i})">${T("위아래 카드 하나로 합치기", "Merge these two cards")}</button>`}
   </div>`;
 }
 function autosize(el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; }
@@ -437,14 +458,14 @@ window.addEventListener("beforeunload", e => { if (S.saveState !== "saved") e.pr
 function changed() { edit(); saveNow(); }
 function typed(i, k, el) { S.data.cards[i][k] = el.value; autosize(el); scheduleSave(); }
 function snapshot() { return JSON.parse(JSON.stringify(S.data.cards)); }
-function undoable(msg, before) { toast(msg, "되돌리기", () => { S.data.cards = before; changed(); }); }
+function undoable(msg, before) { toast(msg, T("되돌리기", "Undo"), () => { S.data.cards = before; changed(); }); }
 function move(i, d) { const cs = S.data.cards; [cs[i], cs[i + d]] = [cs[i + d], cs[i]]; changed(); }
-function del(i) { const before = snapshot(); S.data.cards.splice(i, 1); changed(); undoable("카드를 뺐어요.", before); }
+function del(i) { const before = snapshot(); S.data.cards.splice(i, 1); changed(); undoable(T("카드를 뺐어요.", "Card removed."), before); }
 function merge(i) {
   const before = snapshot(), cs = S.data.cards, a = cs[i], b = cs[i + 1];
   a.start = Math.min(a.start, b.start); a.end = Math.max(a.end, b.end);
   if (!a.ko.trim()) a.ko = b.ko;
-  cs.splice(i + 1, 1); changed(); undoable("두 카드를 하나로 합쳤어요.", before);
+  cs.splice(i + 1, 1); changed(); undoable(T("두 카드를 하나로 합쳤어요.", "Cards merged."), before);
 }
 function setTime(i, k, v) {
   const c = S.data.cards[i];
@@ -467,7 +488,7 @@ async function reframe(i, t) {
   if (r.ok) {
     const f = await r.json();
     Object.assign(c, { frame_t: f.frame_t, rep: f.rep, box: f.box, box_prompt: f.box_prompt, box_touches_hand: f.box_touches_hand, v: Date.now() });
-  } else toast("장면을 바꾸지 못했어요. 다시 해 주세요.");
+  } else toast(T("장면을 바꾸지 못했어요. 다시 해 주세요.", "Could not change the frame. Please try again."));
   if (S.view === "edit") edit();
   saveNow();
 }
@@ -484,7 +505,7 @@ async function addCard(i) {
 
 /* ③ 인쇄·태블릿 */
 function segHtml() {
-  return `<span class="seg">${[["ko", "한국어"], ["en", "English"], ["both", "둘 다"]].map(([v, l]) =>
+  return `<span class="seg">${[["ko", "한국어"], ["en", "English"], ["both", T("둘 다", "Both")]].map(([v, l]) =>
     `<button class="${lang === v ? "on" : ""}" onclick="setLang('${v}')">${l}</button>`).join("")}</span>`;
 }
 function use() {
@@ -495,15 +516,15 @@ function use() {
       `<div class="pcard"><img src="${imgSrc(c)}" alt=""><div class="n">${p * 6 + j + 1}</div><div class="txt">${text(c)}</div></div>`).join("")}</div>`;
   $("#main").innerHTML = `
     <div class="noprint">
-      <h2>카드 쓰기</h2>
-      ${nIss ? `<div class="issue">아직 확인할 곳이 ${nIss}곳 있어요. <a href="#run=${S.run}&view=edit">고치러 가기</a></div>` : ""}
+      <h2>${T("카드 쓰기", "Use the cards")}</h2>
+      ${nIss ? `<div class="issue">${T(`아직 확인할 곳이 ${nIss}곳 있어요.`, `${nIss} item(s) still need checking.`)} <a href="#run=${S.run}&view=edit">${T("고치러 가기", "Go fix")}</a></div>` : ""}
       <div class="choices three">
-        <button class="choice" onclick="window.print()"><div class="t">🖨 종이로 인쇄하기</div><div class="d">A4 한 장에 카드 6장 · 아래 미리보기 그대로 나와요 (${pages}쪽)</div></button>
-        <button class="choice" onclick="go({run:S.run,view:'tablet'})"><div class="t">▶ 태블릿으로 한 장씩 보기</div><div class="d">화면 오른쪽을 누르거나 밀면 다음 카드로 넘어가요</div></button>
-        <button class="choice" onclick="go({run:S.run,view:'coach'})"><div class="t">👀 따라 하기</div><div class="d">카메라가 하는 모습을 보고, 다음 카드를 알아서 띄워 줘요</div></button>
+        <button class="choice" onclick="window.print()"><div class="t">🖨 ${T("종이로 인쇄하기", "Print")}</div><div class="d">${T(`A4 한 장에 카드 6장 · 아래 미리보기 그대로 나와요 (${pages}쪽)`, `Six cards per A4 page, exactly as previewed below (${pages} pages)`)}</div></button>
+        <button class="choice" onclick="go({run:S.run,view:'tablet'})"><div class="t">▶ ${T("태블릿으로 한 장씩 보기", "Tablet, one card at a time")}</div><div class="d">${T("화면 오른쪽을 누르거나 밀면 다음 카드로 넘어가요", "Tap the right side or swipe for the next card")}</div></button>
+        <button class="choice" onclick="go({run:S.run,view:'coach'})"><div class="t">👀 ${T("따라 하기", "Coach mode")}</div><div class="d">${T("카메라가 하는 모습을 보고, 다음 카드를 알아서 띄워 줘요", "A camera watches the learner and shows the next card at the right time")}</div></button>
       </div>
-      <div class="langrow"><span class="muted">카드 글자</span> ${segHtml()}</div>
-      <h3>인쇄 미리보기</h3>
+      <div class="langrow"><span class="muted">${T("카드 글자", "Card language")}</span> ${segHtml()}</div>
+      <h3>${T("인쇄 미리보기", "Print preview")}</h3>
     </div>
     ${sheets}`;
 }
@@ -512,13 +533,13 @@ function tablet() {
   S.idx = Math.min(S.idx, cs.length - 1);
   const c = cs[S.idx], last = S.idx === cs.length - 1;
   $("#main").innerHTML = `<div class="tab">
-    <button class="exit" onclick="go({run:S.run,view:'use'})">✕ 나가기</button>
+    <button class="exit" onclick="go({run:S.run,view:'use'})">${T("✕ 나가기", "✕ Exit")}</button>
     <div class="imgwrap"><img src="${imgSrc(c)}" alt=""><div class="zone l" onclick="flip(-1)"></div><div class="zone r" onclick="flip(1)"></div></div>
     <div class="txt">${text(c)}</div>
     <div class="bar">
-      <button class="navb" onclick="flip(-1)" ${S.idx ? "" : "disabled"}>◀ 이전</button>
+      <button class="navb" onclick="flip(-1)" ${S.idx ? "" : "disabled"}>${T("◀ 이전", "◀ Back")}</button>
       <div class="mid"><div class="dots">${cs.map((_, j) => `<i class="${j === S.idx ? "on" : ""}"></i>`).join("")}</div>${S.idx + 1} / ${cs.length}</div>
-      ${last ? `<button class="navb next" onclick="S.idx=0;tablet()">처음으로 ↺</button>` : `<button class="navb next" onclick="flip(1)">다음 ▶</button>`}
+      ${last ? `<button class="navb next" onclick="S.idx=0;tablet()">${T("처음으로 ↺", "Start over ↺")}</button>` : `<button class="navb next" onclick="flip(1)">${T("다음 ▶", "Next ▶")}</button>`}
     </div>
   </div>`;
   if (!last) new Image().src = imgSrc(cs[S.idx + 1]);
@@ -529,21 +550,22 @@ function coach() {
   const cs = S.data.cards;
   S.idx = Math.min(S.idx, cs.length - 1);
   $("#main").innerHTML = `<div class="tab coachv">
-    <button class="exit" onclick="go({run:S.run,view:'use'})">✕ 나가기</button>
-    <div class="cam"><video id="cvid" muted playsinline></video><div class="pill" id="cpill">카메라 꺼짐</div></div>
-    <div class="againtag" id="cagain" hidden>이 카드부터 해요</div>
+    <button class="exit" onclick="go({run:S.run,view:'use'})">${T("✕ 나가기", "✕ Exit")}</button>
+    <div class="cam"><video id="cvid" muted playsinline></video><div class="pill" id="cpill">${T("카메라 꺼짐", "Camera off")}</div></div>
+    <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
     <div class="imgwrap"><img id="cimg" alt=""></div>
     <div class="txt" id="ctxt"></div>
     <div class="bar">
-      <button class="navb" id="cprev" onclick="coachFlip(-1)">◀ 이전</button>
+      <button class="navb" id="cprev" onclick="coachFlip(-1)">${T("◀ 이전", "◀ Back")}</button>
       <div class="mid" id="cmid"></div>
-      <button class="navb next" id="cnext" onclick="coachFlip(1)">다음 ▶</button>
+      <button class="navb next" id="cnext" onclick="coachFlip(1)">${T("다음 ▶", "Next ▶")}</button>
     </div>
     <div class="cstart" id="cstart">
-      <div class="t">따라 하기</div>
-      <div class="d">카메라가 손과 물건을 보고, 지금 할 카드를 띄워 줘요.<br>언제든 이전·다음 단추로 직접 넘길 수 있어요. 카메라 사진은 저장하지 않아요.</div>
-      <button class="navb next" onclick="coachCamera()">카메라 켜기</button>
-      <label class="linkbtn" style="color:#ffb36b;cursor:pointer">영상 파일로 시험하기<input type="file" accept="video/*" hidden onchange="coachFile(this.files[0])"></label>
+      <div class="t">${T("따라 하기", "Coach mode")}</div>
+      <div class="d">${T("카메라가 손과 물건을 보고, 지금 할 카드를 띄워 줘요.<br>언제든 이전·다음 단추로 직접 넘길 수 있어요. 카메라 사진은 저장하지 않아요.",
+        "The camera watches hands and objects and shows the card for the current step.<br>Back and Next always work by hand. Camera frames are never stored.")}</div>
+      <button class="navb next" onclick="coachCamera()">${T("카메라 켜기", "Turn on camera")}</button>
+      <label class="linkbtn" style="color:#ffb36b;cursor:pointer">${T("영상 파일로 시험하기", "Try with a video file")}<input type="file" accept="video/*" hidden onchange="coachFile(this.files[0])"></label>
     </div>
   </div>`;
   coachCard();
@@ -562,15 +584,15 @@ async function coachCamera() {
   try {
     C.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 1280 }, audio: false });
     $("#cvid").srcObject = C.stream; await $("#cvid").play(); coachStart();
-  } catch { pill("카메라를 켤 수 없어요"); toast("카메라 사용을 허락해 주세요."); }
+  } catch { pill(T("카메라를 켤 수 없어요", "Camera unavailable")); toast(T("카메라 사용을 허락해 주세요.", "Please allow camera access.")); }
 }
 function coachFile(f) {
   if (!f) return;
   const v = $("#cvid"); v.src = URL.createObjectURL(f); v.play(); coachStart();
-  v.onended = () => { C.running = false; pill("영상이 끝났어요"); };
+  v.onended = () => { C.running = false; pill(T("영상이 끝났어요", "Video ended")); };
 }
 function coachStart() {
-  $("#cstart").hidden = true; C.buf = []; C.running = true; pill("지켜보는 중");
+  $("#cstart").hidden = true; C.buf = []; C.running = true; pill(T("지켜보는 중", "Watching"));
   const v = $("#cvid"), cv = document.createElement("canvas");
   C.timer = setInterval(() => {  // 1초에 한 장, 최근 4장만 둔다
     if (v.readyState < 2) return;
@@ -586,20 +608,20 @@ async function coachLoop() {
     if (C.buf.length >= 2 && cur < cs.length) {
       const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev }) });
       if (!C.running || S.idx + 1 !== cur) continue;  // 그 사이 사람이 직접 넘겼으면 결과는 버린다
-      if (!r.ok) { pill("판단하지 못했어요 · 다시 보는 중"); }
+      if (!r.ok) { pill(T("판단하지 못했어요 · 다시 보는 중", "No answer · watching again")); }
       else {
         const d = await r.json();
         C.prev = d.seen;
         if (d.decision === "next" || d.decision === "jump") {
           S.idx = d.decision === "next" ? S.idx + 1 : d.target - 1;
-          C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); pill(`${S.idx + 1}번 카드로 넘겼어요`);
+          C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); pill(T(`${S.idx + 1}번 카드로 넘겼어요`, `Moved to card ${S.idx + 1}`));
         }
         else if (d.decision === "again") {
           $("#cagain").hidden = false; clearTimeout(C.againTimer); C.againTimer = setTimeout(() => { const a = $("#cagain"); if (a) a.hidden = true; }, 4000);
-          pill(`지켜보는 중 · ${d.latency}초`);
-        } else pill(`지켜보는 중 · ${d.latency}초`);
+          pill(T(`지켜보는 중 · ${d.latency}초`, `Watching · ${d.latency} s`));
+        } else pill(T(`지켜보는 중 · ${d.latency}초`, `Watching · ${d.latency} s`));
       }
-    } else if (cur === cs.length) pill("마지막 카드예요");
+    } else if (cur === cs.length) pill(T("마지막 카드예요", "Last card"));
     await new Promise(r => setTimeout(r, 1500));
   }
 }
