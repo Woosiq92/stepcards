@@ -5,6 +5,17 @@ KEYS = ("start", "end", "rep", "ko", "en", "object", "look")
 KO_MAX, EN_MAX = 25, 60
 GAP_WARN = 15
 TWO_ACTIONS = re.compile(r"[가-힣]+(고|며|면서)\s")  # "꽂고 저어주세요"처럼 동작이 이어지는 문장
+# ㅅ 불규칙 동사는 '으' 앞에서 ㅅ이 빠진다(붓다→부으세요). 씻다·벗다는 규칙 동사라 받침 모양으로는 못 가려서 동사를 적어 둔다
+S_IRREGULAR = {"붓": "부", "젓": "저", "긋": "그", "잇": "이", "짓": "지", "낫": "나"}
+S_IRREGULAR_RE = re.compile("(" + "|".join(S_IRREGULAR) + ")으")
+# ㄹ 받침 동사는 '으세요' 앞에서 ㄹ이 빠진다(털다→터세요, 만들다→만드세요). 받침 모양만으로 판정 가능
+RIEUL_EU = re.compile("([가-힣])으세요")
+
+
+def drop_rieul(ch):
+    """'털' → '터'. ㄹ 받침이 아니면 None."""
+    code = ord(ch) - 0xAC00
+    return chr(ord(ch) - 8) if code % 28 == 8 else None
 
 
 def check(steps, duration):
@@ -34,6 +45,10 @@ def check(steps, duration):
             problems.append(f"{i}단계: 한국어 문장이 깁니다({len(ko.replace(' ', ''))}자, {KO_MAX}자 이하): {ko}")
         elif not ko.rstrip(".").endswith("세요"):
             problems.append(f"{i}단계: 한국어 문장은 '~세요'로 끝나야 합니다: {ko}")
+        elif m := S_IRREGULAR_RE.search(ko):
+            problems.append(f"{i}단계: 맞춤법이 틀렸습니다('{m.group(0)}' → '{S_IRREGULAR[m.group(1)]}으'): {ko}")
+        elif (m := RIEUL_EU.search(ko)) and drop_rieul(m.group(1)):
+            problems.append(f"{i}단계: 맞춤법이 틀렸습니다('{m.group(1)}으' → '{drop_rieul(m.group(1))}'): {ko}")
         elif TWO_ACTIONS.search(ko + " "):
             problems.append(f"{i}단계: 한 문장에 동작이 둘 이상입니다. 두 단계로 나누세요: {ko}")
         if len(str(s["en"])) > EN_MAX:

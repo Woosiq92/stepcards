@@ -17,6 +17,8 @@ BOX = re.compile(r"<\|box;x1=(\d+);y1=(\d+);x2=(\d+);y2=(\d+)")
 PROMPT = """These are frames taken once per second from a video of an adult doing a task with their hands. Each frame is preceded by its time t in seconds. The video is {duration} seconds long.
 Split the video into steps a learner would follow. Skip intro/outro shots with no action.
 Rules:
+- Only steps a learner must do. No steps for showing things to the camera, looking around, or talking.
+- If the person waits more than about 5 seconds for a machine or process (grinding, brewing, steaming, heating), make that a step too, e.g. "샷이 다 나올 때까지 기다리세요."
 - One physical action per step. "ko" is one short plain Korean sentence with one verb, at most 25 characters, ending with "~세요" (e.g. "우유를 부으세요."; no "~하고 ~하세요").
 - "en" is the same action in short plain English.
 - start and end are whole seconds, end inclusive. Each step starts after the previous step's end. start <= rep <= end.

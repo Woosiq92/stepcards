@@ -31,6 +31,16 @@ def test_sentence_must_end_with_seyo():
     assert any("세요" in x for x in p)
 
 
+def test_s_irregular_spelling():
+    p, _ = check([step(0, 5, ko="우유를 붓으세요."), step(6, 10, ko="손을 씻으세요.")], 20)
+    assert len(p) == 1 and "부으" in p[0]
+
+
+def test_rieul_spelling():
+    p, _ = check([step(0, 5, ko="브러시로 가루를 털으세요."), step(6, 10, ko="뚜껑을 여세요.")], 20)
+    assert len(p) == 1 and "'털으' → '터'" in p[0]
+
+
 def test_reordered_cards_are_not_overlap():
     p, _ = check([step(6, 10), step(0, 5)], 20)
     assert p == []

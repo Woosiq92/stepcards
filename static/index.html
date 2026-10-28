@@ -297,12 +297,14 @@ const FRIENDLY = [
   [/영상\(/, "시간이 영상 길이를 벗어났어요."],
   [/영어 문장이 깁니다/, "영어 문장이 길어요."],
   [/항목이 없습니다/, "빠진 내용이 있어요."],
+  [/맞춤법/, m => `맞춤법: ${m.match(/\('(.+)' → '(.+)'\)/).slice(1).join(" → ")} 로 고쳐 주세요.`],
 ];
 function issues() {
   const per = {}, global = [], gaps = {};
   for (const m of S.data.problems || []) {
     const k = m.match(/^(\d+)(?:·(\d+))?단계/);
-    const f = (FRIENDLY.find(([re]) => re.test(m)) || [, m])[1];
+    const hit = FRIENDLY.find(([re]) => re.test(m));
+    const f = !hit ? m : typeof hit[1] === "function" ? hit[1](m) : hit[1];
     if (!k) { global.push(f); continue; }
     const i = +(k[2] || k[1]) - 1;
     (per[i] = per[i] || []).push(f);
