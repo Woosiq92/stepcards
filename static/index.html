@@ -256,7 +256,9 @@ async function making() {
     const err = ev.find(e => e.stage === "error"), done = has("done");
     const st = (ok, now) => ok ? "done" : now ? "now" : "wait";
     const s1 = st(has("extract"), !err && !has("extract"));
-    const s2 = st(has("highlight") || done, !err && has("extract") && !has("highlight"));
+    const listenEv = ev.find(e => e.stage === "listen");
+    const sL = st(!!listenEv, !err && has("extract") && !listenEv);
+    const s2 = st(has("highlight") || done, !err && !!listenEv && !has("highlight"));
     const s3 = st(done, !err && has("highlight") && !done);
     const retried = splits.slice(0, -1);
     const last = splits.at(-1);
@@ -267,6 +269,8 @@ async function making() {
       ${done ? `<p><button class="btn primary big" onclick="openEdit()">카드 확인하러 가기 →</button></p>` : ""}
       <div class="stages">
         <div class="stage ${s1}"><span class="ic"></span><div><strong>영상에서 1초마다 사진 뽑기</strong></div></div>
+        <div class="stage ${sL}"><span class="ic"></span><div><strong>영상 속 말 받아쓰기</strong>
+          ${listenEv ? `<div class="muted">${esc(listenEv.msg)}${listenEv.n ? " · 양과 재료 이름을 문장에 넣을 때 써요" : ""}</div>` : ""}</div></div>
         <div class="stage ${s2}"><span class="ic"></span><div><strong>동작마다 단계를 나누고 문장 쓰기</strong>
           ${last ? `<div class="muted">단계 ${last.n}개 · ${last.problems.length ? "고칠 곳이 남아 확인이 필요해요" : "규칙 검사 통과"}</div>` : ""}
           ${retried.length ? `<div class="detail">규칙 검사에서 걸린 곳이 있어서, 이유를 알려 주고 다시 만들게 했어요.<ul>${retried.flatMap(s => s.problems).map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}</div></div>

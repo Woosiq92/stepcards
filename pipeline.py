@@ -4,12 +4,14 @@ import base64, hashlib, json, os, re, subprocess, sys, time
 from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
+import requests
 from PIL import Image, ImageDraw
 from check import check
 
 load_dotenv(Path(__file__).parent / ".env")
 client = OpenAI(api_key=os.environ["MODEL_API_KEY"], base_url="https://api.meta.ai/v1", max_retries=2, timeout=300)
-STEP_MODEL, SAM_MODEL = "muse-spark-1.3", "sam-3.1"
+STEP_MODEL, SAM_MODEL, ASR_MODEL = "muse-spark-1.3", "sam-3.1", "muse-voice-transcribe-1.0"
+ASR_PRICE = 0.18 / 3600  # 달러/초
 PRICE_IN, PRICE_OUT = 1.25 / 1e6, 4.25 / 1e6
 MAX_RETRY = 2
 BOX = re.compile(r"<\|box;x1=(\d+);y1=(\d+);x2=(\d+);y2=(\d+)")
@@ -68,11 +70,44 @@ def extract(run):
     return duration, sorted(frames.glob("*.jpg"))
 
 
+# ①-2 영상 속 말 받아쓰기(Muse Voice Transcribe). 말이 없으면 빈 목록
+def listen(run):
+    out = run.path("speech.json")
+    if out.exists():
+        return json.loads(out.read_text())
+    has_audio = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0",
+                                str(run.video)], capture_output=True, text=True).stdout.strip()
+    turns = []
+    if has_audio:
+        wav = run.path("audio.wav")
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(run.video), "-vn", "-ac", "1", "-ar", "24000", "-c:a", "pcm_s16le",
+                        "-map_metadata", "-1", "-t", "600", str(wav)], check=True)  # API는 10분까지
+        req = {"mode": "ENDPOINTING", "model": ASR_MODEL, "audioEncoding": "WAV", "languageBias": ["Korean", "English"]}
+        r = requests.post("https://api.meta.ai/v1/asr/transcribe", headers={"Authorization": f"Bearer {os.environ['MODEL_API_KEY']}"},
+                          files={"request": (None, json.dumps(req), "application/json"), "audio": ("audio.wav", wav.open("rb"), "audio/wav")},
+                          timeout=300)
+        r.raise_for_status()
+        data = r.json()
+        turns = [{"start": t["startMs"] / 1000, "end": t["endMs"] / 1000, "text": t["transcript"].strip()}
+                 for t in data.get("turns", []) if t.get("transcript", "").strip()]
+        cost = data.get("audioDurationMs", 0) / 1000 * ASR_PRICE
+        run.log("listen", f"말 {len(turns)}구간 받아씀" if turns else "영상에 말소리가 없음", n=len(turns), cost=round(cost, 4))
+    else:
+        run.log("listen", "영상에 소리가 없음", n=0)
+    out.write_text(json.dumps(turns, ensure_ascii=False, indent=1))
+    return turns
+
+
 # ②③ 단계 나누기 + 검사, 걸리면 이유를 붙여 다시
-def split_steps(run, duration, frames):
+def split_steps(run, duration, frames, speech=()):
     content = []
     for i, p in enumerate(frames):
         content += [{"type": "input_text", "text": f"t={i}s"}, {"type": "input_image", "image_url": data_url(p)}]
+    if speech:  # 동작·시간은 사진으로, 양·재료 이름은 말에서
+        lines = "\n".join(f"[{t['start']:.1f}-{t['end']:.1f}s] {t['text']}" for t in speech)
+        content.append({"type": "input_text", "text": "What the person said while doing it (times in seconds). Decide actions and times "
+                        "from the frames; use the speech for ingredient and tool names. If an amount is said for a step, put it in "
+                        "that step's ko and en sentence (e.g. \"우유 100ml를 부으세요.\", \"Pour 100ml of milk.\"):\n" + lines})
     content.append({"type": "input_text", "text": PROMPT.format(duration=duration)})
 
     feedback, steps, problems, warnings = None, None, [], []
@@ -174,12 +209,13 @@ def main(video, fresh=False):
 
 def build(run, fresh):
     duration, frames = extract(run)
+    speech = listen(run)
     steps_file = run.path("steps.json")
     if steps_file.exists() and not fresh:
         result = json.loads(steps_file.read_text())
         run.log("split", "저장된 단계 사용(캐시)")
     else:
-        result = split_steps(run, duration, frames)
+        result = split_steps(run, duration, frames, speech)
         steps_file.write_text(json.dumps(result, ensure_ascii=False, indent=1))
     cards_file = run.path("cards.json")
     if cards_file.exists() and not fresh:
