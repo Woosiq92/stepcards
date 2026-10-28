@@ -163,23 +163,33 @@ function edit() {
     ${banner()}
     <div class="grid">${cs.map((c, i) => `
       <div class="card">
-        <img src="${imgSrc(c)}" alt="">
+        <img src="${imgSrc(c)}" alt="" onerror="this.style.visibility='hidden'">
         <div class="num">${i + 1}</div>
         <div class="body">
           <textarea class="ko" rows="2" oninput="upd(${i},'ko',this.value)">${esc(c.ko)}</textarea>
           <textarea rows="1" oninput="upd(${i},'en',this.value)">${esc(c.en)}</textarea>
-          <div class="muted">${c.start}~${c.end}초 · ${esc(c.object)}${c.box ? "" : " · 강조 없음"}</div>
+          <div class="row">
+            <span class="muted">구간</span>
+            <input type="number" min="0" value="${c.start}" onchange="setTime(${i},'start',this.value)"> <span class="muted">~</span>
+            <input type="number" min="0" value="${c.end}" onchange="setTime(${i},'end',this.value)"> <span class="muted">초</span>
+          </div>
+          <div class="row">
+            <span class="muted">손에 든 물건</span>
+            <input type="text" value="${esc(c.object)}" oninput="upd(${i},'object',this.value)" placeholder="영어로, 예: glass cup" style="flex:1;min-width:0;padding:4px 6px;border:1px solid var(--line);border-radius:6px">
+            ${c.box ? "" : '<span class="muted">강조 없음</span>'}
+          </div>
           <div class="row">
             <button class="btn" onclick="move(${i},-1)" ${i ? "" : "disabled"}>↑</button>
             <button class="btn" onclick="move(${i},1)" ${i < cs.length - 1 ? "" : "disabled"}>↓</button>
             <button class="btn" onclick="merge(${i})" ${i < cs.length - 1 ? "" : "disabled"}>아래와 합치기</button>
             <button class="btn" onclick="del(${i})">빼기</button>
+            <button class="btn" onclick="addCard(${i})">아래에 추가</button>
             ${c.box ? `<label class="muted"><input type="checkbox" ${c.hl_off ? "" : "checked"} onchange="upd(${i},'hl_off',!this.checked,true)"> 강조</label>` : ""}
           </div>
           <div class="row">
             <span class="muted">사진</span>
             <input type="number" id="t${i}" min="${c.start}" max="${c.end}" value="${c.frame_t ?? c.rep}"> <span class="muted">초</span>
-            <button class="btn" onclick="reframe(${i})">이 장면으로</button>
+            <button class="btn" id="rf${i}" onclick="reframe(${i}, +$('#t${i}').value)">이 장면으로</button>
           </div>
         </div>
       </div>`).join("")}</div>`;
@@ -188,6 +198,21 @@ function markDirty(redraw) { state.dirty = true; const b = $("#save"); if (b) { 
 function upd(i, k, v, redraw) { state.data.cards[i][k] = v; markDirty(redraw); }
 function move(i, d) { const cs = state.data.cards; [cs[i], cs[i + d]] = [cs[i + d], cs[i]]; markDirty(true); }
 function del(i) { state.data.cards.splice(i, 1); markDirty(true); }
+function setTime(i, k, v) {
+  const c = state.data.cards[i];
+  c[k] = Math.max(0, Math.round(+v));
+  c.rep = Math.min(Math.max(c.rep, c.start), c.end);  // 대표 시각은 구간 안에 둔다
+  markDirty(true);
+}
+async function addCard(i) {
+  const cs = state.data.cards, prev = cs[i], next = cs[i + 1];
+  const start = prev.end + 1;
+  const end = Math.max(start, next ? next.start - 1 : Math.min(state.data.duration ?? start + 3, start + 3));
+  const n = Math.max(...cs.map(c => c.n)) + 1;
+  cs.splice(i + 1, 0, { n, start, end, rep: start, ko: "", en: "", object: "", look: "", image: `cards/${String(n).padStart(2, "0")}.jpg`, box: null });
+  markDirty(true);
+  await reframe(i + 1, start);
+}
 function merge(i) {
   const cs = state.data.cards, a = cs[i], b = cs[i + 1];
   a.start = Math.min(a.start, b.start); a.end = Math.max(a.end, b.end);
@@ -197,10 +222,10 @@ async function save() {
   const r = await fetch(`/api/runs/${state.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards: state.data.cards }) });
   state.data = await r.json(); state.dirty = false; edit();
 }
-async function reframe(i) {
-  const c = state.data.cards[i], t = +$("#t" + i).value;
+async function reframe(i, t) {
+  const c = state.data.cards[i];
   if (state.dirty) await save();
-  const btn = event.target; btn.disabled = true; btn.textContent = "찾는 중…";
+  const btn = $("#rf" + i); if (btn) { btn.disabled = true; btn.textContent = "찾는 중…"; }
   const r = await fetch(`/api/runs/${state.run}/cards/${c.n}/frame?t=${t}`, { method: "POST" });
   Object.assign(state.data.cards[i], await r.json(), { v: Date.now() });
   edit();

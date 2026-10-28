@@ -96,7 +96,7 @@ def reframe(run_id: str, n: int, t: int):
         pic = Image.open(img).convert("RGB")
         ImageDraw.Draw(pic).rectangle(box, outline=(255, 140, 0), width=6)
         pic.save(hl, quality=85)
-    card.update(frame_t=t, box=box, box_prompt=used, box_touches_hand=touch)
+    card.update(frame_t=t, rep=t, box=box, box_prompt=used, box_touches_hand=touch)
     (d / "cards.json").write_text(json.dumps(data, ensure_ascii=False, indent=1))
     return card
 

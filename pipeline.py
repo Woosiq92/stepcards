@@ -118,7 +118,9 @@ def grab(video, t, out):
 def find_box(img, s):
     """이름 → 생김새 → 이름 마지막 단어 순으로 찾고, 손과 가장 많이 겹치는 상자를 고른다."""
     hands = sam_boxes(img, "hand")
-    for prompt in dict.fromkeys([s["object"], s["look"], s["object"].split()[-1]]):
+    words = (s.get("object") or "").split()
+    names = [s.get("object", ""), s.get("look", ""), words[-1] if words else ""]
+    for prompt in dict.fromkeys(p for p in names if p):  # 사람이 추가한 빈 카드는 이름이 없을 수 있음
         found = sam_boxes(img, prompt)
         if found:
             box = max(found, key=lambda b: max((overlap(b, h) for h in hands), default=0))
