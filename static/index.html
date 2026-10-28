@@ -72,6 +72,8 @@
   .pic { position:relative; border-radius:10px; overflow:hidden; background:#ddd; aspect-ratio:16/9; }
   .pic img { width:100%; height:100%; object-fit:cover; display:block; }
   .pic .busy { position:absolute; inset:0; background:rgba(255,255,255,.75); display:grid; place-items:center; font-weight:600; }
+  .picbar { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .seg.mini button { padding:3px 10px; font-size:13px; }
   .linkbtn { background:none; border:none; color:var(--accent); padding:6px 0; font-size:14px; font-weight:600; }
   textarea.say { width:100%; border:1px solid transparent; border-radius:8px; padding:4px 8px; font:inherit; font-size:22px; font-weight:700; resize:none; background:transparent; color:var(--ink); overflow:hidden; }
   textarea.say:hover { border-color:var(--line); }
@@ -165,7 +167,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt = t => `${Math.floor(t / 60)}:${String(Math.round(t) % 60).padStart(2, "0")}`;
 const pad = (n, w = 2) => String(n).padStart(w, "0");
-const S = { run: null, view: "home", data: null, idx: 0, poll: null, busy: new Set(), open: new Set(), strip: new Set(),
+const S = { run: null, view: "home", data: null, idx: 0, poll: null, busy: new Map(), open: new Set(), strip: new Set(),
             saveTimer: null, saving: Promise.resolve(), saveState: "saved" };
 let lang = (() => { try { return localStorage.getItem("lang") || "ko"; } catch { return "ko"; } })();  // 카드 글자
 let ui = (() => {  // 화면 글자: 주소의 ?ui= → 저장된 값 → 브라우저 언어
@@ -208,6 +210,7 @@ function header() {
 }
 
 function imgSrc(c) {
+  if (c.view === "ill" && c.ill) return `/runs/${S.run}/${c.ill}?v=${c.v || 0}`;
   const f = c.box && !c.hl_off ? c.image.replace(".jpg", "_hl.jpg") : c.image;
   return `/runs/${S.run}/${f}?v=${c.v || 0}`;
 }
@@ -367,6 +370,7 @@ function edit() {
       <span id="chip">${chipHtml(Object.keys(per).length + global.length)}</span>
       <span class="saved" id="saved">${saveText()}</span>
       <span style="flex:1"></span>
+      <button class="btn" onclick="illustrateAll()" title="Muse Image">🎨 ${T("모든 카드 그림으로", "Make drawings for all")}</button>
       <button class="btn primary" onclick="go({run:S.run,view:'use'})">${T("다 됐어요 → 인쇄·태블릿", "Done → Print · Tablet · Coach")}</button>
     </div>
     <p class="hint">${T("문장을 누르면 바로 고쳐져요. 사진이 마음에 안 들면 '다른 장면 고르기'를 누르세요.", "Click a sentence to edit it. If a photo is not right, use 'Choose another frame'.")}</p>
@@ -380,8 +384,13 @@ function rowHtml(c, i, iss = []) {
   return `<div class="row ${iss.length ? "has-bad" : ""}" id="row${i}">
     <div class="n">${i + 1}</div>
     <div>
-      <div class="pic"><img src="${imgSrc(c)}" alt="" onerror="this.style.visibility='hidden'">${S.busy.has(c.n) ? `<div class="busy">${T("장면을 바꾸는 중…", "Changing the frame…")}</div>` : ""}</div>
-      <button class="linkbtn" onclick="toggle('strip',${c.n})">${strip ? T("장면 고르기 닫기 ▲", "Close frames ▲") : T("다른 장면 고르기 ▼", "Choose another frame ▼")}</button>
+      <div class="pic"><img src="${imgSrc(c)}" alt="" onerror="this.style.visibility='hidden'">${S.busy.has(c.n) ? `<div class="busy">${S.busy.get(c.n)}</div>` : ""}</div>
+      <div class="picbar">
+        <button class="linkbtn" onclick="toggle('strip',${c.n})">${strip ? T("장면 고르기 닫기 ▲", "Close frames ▲") : T("다른 장면 고르기 ▼", "Choose another frame ▼")}</button>
+        ${c.ill ? `<span class="seg mini">${[["photo", T("사진", "Photo")], ["ill", T("그림", "Drawing")]].map(([v, l]) =>
+            `<button class="${(c.view || "photo") === v ? "on" : ""}" onclick="setView(${i},'${v}')">${l}</button>`).join("")}</span>`
+          : `<button class="linkbtn" onclick="illustrateCard(${i})" ${S.busy.has(c.n) ? "disabled" : ""}>🎨 ${T("그림으로 바꾸기", "Make a drawing")}</button>`}
+      </div>
     </div>
     <div>
       <textarea class="say" rows="1" placeholder="${T("동작 하나를 짧게 써 주세요 (예: 우유를 부으세요.)", "Korean sentence, one action (e.g. 우유를 부으세요.)")}" oninput="typed(${i},'ko',this)">${esc(c.ko)}</textarea>
@@ -481,17 +490,40 @@ function setObject(i, v) {
 }
 async function reframe(i, t) {
   const c = S.data.cards[i];
-  S.busy.add(c.n); edit();
+  S.busy.set(c.n, T("장면을 바꾸는 중…", "Changing the frame…")); edit();
   await saveNow();
   const r = await fetch(`/api/runs/${S.run}/cards/${c.n}/frame?t=${t}`, { method: "POST" });
   S.busy.delete(c.n);
   if (r.ok) {
     const f = await r.json();
-    Object.assign(c, { frame_t: f.frame_t, rep: f.rep, box: f.box, box_prompt: f.box_prompt, box_touches_hand: f.box_touches_hand, v: Date.now() });
+    Object.assign(c, { frame_t: f.frame_t, rep: f.rep, box: f.box, box_prompt: f.box_prompt, box_touches_hand: f.box_touches_hand, ill: f.ill, view: f.view, v: Date.now() });
   } else toast(T("장면을 바꾸지 못했어요. 다시 해 주세요.", "Could not change the frame. Please try again."));
   if (S.view === "edit") edit();
   saveNow();
 }
+/* 그림 카드(Muse Image): 교사가 카드마다 사진·그림 중 고른다 */
+function setView(i, v) { S.data.cards[i].view = v; changed(); }
+async function illustrateCard(i, quiet) {
+  const c = S.data.cards[i];
+  S.busy.set(c.n, T("그림으로 바꾸는 중…", "Drawing…")); if (S.view === "edit") edit();
+  await saveNow();
+  const r = await fetch(`/api/runs/${S.run}/cards/${c.n}/illustrate`, { method: "POST" });
+  S.busy.delete(c.n);
+  if (r.ok) { const f = await r.json(); Object.assign(c, { ill: f.ill, view: "ill", v: Date.now() }); }
+  else if (!quiet) toast(T("그림을 만들지 못했어요. 다시 해 주세요.", "Could not make the drawing. Please try again."));
+  if (S.view === "edit") edit();
+  if (!quiet) saveNow();
+  return r.ok;
+}
+async function illustrateAll() {
+  const todo = S.data.cards.map((c, i) => [c, i]).filter(([c]) => !c.ill && !S.busy.has(c.n)).map(([, i]) => i);
+  let done = 0, fail = 0;
+  const worker = async () => { while (todo.length) { const i = todo.shift(); (await illustrateCard(i, true)) ? done++ : fail++; } };
+  await Promise.all([worker(), worker(), worker()]);  // 3장씩 동시에
+  await saveNow();
+  toast(T(`그림 ${done}장을 만들었어요${fail ? ` (${fail}장 실패)` : ""}.`, `Made ${done} drawings${fail ? ` (${fail} failed)` : ""}.`));
+}
+
 async function addCard(i) {
   const cs = S.data.cards, prev = cs[i], next = cs[i + 1], dur = S.data.duration || Infinity;
   const start = prev.end + 1;

@@ -14,6 +14,7 @@ ROOT = Path(__file__).parent
 RUNS = ROOT / "runs"
 UPLOADS = ROOT / "samples" / "uploads"
 app = FastAPI()
+CARDS_LOCK = threading.Lock()  # cards.json 읽고-고치고-쓰기가 동시에 겹치지 않게
 app.mount("/runs", StaticFiles(directory=RUNS), name="runs")  # 결과 폴더만 공개(리포 전체 X)
 
 
@@ -74,6 +75,11 @@ def cards(run_id: str):
 @app.put("/api/runs/{run_id}/cards")
 def save(run_id: str, body: dict):
     d = run_dir(run_id)
+    with CARDS_LOCK:
+        return _save(d, body)
+
+
+def _save(d, body):
     data = read(d, "cards.json")
     data["cards"] = body["cards"]
     data["problems"], data["warnings"] = check(data["cards"], data.get("duration", len(list((d / "frames").glob("*.jpg")))))
@@ -100,8 +106,32 @@ def reframe(run_id: str, n: int, t: int):
         pic = Image.open(img).convert("RGB")
         ImageDraw.Draw(pic).rectangle(box, outline=(255, 140, 0), width=6)
         pic.save(hl, quality=85)
+    if card.get("ill"):  # 그림은 옛 사진 기준이라 지운다
+        (d / card["ill"]).unlink(missing_ok=True)
+    card.pop("ill", None)
+    card["view"] = "photo"
     card.update(frame_t=t, rep=t, box=box, box_prompt=used, box_touches_hand=touch)
     (d / "cards.json").write_text(json.dumps(data, ensure_ascii=False, indent=1))
+    return card
+
+
+@app.post("/api/runs/{run_id}/cards/{n}/illustrate")
+def illustrate(run_id: str, n: int):
+    """n번 카드 사진을 그림 카드로(Muse Image). 교사가 사진·그림 중 고른다."""
+    d = run_dir(run_id)
+    data = read(d, "cards.json")
+    card = next((c for c in data["cards"] if c["n"] == n), None)
+    if card is None:
+        raise HTTPException(404, "없는 카드입니다")
+    rel = card["image"].replace(".jpg", "_ill.jpg")
+    (d / rel).write_bytes(pipeline.illustrate(d / card["image"], card.get("object", "")))  # 오래 걸리는 부분은 잠그지 않음
+    with CARDS_LOCK:
+        data = read(d, "cards.json")
+        card = next((c for c in data["cards"] if c["n"] == n), None)
+        if card is None:
+            raise HTTPException(404, "없는 카드입니다")
+        card.update(ill=rel, view="ill")
+        (d / "cards.json").write_text(json.dumps(data, ensure_ascii=False, indent=1))
     return card
 
 

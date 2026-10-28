@@ -144,6 +144,24 @@ def sam_boxes(image, prompt):
     return [tuple(map(int, m)) for m in BOX.findall(r.output_text or "")]
 
 
+# 사진 → 그림 카드(Muse Image 편집). 웹·이미지 검색은 꺼서 카드 사진이 검색에 쓰이지 않게 한다
+ILL_PROMPT = ("Redraw this photo as a simple picture-instruction card illustration for learners with intellectual disabilities. "
+              "Keep exactly the same action, hand positions and objects{obj}. Plain light background, remove clutter, "
+              "thick clean outlines, flat colors, no text, no logos or brand marks, no extra objects.")
+
+
+def illustrate(image, obj=""):
+    """카드 사진 → 그림(jpeg 바이트). $0.01/장, 8~9초(runs/exp6)."""
+    r = requests.post("https://api.meta.ai/v1/images/edits", timeout=300,
+                      headers={"Authorization": f"Bearer {os.environ['MODEL_API_KEY']}", "Content-Type": "application/json"},
+                      json={"model": "muse-image-1.0", "n": 1, "output_format": "jpeg", "reasoning_strength": "low",
+                            "prompt": ILL_PROMPT.format(obj=f"; the {obj} in the hand must stay clearly visible" if obj else ""),
+                            "images": [{"image_url": data_url(image)}],
+                            "tool_enablement": {"enable_image_search": False, "enable_web_search": False, "enable_shell": False}})
+    r.raise_for_status()
+    return base64.b64decode(r.json()["data"][0]["b64_json"])
+
+
 def overlap(a, b):
     w, h = min(a[2], b[2]) - max(a[0], b[0]), min(a[3], b[3]) - max(a[1], b[1])
     return max(w, 0) * max(h, 0)
