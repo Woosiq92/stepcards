@@ -200,8 +200,10 @@ def sam_boxes(image, prompt):
 
 # 사진 → 그림 카드(Muse Image 편집). 웹·이미지 검색은 꺼서 카드 사진이 검색에 쓰이지 않게 한다
 ILL_PROMPT = ("Redraw this photo as a simple picture-instruction card illustration for learners with intellectual disabilities. "
-              "Keep exactly the same action, hand positions and objects{obj}. Plain light background, remove clutter, "
-              "thick clean outlines, flat colors, no text, no logos or brand marks, no extra objects.")
+              "Keep exactly the same action, hand positions and objects{obj}. Plain pure white background, remove clutter, "
+              "thick black outlines of even width, flat colors, no text, no logos or brand marks, no extra objects. "
+              # 카드마다 따로 그리면 피부색·배경이 제각각이라(냅킨 12장) 모든 카드에 같은 값을 박는다
+              "Same style on every card: hands always drawn with one medium skin tone (#D9A27A), no shading or gradients.")
 
 
 def illustrate(image, obj=""):
