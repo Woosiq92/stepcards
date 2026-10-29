@@ -223,6 +223,13 @@ def overlap(a, b):
     return max(w, 0) * max(h, 0)
 
 
+def clip(video, t0, dur, out, width):
+    """카드의 움직임: 그 단계의 몇 초를 소리 없이 반복용 mp4로 자른다."""
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(t0), "-t", str(dur), "-i", str(video), "-an",
+                    "-vf", f"scale={width}:-2,fps=15", "-c:v", "libx264", "-preset", "veryfast", "-crf", "28",
+                    "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out)], check=True)
+
+
 def grab(video, t, out):
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(t), "-i", str(video), "-frames:v", "1",
                     "-vf", "scale=-2:720", "-q:v", "3", str(out)], check=True)

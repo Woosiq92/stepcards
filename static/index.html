@@ -111,7 +111,7 @@
   .row.has-bad { box-shadow:0 0 0 2px var(--bad), var(--sh-1); }
   .n { width:32px; height:32px; border-radius:50%; background:var(--ink); color:#fff; display:grid; place-items:center; font-weight:700; font-size:14px; }
   .pic { position:relative; border-radius:var(--r); overflow:hidden; background:var(--line); aspect-ratio:16/9; }
-  .pic img { width:100%; height:100%; object-fit:cover; display:block; }
+  .pic img, .pic video { width:100%; height:100%; object-fit:cover; display:block; }
   .pic .busy { position:absolute; inset:0; background:rgba(255,255,255,.8); backdrop-filter:blur(2px); display:grid; place-items:center; font-weight:600; color:var(--accent-ink); }
   .picbar { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px; }
   .seg.mini button { padding:4px 12px; font-size:13px; }
@@ -178,7 +178,7 @@
   body.tabmode header { display:none; } body.tabmode main { padding:0; max-width:none; }
   .tab { position:fixed; inset:0; background:var(--dark); color:#fff; display:flex; flex-direction:column; user-select:none; }
   .tab .imgwrap { flex:1; position:relative; display:flex; align-items:center; justify-content:center; min-height:0; padding:72px 24px 8px; }
-  .tab .imgwrap img { max-width:100%; max-height:100%; border-radius:var(--r-l); box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  .tab .imgwrap img, .tab .imgwrap video { max-width:100%; max-height:100%; border-radius:var(--r-l); box-shadow:0 20px 60px rgba(0,0,0,.5); }
   .tab .zone { position:absolute; top:0; bottom:0; width:50%; } .tab .zone.l { left:0; } .tab .zone.r { right:0; }
   .tab .txt { font-size:clamp(28px,4.5vw,52px); font-weight:800; letter-spacing:-.025em; line-height:1.25; text-align:center; padding:10px 24px 4px; }
   .tab .bar { display:flex; align-items:center; justify-content:space-between; padding:16px 24px 28px; gap:16px; }
@@ -292,6 +292,11 @@ function imgSrc(c) {
   if (c.view === "ill" && c.ill) return `/runs/${S.run}/${c.ill}?v=${c.v || 0}`;
   const f = c.box && !c.hl_off ? c.image.replace(".jpg", "_hl.jpg") : c.image;
   return `/runs/${S.run}/${f}?v=${c.v || 0}`;
+}
+// 움직임 보기: 그 단계 영상 몇 초를 소리 없이 반복. 인쇄·미리 불러오기는 사진(imgSrc)을 쓴다
+function media(c, attrs = "") {
+  return c.view === "clip" ? `<video src="/api/runs/${S.run}/clip/${c.n}.mp4?t=${c.frame_t ?? c.rep}" poster="${imgSrc(c)}" autoplay muted loop playsinline ${attrs}></video>`
+                           : `<img src="${imgSrc(c)}" alt="" ${attrs}>`;
 }
 function text(c) {
   if (lang === "en") return esc(c.en);
@@ -475,12 +480,12 @@ function rowHtml(c, i, iss = []) {
   return `<div class="row ${iss.length ? "has-bad" : ""}" id="row${i}">
     <div class="n">${i + 1}</div>
     <div>
-      <div class="pic"><img src="${imgSrc(c)}" alt="" onerror="this.style.visibility='hidden'">${S.busy.has(c.n) ? `<div class="busy">${S.busy.get(c.n)}</div>` : ""}</div>
+      <div class="pic">${media(c, `onerror="this.style.visibility='hidden'"`)}${S.busy.has(c.n) ? `<div class="busy">${S.busy.get(c.n)}</div>` : ""}</div>
       <div class="picbar">
         <button class="linkbtn" onclick="toggle('strip',${c.n})">${strip ? T("장면 고르기 닫기 ▲", "Close frames ▲") : T("다른 장면 고르기 ▼", "Choose another frame ▼")}</button>
-        ${c.ill ? `<span class="seg mini">${[["photo", T("사진", "Photo")], ["ill", T("그림", "Drawing")]].map(([v, l]) =>
-            `<button class="${(c.view || "photo") === v ? "on" : ""}" onclick="setView(${i},'${v}')">${l}</button>`).join("")}</span>`
-          : `<button class="linkbtn" onclick="illustrateCard(${i})" ${S.busy.has(c.n) ? "disabled" : ""}>${icon("draw")} ${T("그림으로 바꾸기", "Make a drawing")}</button>`}
+        ${c.ill ? "" : `<button class="linkbtn" onclick="illustrateCard(${i})" ${S.busy.has(c.n) ? "disabled" : ""}>${icon("draw")} ${T("그림으로", "Drawing")}</button>`}
+        <span class="seg mini">${[["photo", T("사진", "Photo")], ...(c.ill ? [["ill", T("그림", "Drawing")]] : []), ["clip", T("움직임", "Motion")]].map(([v, l]) =>
+            `<button class="${(c.view || "photo") === v ? "on" : ""}" onclick="setView(${i},'${v}')">${l}</button>`).join("")}</span>
       </div>
     </div>
     <div>
@@ -660,7 +665,7 @@ function tablet() {
   const c = cs[S.idx], last = S.idx === cs.length - 1;
   $("#main").innerHTML = `<div class="tab">
     <button class="exit" onclick="go({run:S.run,view:'use'})">${icon("x")}${T("나가기", "Exit")}</button>
-    <div class="imgwrap"><img src="${imgSrc(c)}" alt=""><div class="zone l" onclick="flip(-1)"></div><div class="zone r" onclick="flip(1)"></div></div>
+    <div class="imgwrap">${media(c)}<div class="zone l" onclick="flip(-1)"></div><div class="zone r" onclick="flip(1)"></div></div>
     <div class="txt">${text(c)}</div>
     <div class="bar">
       <button class="navb" onclick="flip(-1)" ${S.idx ? "" : "disabled"}>${T("◀ 이전", "◀ Back")}</button>
@@ -680,7 +685,7 @@ function coach() {
     <button class="exit voice" id="cvoice" onclick="setVoice(!C.voice)"></button>
     <div class="cam"><video id="cvid" muted playsinline></video><div class="pill" id="cpill">${T("카메라 꺼짐", "Camera off")}</div></div>
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
-    <div class="imgwrap"><img id="cimg" alt=""></div>
+    <div class="imgwrap" id="cwrap"></div>
     <div class="txt" id="ctxt" onclick="speak(true)" title="${T("다시 듣기", "Hear again")}"></div>
     <div class="bar">
       <button class="navb" id="cprev" onclick="coachFlip(-1)">${T("◀ 이전", "◀ Back")}</button>
@@ -745,7 +750,7 @@ function coachCard() {
   const cs = S.data.cards, c = cs[S.idx];
   glassesSync(false);
   speak();
-  $("#cimg").src = imgSrc(c);
+  $("#cwrap").innerHTML = media(c);
   $("#ctxt").innerHTML = text(c);
   $("#cmid").innerHTML = `<div class="dots">${cs.map((_, j) => `<i class="${j === S.idx ? "on" : ""}"></i>`).join("")}</div>${S.idx + 1} / ${cs.length}`;
   $("#cprev").disabled = !S.idx;

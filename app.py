@@ -213,6 +213,23 @@ def glass_img(run_id: str, i: int, ill: int = 1):
     return FileResponse(out)
 
 
+@app.get("/api/runs/{run_id}/clip/{n}.mp4")
+def card_clip(run_id: str, n: int, g: int = 0):
+    """n번 카드의 움직임(대표 장면 앞뒤 최대 4초). g=1 은 안경 화면용(한 변 400px·7만 화소 아래)"""
+    d = run_dir(run_id)
+    c = next((c for c in read(d, "cards.json")["cards"] if c["n"] == n), None)
+    if c is None:
+        raise HTTPException(404, "없는 카드입니다")
+    dur = max(1, min(4, c["end"] - c["start"]))
+    mid = c.get("frame_t", c.get("rep", c["start"]))
+    t0 = max(c["start"], min(c["end"] - dur, mid - dur / 2))
+    out = d / "clips" / f"{n}_{t0}_{dur}_{g}.mp4"
+    if not out.exists():
+        out.parent.mkdir(exist_ok=True)
+        pipeline.clip(read(d, "progress.json")["video_path"], t0, dur, out, 352 if g else 640)
+    return FileResponse(out, media_type="video/mp4")
+
+
 @app.get("/api/local")
 def local_status():
     """이 맥에 Muse Glimmer 서버가 떠 있는지(따라 하기 선택지에 씀)"""
