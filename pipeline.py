@@ -34,7 +34,7 @@ class Run:
     def __init__(self, video):
         self.video = Path(video).resolve()
         digest = hashlib.sha256(self.video.read_bytes()).hexdigest()[:12]
-        self.dir = Path(__file__).parent / "runs" / digest
+        self.dir = Path(os.environ.get("DATA_DIR") or Path(__file__).parent) / "runs" / digest  # 배포 때는 영구 저장소(DATA_DIR)
         self.dir.mkdir(parents=True, exist_ok=True)
         self.progress = self.dir / "progress.json"
         self.events = json.loads(self.progress.read_text())["events"] if self.progress.exists() else []

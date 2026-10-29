@@ -1,0 +1,10 @@
+.env
+.env.*
+.venv/
+runs/
+samples/
+demo/
+__pycache__/
+*.log
+*.mp4
+.git/

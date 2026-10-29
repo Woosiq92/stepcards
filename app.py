@@ -1,9 +1,9 @@
 # 로컬 서버: 영상 올리기 → 파이프라인 → 진행판·편집·인쇄·태블릿 보기
 # 사용: .venv/bin/python app.py  → http://127.0.0.1:8790
-import json, shutil, threading, time
+import hmac, json, os, shutil, threading, time
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageDraw
 import coach
@@ -11,9 +11,39 @@ import pipeline
 from check import check
 
 ROOT = Path(__file__).parent
-RUNS = ROOT / "runs"
-UPLOADS = ROOT / "samples" / "uploads"
+DATA = Path(os.environ.get("DATA_DIR") or ROOT)  # 배포 때는 영구 저장소(예: Railway 볼륨 /data)
+RUNS = DATA / "runs"
+UPLOADS = DATA / "samples" / "uploads"
+RUNS.mkdir(parents=True, exist_ok=True)
+APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정: 아는 사람만 들어와 크레딧을 쓰게
 app = FastAPI()
+
+
+@app.middleware("http")
+async def need_key(request: Request, call_next):
+    if not APP_KEY:
+        return await call_next(request)
+    k = request.query_params.get("k")
+    if request.url.path == "/login" and request.method == "POST":  # 접속 키 입력 칸
+        k = (await request.form()).get("k", "")
+    if k is not None and hmac.compare_digest(k, APP_KEY):  # 주소에 한 번 붙여 오면 쿠키로 바꾸고 주소에서는 지운다
+        q = "&".join(f"{a}={b}" for a, b in request.query_params.multi_items() if a != "k")
+        r = RedirectResponse(("/" if request.url.path == "/login" else request.url.path) + (f"?{q}" if q else ""), 303)
+        r.set_cookie("sc_key", APP_KEY, max_age=60 * 60 * 24 * 30, httponly=True, secure=True, samesite="lax")
+        return r
+    if hmac.compare_digest(request.cookies.get("sc_key", ""), APP_KEY):
+        return await call_next(request)
+    if request.url.path.startswith(("/api/", "/runs/")):
+        return HTMLResponse("key required", 401)
+    return HTMLResponse(KEY_PAGE, 401)
+
+
+KEY_PAGE = """<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StepCards</title>
+<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#f1f4f7;font-family:-apple-system,'Apple SD Gothic Neo',sans-serif;color:#1c2b33">
+<form method="post" action="/login" style="background:#fff;padding:28px;border-radius:24px;box-shadow:0 4px 12px rgba(28,43,51,.08);display:grid;gap:12px;width:min(340px,90vw)">
+<b style="font-size:20px">StepCards</b><span style="color:#65788a;font-size:14px">접속 키를 넣어 주세요 · Enter the access key</span>
+<input name="k" type="password" autofocus style="padding:12px;border:1px solid #cbd2d9;border-radius:12px;font:inherit">
+<button style="padding:12px;border:0;border-radius:999px;background:#0064e0;color:#fff;font:inherit;font-weight:600">들어가기 · Enter</button></form>"""
 CARDS_LOCK = threading.Lock()  # cards.json 읽고-고치고-쓰기가 동시에 겹치지 않게
 app.mount("/runs", StaticFiles(directory=RUNS), name="runs")  # 결과 폴더만 공개(리포 전체 X)
 
@@ -191,4 +221,4 @@ def local_status():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8790)
+    uvicorn.run(app, host=os.environ.get("HOST", "127.0.0.1"), port=int(os.environ.get("PORT", 8790)))

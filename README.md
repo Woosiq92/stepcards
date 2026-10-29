@@ -69,6 +69,16 @@ llama-server -m Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf --mmproj mmproj-Muse-Gl
 
 The Coach screen shows "On this Mac (Muse Glimmer)" when that server is running.
 
+Deploy (for example Railway, from this GitHub repository): the `Dockerfile` installs ffmpeg and the Python packages. Set these variables on the host:
+
+| Variable | Value |
+|---|---|
+| `MODEL_API_KEY` | Meta Model API key |
+| `APP_KEY` | an access key; without it, anyone with the address can upload videos and spend credits |
+| `DATA_DIR` | a persistent volume path (for example `/data`), so card sets survive redeploys |
+
+Open the site once with `?k=<APP_KEY>` (or type the key on the key page); a cookie keeps you in for 30 days. On the glasses, add the web app as `https://<host>/glasses?run=<id>&k=<APP_KEY>`. A phone camera or glasses web app needs HTTPS, which the host provides.
+
 Command line only: `.venv/bin/python pipeline.py video.mp4 [--fresh]`. Results go to `runs/<hash of the video>/` (not committed).
 
 Tests for the checker: `.venv/bin/python -m pytest -q test_check.py`
