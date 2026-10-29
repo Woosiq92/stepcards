@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StepCards</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230064e0'/%3E%3Cpath d='m7 12.5 3 3 7-7' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  /* Meta Ray-Ban Display: 600x600, 빛을 더하는 화면이라 검은색은 투명하게 보인다 → 바탕은 검정, 글과 단추만 밝게 */
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:#000; color:#fff; font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; word-break:keep-all; overflow:hidden; }
+  main { height:100%; max-width:600px; margin:0 auto; display:flex; flex-direction:column; align-items:center; padding:20px 24px 18px; gap:12px; }
+  .top { display:flex; align-items:center; gap:10px; width:100%; font-size:20px; font-weight:700; color:#9fb3c8; }
+  .dots { display:flex; gap:5px; flex:1; } .dots i { height:6px; flex:1; border-radius:3px; background:#2b3640; } .dots i.done { background:#4d6a86; } .dots i.on { background:#fff; }
+  .pic { width:100%; flex:1; min-height:0; display:flex; align-items:center; justify-content:center; }
+  .pic img { max-width:100%; max-height:100%; border-radius:18px; }
+  .say { font-size:clamp(26px,6vw,38px); font-weight:800; line-height:1.25; text-align:center; letter-spacing:-.02em; min-height:1.25em; }
+  .say small { display:block; font-size:.6em; font-weight:600; color:#9fb3c8; letter-spacing:0; margin-top:2px; }
+  .again { position:absolute; top:58px; left:50%; transform:translateX(-50%); background:#0064e0; padding:8px 20px; border-radius:99px; font-size:22px; font-weight:800; white-space:nowrap; }
+  .bar { display:flex; gap:12px; width:100%; }
+  .bar button { flex:1; font:inherit; font-size:22px; font-weight:700; color:#fff; background:#1d2730; border:3px solid transparent; border-radius:99px; padding:10px 0; }
+  .bar button:focus { outline:none; border-color:#fff; background:#0064e0; }
+  .bar button:disabled { opacity:.3; }
+  .msg { margin:auto; font-size:26px; font-weight:700; color:#9fb3c8; text-align:center; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main id="m"><div class="msg" id="msg">…</div></main>
+<script>
+// 안경 화면: 따라 하기 화면이 고른 카드를 그대로 보여 준다. 초점 이동(상하좌우)+선택(Enter)만으로 조작
+const run = new URLSearchParams(location.search).get("run");
+const lang = (() => { try { return localStorage.getItem("lang") || "ko"; } catch { return "ko"; } })();
+const K = lang === "en";
+let cards = [], cur = { i: -1, v: -1 };
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const say = c => lang === "en" ? esc(c.en) : lang === "both" ? `${esc(c.ko)}<small>${esc(c.en)}</small>` : esc(c.ko);
+
+function draw(again) {
+  const c = cards[cur.i], n = cards.length, had = document.activeElement?.id;
+  document.getElementById("m").innerHTML = `
+    <div class="top"><span>${cur.i + 1} / ${n}</span><div class="dots">${cards.map((_, j) => `<i class="${j === cur.i ? "on" : j < cur.i ? "done" : ""}"></i>`).join("")}</div></div>
+    ${again ? `<div class="again">${K ? "Start with this card" : "이 카드부터 해요"}</div>` : ""}
+    <div class="pic"><img src="/api/runs/${run}/glass/${cur.i}.jpg?v=${cards[cur.i].v || 0}" alt=""></div>
+    <div class="say">${say(c)}</div>
+    <div class="bar"><button id="b" onclick="flip(-1)" ${cur.i ? "" : "disabled"}>${K ? "◀ Back" : "◀ 이전"}</button>
+      <button id="f" onclick="flip(1)" ${cur.i < n - 1 ? "" : "disabled"}>${K ? "Next ▶" : "다음 ▶"}</button></div>`;
+  const keep = document.getElementById(had);
+  (keep && !keep.disabled ? keep : [document.getElementById("f"), document.getElementById("b")].find(b => !b.disabled))?.focus();
+}
+async function flip(d) {
+  const i = Math.max(0, Math.min(cards.length - 1, cur.i + d));
+  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i, by: "glasses" }) });
+  if (r.ok) { cur = await r.json(); draw(false); }
+}
+async function poll() {
+  try {
+    const d = await (await fetch(`/api/runs/${run}/now`)).json();
+    if (d.v !== cur.v) { cur = d; draw(d.again); }
+  } catch {}
+  setTimeout(poll, 700);
+}
+(async () => {
+  const r = run && await fetch(`/api/runs/${run}/cards`);
+  if (!r || !r.ok) { document.getElementById("msg").textContent = K ? "No card set" : "카드 묶음이 없어요"; return; }
+  cards = (await r.json()).cards;
+  poll();
+})();
+</script>
+</body>
+</html>

@@ -145,6 +145,9 @@
   .choice .ci .ico { width:24px; height:24px; }
   .choice.feat { background:var(--dark); color:#fff; } .choice.feat .ci { background:var(--accent); color:#fff; } .choice.feat .d { color:#a9b8c6; }
   .choice .t { font-size:18px; font-weight:700; letter-spacing:-.015em; } .choice .d { color:var(--muted); font-size:14px; }
+  .glassrow { display:flex; align-items:center; gap:14px; background:var(--paper); border-radius:var(--r); padding:14px 18px; box-shadow:var(--sh-1); margin:-8px 0 20px; }
+  .glassrow .ci { width:40px; height:40px; border-radius:12px; display:grid; place-items:center; background:var(--dark); color:#fff; flex:none; }
+  .glassrow > div { flex:1; display:flex; flex-direction:column; } .glassrow a:hover { text-decoration:none; }
   .langrow { display:flex; align-items:center; gap:12px; }
   .seg { display:inline-flex; gap:2px; padding:3px; border-radius:999px; background:var(--bg); }
   .seg button { border:none; background:none; padding:6px 14px; font-size:13px; font-weight:600; color:var(--muted); border-radius:999px; transition:background .15s, color .15s; }
@@ -616,6 +619,9 @@ function use() {
         <button class="choice" onclick="go({run:S.run,view:'tablet'})"><span class="ci">${icon("tablet")}</span><div class="t">${T("태블릿으로 한 장씩 보기", "Tablet, one card at a time")}</div><div class="d">${T("화면 오른쪽을 누르거나 밀면 다음 카드로 넘어가요", "Tap the right side or swipe for the next card")}</div></button>
         <button class="choice feat" onclick="go({run:S.run,view:'coach'})"><span class="ci">${icon("glasses")}</span><div class="t">${T("따라 하기", "Coach mode")}</div><div class="d">${T("카메라가 하는 모습을 보고, 다음 카드를 알아서 띄워 줘요", "A camera watches the learner and shows the next card at the right time")}</div></button>
       </div>
+      <div class="glassrow"><span class="ci">${icon("glasses")}</span><div><strong>${T("안경 화면", "Glasses display")}</strong>
+        <span class="muted">${T("Meta Ray-Ban Display용 웹앱이에요. 따라 하기에서 넘어간 카드가 안경에도 같이 떠요.", "A web app for Meta Ray-Ban Display. It shows the same card as Coach mode.")}</span></div>
+        <a class="btn" href="/glasses?run=${S.run}" target="_blank">${T("안경 화면 열기", "Open glasses view")}</a></div>
       <div class="langrow"><span class="muted">${T("카드 글자", "Card language")}</span> ${segHtml()}</div>
       <h3>${T("인쇄 미리보기", "Print preview")}</h3>
     </div>
@@ -668,6 +674,12 @@ function coach() {
     </div>
   </div>`;
   coachCard();
+  clearInterval(C.sync);
+  C.sync = setInterval(async () => {
+    if (S.view !== "coach") return clearInterval(C.sync);
+    const d = await fetch(`/api/runs/${S.run}/now`).then(r => r.json()).catch(() => null);
+    if (d && d.by === "glasses" && d.v > (C.v || 0) && d.i !== S.idx) { C.v = d.v; S.idx = d.i; C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); }
+  }, 1000);
   C.local = false;
   fetch("/api/local").then(r => r.json()).then(d => { if (d.ready && $("#cwhere")) { $("#cwhere").hidden = false; coachWhere(false); } }).catch(() => {});
 }
@@ -679,8 +691,14 @@ function coachWhere(local) {
     ? T("공개 가중치 모델이 이 맥에서 판단해요. 카메라 사진이 맥 밖으로 나가지 않아요. 물건 확인(SAM)은 건너뛰어요.", "An open-weight model decides on this Mac. Camera frames never leave it. The object check (SAM) is skipped.")
     : T("Muse Spark가 단계를 보고, SAM 3.1이 손에 든 물건을 한 번 더 확인해요.", "Muse Spark reads the step and SAM 3.1 double-checks the object in hand.");
 }
+// 안경 화면(/glasses)에 지금 카드를 알린다
+function glassesSync(again) {
+  fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: S.idx, again: !!again, by: "coach" }) })
+    .then(r => r.json()).then(d => { C.v = d.v; }).catch(() => {});
+}
 function coachCard() {
   const cs = S.data.cards, c = cs[S.idx];
+  glassesSync(false);
   $("#cimg").src = imgSrc(c);
   $("#ctxt").innerHTML = text(c);
   $("#cmid").innerHTML = `<div class="dots">${cs.map((_, j) => `<i class="${j === S.idx ? "on" : ""}"></i>`).join("")}</div>${S.idx + 1} / ${cs.length}`;
@@ -726,7 +744,7 @@ async function coachLoop() {
           C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); pill(T(`${S.idx + 1}번 카드로 넘겼어요`, `Moved to card ${S.idx + 1}`));
         }
         else if (d.decision === "again") {
-          $("#cagain").hidden = false; clearTimeout(C.againTimer); C.againTimer = setTimeout(() => { const a = $("#cagain"); if (a) a.hidden = true; }, 4000);
+          $("#cagain").hidden = false; glassesSync(true); clearTimeout(C.againTimer); C.againTimer = setTimeout(() => { const a = $("#cagain"); if (a) a.hidden = true; }, 4000);
           pill(T(`지켜보는 중 · ${d.latency}초${C.local ? " · 이 맥" : ""}`, `Watching · ${d.latency} s${C.local ? " · this Mac" : ""}`));
         } else pill(T(`지켜보는 중 · ${d.latency}초${C.local ? " · 이 맥" : ""}`, `Watching · ${d.latency} s${C.local ? " · this Mac" : ""}`));
       }
@@ -735,7 +753,7 @@ async function coachLoop() {
   }
 }
 function stopCoach() {
-  C.running = false; clearInterval(C.timer); clearTimeout(C.againTimer);
+  C.running = false; clearInterval(C.timer); clearInterval(C.sync); clearTimeout(C.againTimer);
   C.stream?.getTracks().forEach(t => t.stop()); C.stream = null;
 }
 

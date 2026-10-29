@@ -21,6 +21,8 @@ Special-education teachers teach job skills (making a drink, doing laundry, pack
 4. **Use**: print six cards per A4 page, flip through on a tablet, or start **Coach mode**.
 5. **Coach mode**: a camera watches the learner. Muse Spark looks at the last two frames and says which step is happening; SAM 3.1 confirms the object in hand before the next card appears. If a later step shows up, the current card is shown again first; if it shows up twice in a row, the cards follow the learner. No praise, no scores, nothing stored — camera frames are never saved. Back and Next always work by hand.
 
+6. **Glasses display** (`/glasses?run=<id>`): a 600×600 web app for Meta Ray-Ban Display. Black background (transparent on the glasses' additive display), focus-and-select controls only, about 16 KB first load. It shows the same card as Coach mode, and Back/Next on the glasses move Coach mode too. Tested in desktop Chrome at 600×600; not yet tested on glasses or in Meta's simulator.
+
 The interface is available in Korean and English (switch at the top right). Card text can be Korean, English, or both.
 
 ## Meta models used

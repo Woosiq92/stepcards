@@ -146,6 +146,43 @@ def coach_check(run_id: str, body: dict):
     return coach.check(data["cards"], cur, frames, int(body.get("prev_seen") or 0), bool(body.get("local")))
 
 
+# 안경 화면(Ray-Ban Display 웹앱)과 따라 하기 화면이 같은 카드를 보게 하는 공유 상태. 메모리에만 둔다
+NOW = {}
+
+
+@app.get("/glasses")
+def glasses():
+    return FileResponse(ROOT / "static" / "glasses.html")
+
+
+@app.get("/api/runs/{run_id}/now")
+def now_get(run_id: str):
+    return NOW.get(run_id, {"i": 0, "again": False, "by": "", "v": 0})
+
+
+@app.post("/api/runs/{run_id}/now")
+def now_set(run_id: str, body: dict):
+    n = len(read(run_dir(run_id), "cards.json")["cards"])
+    v = NOW.get(run_id, {}).get("v", 0) + 1
+    NOW[run_id] = {"i": max(0, min(n - 1, int(body.get("i", 0)))), "again": bool(body.get("again")), "by": str(body.get("by", ""))[:10], "v": v}
+    return NOW[run_id]
+
+
+@app.get("/api/runs/{run_id}/glass/{i}.jpg")
+def glass_img(run_id: str, i: int, ill: int = 1):
+    """안경 화면용 작은 사진(600x600 화면, 느린 연결이라 가로 520px JPEG로 줄인다)"""
+    d = run_dir(run_id)
+    c = read(d, "cards.json")["cards"][i]
+    src = c["ill"] if ill and c.get("view") == "ill" and c.get("ill") else (c["image"].replace(".jpg", "_hl.jpg") if c.get("box") and not c.get("hl_off") else c["image"])
+    out = d / "glass" / f"{i}_{Path(src).stem}_{c.get('v') or 0}.jpg"
+    if not out.exists():
+        out.parent.mkdir(exist_ok=True)
+        im = Image.open(d / src).convert("RGB")
+        im.thumbnail((520, 520))
+        im.save(out, quality=78)
+    return FileResponse(out)
+
+
 @app.get("/api/local")
 def local_status():
     """이 맥에 Muse Glimmer 서버가 떠 있는지(따라 하기 선택지에 씀)"""
