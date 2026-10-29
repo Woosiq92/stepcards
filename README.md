@@ -95,7 +95,7 @@ Open the site once with `?k=<APP_KEY>` (or type the key on the key page); a cook
 
 Command line only: `.venv/bin/python pipeline.py video.mp4 [--fresh]`. Results go to `runs/<hash of the video>/` (not committed).
 
-Tests for the checker: `.venv/bin/python -m pytest -q test_check.py`
+Tests (checker, server, Coach decisions; no paid model calls): `.venv/bin/pip install pytest httpx && .venv/bin/python -m pytest -q`
 
 ## Files
 

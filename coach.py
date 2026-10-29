@@ -73,6 +73,8 @@ def check(cards, cur, frames, prev_seen=0, local=False):
     local이면 Glimmer만 쓴다. SAM은 Meta API라 사진이 밖으로 나가므로 확인 없이 Glimmer 판단대로 넘긴다."""
     t0 = time.time()
     seen, done, cost = (ask_local if local else ask)(cards, cur, frames)
+    if not 0 <= seen <= len(cards):  # 없는 단계 번호는 못 본 것으로
+        seen = 0
     decision, sam, target = "wait", None, None
     if local and cur < len(cards) and (seen == cur + 1 or (done and seen in (0, cur))):
         decision = "next"
@@ -83,6 +85,6 @@ def check(cards, cur, frames, prev_seen=0, local=False):
         cost += 0.0025 * (2 * ((nxt is not None) + (now is not None)))  # SAM $2.5/1000장, 손+물건 최소 2번씩
         decision = "next" if (nxt is not False or now is False) else "wait"
     elif seen > cur + 1:
-        decision, target = ("jump", seen) if prev_seen > cur + 1 else ("again", None)
+        decision, target = ("jump", seen) if prev_seen == seen else ("again", None)
     return {"decision": decision, "target": target, "seen": seen, "current_done": done, "sam": sam,
             "latency": round(time.time() - t0, 2), "cost": round(cost, 4), "local": local}

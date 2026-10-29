@@ -1,6 +1,6 @@
 # 로컬 서버: 영상 올리기 → 파이프라인 → 진행판·편집·인쇄·태블릿 보기
 # 사용: .venv/bin/python app.py  → http://127.0.0.1:8790
-import hmac, json, os, shutil, threading, time
+import hashlib, hmac, json, os, re, threading, time, uuid
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
@@ -26,12 +26,12 @@ async def need_key(request: Request, call_next):
     k = request.query_params.get("k")
     if request.url.path == "/login" and request.method == "POST":  # 접속 키 입력 칸
         k = (await request.form()).get("k", "")
-    if k is not None and hmac.compare_digest(k, APP_KEY):  # 주소에 한 번 붙여 오면 쿠키로 바꾸고 주소에서는 지운다
+    if k is not None and hmac.compare_digest(k.encode(), APP_KEY.encode()):  # 주소에 한 번 붙여 오면 쿠키로 바꾸고 주소에서는 지운다
         q = "&".join(f"{a}={b}" for a, b in request.query_params.multi_items() if a != "k")
         r = RedirectResponse(("/" if request.url.path == "/login" else request.url.path) + (f"?{q}" if q else ""), 303)
         r.set_cookie("sc_key", APP_KEY, max_age=60 * 60 * 24 * 30, httponly=True, secure=True, samesite="lax")
         return r
-    if hmac.compare_digest(request.cookies.get("sc_key", ""), APP_KEY):
+    if hmac.compare_digest(request.cookies.get("sc_key", "").encode(), APP_KEY.encode()):
         return await call_next(request)
     if request.url.path.startswith(("/api/", "/runs/")):
         return HTMLResponse("key required", 401)
@@ -45,6 +45,8 @@ KEY_PAGE = """<!doctype html><meta charset="utf-8"><meta name="viewport" content
 <input name="k" type="password" autofocus style="padding:12px;border:1px solid #cbd2d9;border-radius:12px;font:inherit">
 <button style="padding:12px;border:0;border-radius:999px;background:#0064e0;color:#fff;font:inherit;font-weight:600">들어가기 · Enter</button></form>"""
 CARDS_LOCK = threading.Lock()  # cards.json 읽고-고치고-쓰기가 동시에 겹치지 않게
+RUNNING, RUNNING_LOCK = set(), threading.Lock()  # 파이프라인이 도는 실행 id: 같은 영상을 또 올려도 두 번 돌리지 않게
+CARD_PATH = re.compile(r"cards/[\w.-]+\.(jpg|png)")
 app.mount("/runs", StaticFiles(directory=RUNS), name="runs")  # 결과 폴더만 공개(리포 전체 X)
 
 
@@ -58,6 +60,32 @@ def run_dir(run_id):
 def read(d, name, default=None):
     p = d / name
     return json.loads(p.read_text()) if p.exists() else default
+
+
+def inside(d, rel):
+    """카드에 적힌 파일 경로가 실행 폴더 안인지 확인하고 실제 경로를 준다"""
+    p = (d / rel).resolve()
+    if not p.is_relative_to(d.resolve()):
+        raise HTTPException(400, "잘못된 파일 경로입니다")
+    return p
+
+
+def card_list(d):
+    data = read(d, "cards.json")
+    if data is None:
+        raise HTTPException(404, "아직 카드가 없습니다")
+    return data["cards"]
+
+
+def atomic(out, make):
+    """make(임시 경로)로 같은 폴더에 쓴 뒤 바꿔 끼운다: 동시 요청이 반쪽 파일을 받거나 실패한 파일이 남지 않게"""
+    out.parent.mkdir(exist_ok=True)
+    tmp = out.with_name(f".{uuid.uuid4().hex}_{out.name}")
+    try:
+        make(tmp)
+        os.replace(tmp, out)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 @app.get("/")
@@ -81,12 +109,31 @@ def runs():
 @app.post("/api/upload")
 async def upload(file: UploadFile):
     UPLOADS.mkdir(parents=True, exist_ok=True)
-    dest = UPLOADS / Path(file.filename).name
-    with dest.open("wb") as f:
-        shutil.copyfileobj(file.file, f)
-    run_id = pipeline.Run(dest).dir.name
-    threading.Thread(target=pipeline.main, args=(dest,), daemon=True).start()
-    return {"id": run_id}
+    tmp, h = UPLOADS / f".{uuid.uuid4().hex}.part", hashlib.sha256()
+    try:  # 이름이 같은 다른 영상이 옛 영상을 덮지 않게 내용 해시를 이름 앞에 붙인다
+        with tmp.open("wb") as f:
+            while b := file.file.read(1 << 20):
+                h.update(b)
+                f.write(b)
+        dest = UPLOADS / f"{h.hexdigest()[:12]}_{Path(file.filename).name}"
+        if not dest.exists():
+            os.replace(tmp, dest)
+    finally:
+        tmp.unlink(missing_ok=True)
+    run = pipeline.Run(dest)
+    with RUNNING_LOCK:  # 도는 중이거나 이미 끝난 실행은 다시 돌리지 않는다
+        if run.dir.name in RUNNING or any(e.get("stage") == "done" for e in run.events):
+            return {"id": run.dir.name}
+        RUNNING.add(run.dir.name)
+
+    def go():
+        try:
+            pipeline.main(dest)
+        finally:
+            with RUNNING_LOCK:
+                RUNNING.discard(run.dir.name)
+    threading.Thread(target=go, daemon=True).start()
+    return {"id": run.dir.name}
 
 
 @app.get("/api/runs/{run_id}/progress")
@@ -111,6 +158,10 @@ def save(run_id: str, body: dict):
 
 def _save(d, body):
     data = read(d, "cards.json")
+    for c in body["cards"]:  # 사진·그림 경로는 실행 폴더의 cards/ 안 파일만
+        for k in ("image", "ill"):
+            if c.get(k) is not None and not (isinstance(c[k], str) and CARD_PATH.fullmatch(c[k])):
+                raise HTTPException(400, f"잘못된 파일 경로입니다: {k}")
     data["cards"] = body["cards"]
     data["problems"], data["warnings"] = check(data["cards"], data.get("duration", len(list((d / "frames").glob("*.jpg")))))
     data["status"] = "ok" if not data["problems"] else "needs_review"
@@ -123,25 +174,28 @@ def _save(d, body):
 def reframe(run_id: str, n: int, t: int):
     """n번 카드 사진을 t초 장면으로 바꾸고 강조 상자를 다시 찾는다."""
     d = run_dir(run_id)
-    data = read(d, "cards.json")
-    card = next((c for c in data["cards"] if c["n"] == n), None)
+    card = next((c for c in card_list(d) if c["n"] == n), None)
     if card is None:
         raise HTTPException(404, "없는 카드입니다")
-    img = d / card["image"]
-    pipeline.grab(read(d, "progress.json")["video_path"], t, img)
+    img, hl = inside(d, card["image"]), inside(d, card["image"].replace(".jpg", "_hl.jpg"))
+    pipeline.grab(read(d, "progress.json")["video_path"], t, img)  # 오래 걸리는 부분은 잠그지 않음
     box, used, touch = pipeline.find_box(img, card)
-    hl = d / card["image"].replace(".jpg", "_hl.jpg")
     hl.unlink(missing_ok=True)
     if box:
         pic = Image.open(img).convert("RGB")
         ImageDraw.Draw(pic).rectangle(box, outline=(255, 140, 0), width=6)
         pic.save(hl, quality=85)
-    if card.get("ill"):  # 그림은 옛 사진 기준이라 지운다
-        (d / card["ill"]).unlink(missing_ok=True)
-    card.pop("ill", None)
-    card["view"] = "photo"
-    card.update(frame_t=t, rep=t, box=box, box_prompt=used, box_touches_hand=touch)
-    (d / "cards.json").write_text(json.dumps(data, ensure_ascii=False, indent=1))
+    with CARDS_LOCK:  # 그사이 저장된 편집을 잃지 않게 다시 읽고 이 카드만 고친다
+        data = read(d, "cards.json")
+        card = next((c for c in data["cards"] if c["n"] == n), None)
+        if card is None:
+            raise HTTPException(404, "없는 카드입니다")
+        if card.get("ill"):  # 그림은 옛 사진 기준이라 지운다
+            inside(d, card["ill"]).unlink(missing_ok=True)
+        card.pop("ill", None)
+        card["view"] = "photo"
+        card.update(frame_t=t, rep=t, box=box, box_prompt=used, box_touches_hand=touch)
+        (d / "cards.json").write_text(json.dumps(data, ensure_ascii=False, indent=1))
     return card
 
 
@@ -154,7 +208,7 @@ def illustrate(run_id: str, n: int):
     if card is None:
         raise HTTPException(404, "없는 카드입니다")
     rel = card["image"].replace(".jpg", "_ill.jpg")
-    (d / rel).write_bytes(pipeline.illustrate(d / card["image"], card.get("object", "")))  # 오래 걸리는 부분은 잠그지 않음
+    inside(d, rel).write_bytes(pipeline.illustrate(inside(d, card["image"]), card.get("object", "")))  # 오래 걸리는 부분은 잠그지 않음
     with CARDS_LOCK:
         data = read(d, "cards.json")
         card = next((c for c in data["cards"] if c["n"] == n), None)
@@ -202,14 +256,16 @@ def now_set(run_id: str, body: dict):
 def glass_img(run_id: str, i: int, ill: int = 1):
     """안경 화면용 작은 사진(600x600 화면, 느린 연결이라 가로 520px JPEG로 줄인다)"""
     d = run_dir(run_id)
-    c = read(d, "cards.json")["cards"][i]
+    cs = card_list(d)
+    if not 0 <= i < len(cs):
+        raise HTTPException(404, "없는 카드입니다")
+    c = cs[i]
     src = c["ill"] if ill and c.get("view") == "ill" and c.get("ill") else (c["image"].replace(".jpg", "_hl.jpg") if c.get("box") and not c.get("hl_off") else c["image"])
     out = d / "glass" / f"{i}_{Path(src).stem}_{c.get('v') or 0}.jpg"
     if not out.exists():
-        out.parent.mkdir(exist_ok=True)
-        im = Image.open(d / src).convert("RGB")
+        im = Image.open(inside(d, src)).convert("RGB")
         im.thumbnail((520, 520))
-        im.save(out, quality=78)
+        atomic(out, lambda tmp: im.save(tmp, "JPEG", quality=78))
     return FileResponse(out)
 
 
@@ -217,7 +273,7 @@ def glass_img(run_id: str, i: int, ill: int = 1):
 def card_clip(run_id: str, n: int, g: int = 0):
     """n번 카드의 움직임(대표 장면 앞뒤 최대 4초). g=1 은 안경 화면용(한 변 400px·7만 화소 아래)"""
     d = run_dir(run_id)
-    c = next((c for c in read(d, "cards.json")["cards"] if c["n"] == n), None)
+    c = next((c for c in card_list(d) if c["n"] == n), None)
     if c is None:
         raise HTTPException(404, "없는 카드입니다")
     dur = max(1, min(4, c["end"] - c["start"]))
@@ -225,8 +281,7 @@ def card_clip(run_id: str, n: int, g: int = 0):
     t0 = max(c["start"], min(c["end"] - dur, mid - dur / 2))
     out = d / "clips" / f"{n}_{t0}_{dur}_{g}.mp4"
     if not out.exists():
-        out.parent.mkdir(exist_ok=True)
-        pipeline.clip(read(d, "progress.json")["video_path"], t0, dur, out, 352 if g else 640)
+        atomic(out, lambda tmp: pipeline.clip(read(d, "progress.json")["video_path"], t0, dur, tmp, 352 if g else 640))
     return FileResponse(out, media_type="video/mp4")
 
 
