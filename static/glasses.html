@@ -50,6 +50,16 @@ function draw(again) {
   const keep = document.getElementById(had);
   (keep && !keep.disabled ? keep : [document.getElementById("f"), document.getElementById("b")].find(b => !b.disabled))?.focus();
 }
+// 초점이 화면 밖으로 나가면(시뮬레이터 단추 등) 화살표·Enter로 다시 데려온다. ←→ 는 이전·다음 단추로 초점만 옮긴다
+document.addEventListener("keydown", e => {
+  const b = document.getElementById("b"), f = document.getElementById("f");
+  if (!b) return;
+  const pick = e.key === "ArrowLeft" ? b : e.key === "ArrowRight" ? f : null;
+  if (pick && !pick.disabled) { pick.focus(); e.preventDefault(); return; }
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"].includes(e.key) && document.activeElement !== b && document.activeElement !== f) {
+    (f.disabled ? b : f).focus(); e.preventDefault();
+  }
+});
 async function flip(d) {
   const i = Math.max(0, Math.min(cards.length - 1, cur.i + d));
   const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i, by: "glasses" }) });
