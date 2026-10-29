@@ -8,6 +8,20 @@ Built during the Meta AI Developer Hackathon (Oct 26 – Nov 4, 2026), Indie tra
 
 Special-education teachers teach job skills (making a drink, doing laundry, packing) with task-analysis cards: one action per card, one photo, one short sentence. Today they make these by hand — film the task, pause, screenshot, write a sentence, print. StepCards does the first draft from a single video, checks it with code, and leaves the teacher in charge of the final version.
 
+## Who it's for
+
+Built first for the hardest case — learners with intellectual disabilities, where every step has to be right and checked by a teacher. The same structure (one video → checked cards → follow along by camera, tablet, phone or glasses) fits anywhere someone has to follow someone else's exact way of doing a hands-on task:
+
+| Situation | Who makes the cards | Who follows |
+|---|---|---|
+| Special-education job training | teacher | student |
+| New staff training (cafés, kitchens, warehouses) | senior staff | new hires, including migrant workers (Korean and English cards) |
+| Follow-along versions of creators' videos | the creator, from their own video | viewers |
+| Assembly and setup | the maker | first-time buyers |
+| Family know-how (a parent's recipe) | family | family |
+
+Tested so far: latte making (café training, two videos including a creator's recipe video) and napkin folding (restaurant service). The other situations are use cases, not yet tested.
+
 ## What it does
 
 1. **Add a video** of someone doing a hands-on task once (first-person, like smart glasses, works well).

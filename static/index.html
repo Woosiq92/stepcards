@@ -69,6 +69,13 @@
   .flow .fi { width:40px; height:40px; border-radius:12px; background:var(--accent-soft); color:var(--accent); display:grid; place-items:center; margin-bottom:12px; }
   .flow .fi .ico { width:22px; height:22px; }
   .flow strong { display:block; font-size:16px; margin-bottom:2px; }
+  .uses { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
+  .uses div { background:var(--paper); border-radius:var(--r); padding:16px; box-shadow:var(--sh-1); display:flex; flex-direction:column; gap:4px; }
+  .uses div:first-child { background:var(--dark); color:#fff; } .uses div:first-child .muted { color:#a9b8c6; } .uses div:first-child .fi { background:var(--accent); color:#fff; }
+  .uses .fi { width:36px; height:36px; border-radius:10px; background:var(--accent-soft); color:var(--accent); display:grid; place-items:center; margin-bottom:6px; }
+  .uses strong { font-size:15px; } .uses .muted { font-size:13px; }
+  @media (max-width:1000px) { .uses { grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:560px) { .uses { grid-template-columns:1fr; } }
   .past { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
   .pastcard { background:var(--paper); border-radius:var(--r); overflow:hidden; color:inherit; font-weight:400; box-shadow:var(--sh-1); transition:box-shadow .15s, transform .15s; }
   .pastcard:hover { box-shadow:var(--sh-2); transform:translateY(-2px); text-decoration:none; }
@@ -324,6 +331,14 @@ async function home() {
       <div><span class="fi">${icon("check")}</span><strong>${T("2. 확인·고치기", "2. Check & edit")}</strong><span class="muted">${T("문장을 누르면 바로 고쳐지고, 저장은 저절로 돼요.", "Click a sentence to edit it. Saving is automatic.")}</span></div>
       <div><span class="fi">${icon("glasses")}</span><strong>${T("3. 인쇄·태블릿", "3. Use")}</strong><span class="muted">${T("A4에 6장씩 뽑거나, 한 장씩 넘겨 보거나, 카메라로 따라 해요.", "Print six per A4 page, flip through on a tablet, or follow along with the camera.")}</span></div>
     </div>
+    <h3>${T("이런 곳에 써요", "Where it helps")}</h3>
+    <div class="uses">${[
+      ["check", T("특수교육 직무 훈련", "Special-education job training"), T("음료 만들기, 빨래, 포장을 한 동작씩. 교사가 확인한 카드로 따라 해요.", "Drinks, laundry, packing — one action at a time, from cards the teacher checked.")],
+      ["glasses", T("신입 직원 교육", "New staff training"), T("숙련자가 한 번 해 보이면 매장 방식 그대로. 한국어·영어 카드로 이주 노동자도.", "A senior shows it once; new staff follow the store's own way, in Korean or English.")],
+      ["video", T("크리에이터 따라 하기", "Follow-along for creators"), T("요리·공예 영상을 올린 사람이 따라 하기 판도 함께 내요.", "Creators publish a step-by-step version of their own video.")],
+      ["tablet", T("조립·설치 안내", "Assembly and setup"), T("처음 하는 조립을 지금 몇 번째인지 맞춰 가며.", "First-time assembly, with the current step tracked.")],
+      ["draw", T("가족 손기술 남기기", "Family know-how"), T("부모님 요리법을 한 번 찍어 카드로 남겨요.", "Film a parent's recipe once and keep it as cards.")],
+    ].map(([i, t, d]) => `<div><span class="fi">${icon(i)}</span><strong>${t}</strong><span class="muted">${d}</span></div>`).join("")}</div>
     ${runs.length ? `<h3>${T("지난 카드 묶음", "Previous card sets")}</h3><div class="past">${runs.map(r => `
       <a class="pastcard" href="#run=${r.id}&view=${r.done ? "edit" : "making"}">
         ${r.thumb ? `<img src="/runs/${r.id}/${r.thumb}" alt="">` : '<div class="ph"></div>'}
