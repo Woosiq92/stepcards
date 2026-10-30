@@ -10,3 +10,4 @@ demo/out/
 .DS_Store
 *.log
 demo/tts/
+!seed/*/video.mp4
