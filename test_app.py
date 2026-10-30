@@ -206,3 +206,20 @@ def test_view_key(monkeypatch):
     t = TestClient(A.app, base_url="https://testserver"); t.cookies.set("sc_key", "teach-1")
     svg = t.get(f"/api/runs/{rid}/qr.svg?to=glasses")
     assert svg.status_code == 200 and svg.text.startswith("<?xml") or "<svg" in svg.text
+
+
+# 멈춘 실행 다시 만들기: 영상이 있으면 한 번만 시작, 없으면 404
+def test_retry(monkeypatch):
+    rid, d = make_run()
+    gate, calls = threading.Event(), []
+    monkeypatch.setattr(pipeline, "main", lambda v: (calls.append(v), gate.wait(5)))
+    assert client.post(f"/api/runs/{rid}/retry").status_code == 200
+    assert client.post(f"/api/runs/{rid}/retry").status_code == 409  # 도는 중
+    gate.set()
+    p = json.loads((d / "progress.json").read_text()); p["video_path"] = "/nope.mp4"
+    (d / "progress.json").write_text(json.dumps(p))
+    for _ in range(50):
+        if rid not in A.RUNNING: break
+        threading.Event().wait(0.05)
+    assert client.post(f"/api/runs/{rid}/retry").status_code == 404
+    assert len(calls) == 1

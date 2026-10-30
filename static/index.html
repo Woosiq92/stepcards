@@ -79,6 +79,12 @@
   .past { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
   .pastcard { background:var(--paper); border-radius:var(--r); overflow:hidden; color:inherit; font-weight:400; box-shadow:var(--sh-1); transition:box-shadow .15s, transform .15s; }
   .pastcard { position:relative; }
+  .jump { display:flex; gap:6px; overflow-x:auto; padding:2px 0 10px; scrollbar-width:none; }
+  .jump button { flex:none; min-width:34px; height:34px; border-radius:99px; border:1px solid var(--line2); background:var(--paper); font-weight:700; font-size:13px; color:var(--ink2); }
+  .jump button.bad { border-color:var(--bad); color:var(--bad); background:var(--bad-soft); }
+  .tab .txt { cursor:pointer; } .tab .hear .ico { width:.6em; height:.6em; opacity:.5; vertical-align:middle; }
+  @media (max-width:720px) { .toolbar { position:static; } .jump { position:sticky; top:var(--hh); z-index:5; background:rgba(241,244,247,.95); backdrop-filter:blur(12px); padding-top:8px; margin:0 -16px; padding-left:16px; padding-right:16px; } }
+  @media (pointer:coarse) { .seg.mini button, .linkbtn, .actions .btn, .between .btn { min-height:40px; } }
   .pastcard .del { position:absolute; top:8px; right:8px; width:32px; height:32px; border-radius:50%; border:none; background:rgba(11,16,21,.6); color:#fff; display:grid; place-items:center; opacity:0; transition:opacity .15s; }
   .pastcard:hover .del, .pastcard .del:focus-visible { opacity:1; } .pastcard .del .ico { width:16px; height:16px; }
   @media (hover:none) { .pastcard .del { opacity:1; } }
@@ -327,7 +333,7 @@ function imgSrc(c) {
 // 움직임 보기: 그 단계 영상 몇 초를 소리 없이 반복. 인쇄·미리 불러오기는 사진(imgSrc)을 쓴다
 function media(c, attrs = "") {
   return c.view === "clip" ? `<video src="/api/runs/${S.run}/clip/${c.n}.mp4?t=${c.frame_t ?? c.rep}" poster="${imgSrc(c)}" autoplay muted loop playsinline ${attrs}></video>`
-                           : `<img src="${imgSrc(c)}" alt="" ${attrs}>`;
+                           : `<img src="${imgSrc(c)}" alt="${esc(c.ko)}" ${attrs}>`;  // 사진 설명 = 카드 문장(화면 낭독기)
 }
 function text(c) {
   if (lang === "en") return esc(c.en);
@@ -403,6 +409,8 @@ function delRun(id) {
 }
 async function upload(f) {
   if (!f.type.startsWith("video/")) return toast(T("영상 파일만 넣을 수 있어요.", "Only video files can be added."));
+  const dur = await new Promise(res => { const v = document.createElement("video"); v.preload = "metadata"; v.onloadedmetadata = () => res(v.duration); v.onerror = () => res(0); v.src = URL.createObjectURL(f); });
+  if (dur > 600) return toast(T(`영상이 ${Math.round(dur / 60)}분이에요. 10분 안으로 잘라서 넣어 주세요(1~5분이 가장 좋아요).`, `This video is ${Math.round(dur / 60)} min. Please trim it to under 10 minutes (1–5 is best).`));
   $("#drop").innerHTML = `<div class="big">${T("영상을 올리는 중…", "Uploading…")}</div>`;
   const fd = new FormData(); fd.append("file", f);
   const r = await fetch("/api/upload", { method: "POST", body: fd });
@@ -432,7 +440,7 @@ async function making() {
     $("#main").innerHTML = `
       <h2>${done ? T("카드가 다 만들어졌어요", "Your cards are ready") : err ? T("만들다가 멈췄어요", "Stopped with an error") : T("카드를 만들고 있어요", "Making your cards")}</h2>
       <p class="sub">${esc(p.video || "")}${done || err ? "" : T(" · 몇 분 걸려요. 이 창을 닫아도 계속 만들어져요.", " · This takes a few minutes. It keeps going if you close this window.")}</p>
-      ${err ? `<div class="issue">${esc(err.msg)}</div>` : ""}
+      ${err ? `<div class="issue">${esc(errText(err.msg))}</div><p><button class="btn primary" onclick="retryRun()">${T("다시 만들기", "Try again")}</button> <span class="muted">${T("자세한 내용은 아래 '자세한 기록'에 있어요.", "Details are in the log below.")}</span></p>` : ""}
       ${done ? `<p><button class="btn primary big" onclick="openEdit()">${T("카드 확인하러 가기 →", "Check the cards →")}</button></p>` : ""}
       <div class="stages">
         <div class="stage ${s1}"><span class="ic"></span><div><strong>${T("영상에서 1초마다 사진 뽑기", "Take a frame every second")}</strong></div></div>
@@ -452,6 +460,19 @@ async function making() {
   await draw();
   S.poll = setInterval(draw, 1200);
 }
+// 프로그램 오류문 대신 할 일을 쉬운 말로
+function errText(m) {
+  if (/401|403|unauthori|api.?key|MODEL_API_KEY/i.test(m)) return T("Meta API 키가 맞지 않아요. 서버의 MODEL_API_KEY를 확인해 주세요.", "The Meta API key was refused. Check MODEL_API_KEY on the server.");
+  if (/429|rate/i.test(m)) return T("Meta API 사용량이 잠시 넘쳤어요. 1분쯤 뒤에 다시 해 주세요.", "Too many requests to the Meta API. Try again in a minute.");
+  if (/timeout|timed out|connect|network/i.test(m)) return T("Meta API에 연결하지 못했어요. 인터넷을 확인하고 다시 해 주세요.", "Could not reach the Meta API. Check the connection and try again.");
+  if (/ffmpeg|ffprobe|invalid data|moov/i.test(m)) return T("영상을 읽지 못했어요. 다른 형식(mp4)으로 다시 넣어 주세요.", "The video could not be read. Try an mp4 file.");
+  return T("만들다가 멈췄어요. 다시 해 주세요.", "Making stopped. Please try again.");
+}
+async function retryRun() {
+  const r = await fetch(`/api/runs/${S.run}/retry`, { method: "POST" });
+  if (!r.ok) return toast(T("다시 시작하지 못했어요. 영상을 처음 화면에서 다시 넣어 주세요.", "Could not restart. Add the video again from the start page."));
+  setTimeout(making, 1500);  // 새 실행이 옛 '멈춤' 기록을 지울 때까지 잠깐 기다린다
+}
 async function openEdit() {
   S.data = await (await fetch(`/api/runs/${S.run}/cards`)).json();
   go({ run: S.run, view: "edit" });
@@ -460,6 +481,7 @@ async function openEdit() {
 /* ② 확인·고치기 */
 // 검사기 문장(한국어)을 쉬운 말로. [모양, 한국어, 영어]
 const FRIENDLY = [
+  [/JSON 형식/, "모델 답을 읽지 못했어요. 처음 화면에서 영상을 다시 넣거나 '다시 만들기'를 눌러 주세요.", "The model's answer could not be read. Try making the cards again."],
   [/겹칩니다/, "앞 카드와 시간이 겹쳐요. '시간·물건 고치기'에서 시작이나 끝을 바꿔 주세요.", "Overlaps another card in time. Change the start or end under 'Edit time & object'."],
   [/문장이 비어/, "문장을 써 주세요.", "Write a sentence."],
   [/한국어 문장이 깁니다/, "문장이 길어요. 25자 안으로 줄여 주세요.", "The Korean sentence is too long. Keep it within 25 characters."],
@@ -510,11 +532,12 @@ function edit() {
       <input class="titlein" value="${esc(S.data.title || "")}" placeholder="${T("과제 이름 (예: 아이스 라테 만들기)", "Task name (e.g. Iced latte)")}" oninput="S.data.title=this.value;scheduleSave()" aria-label="${T("과제 이름", "Task name")}">
       <h2 style="margin:0">${T(`카드 ${cs.length}장`, `${cs.length} cards`)}</h2>
       <span id="chip">${chipHtml(Object.keys(per).length + global.length)}</span>
-      <span class="saved" id="saved">${saveText()}</span>
+      <span class="saved" id="saved" aria-live="polite">${saveText()}</span>
       <span style="flex:1"></span>
       <button class="btn" onclick="illustrateAll()" title="Muse Image">${icon("draw")} ${T("모든 카드 그림으로", "Make drawings for all")}</button>
       <button class="btn primary" onclick="go({run:S.run,view:'use'})">${T("다 됐어요 → 인쇄·태블릿", "Done → Print · Tablet · Coach")}</button>
     </div>
+    <nav class="jump" id="jump" aria-label="${T("카드로 바로 가기", "Jump to card")}">${jumpHtml(per)}</nav>
     <p class="hint">${T("문장을 누르면 바로 고쳐져요. 사진이 마음에 안 들면 '다른 장면 고르기'를 누르세요.", "Click a sentence to edit it. If a photo is not right, use 'Choose another frame'.")}</p>
     <div id="global">${global.map(g => `<div class="issue">${esc(g)}</div>`).join("")}</div>
     <div class="list">${cs.map((c, i) => rowHtml(c, i, per[i]) + between(i, gaps)).join("")}</div>`;
@@ -529,7 +552,7 @@ function rowHtml(c, i, iss = []) {
       <div class="pic">${media(c, `onerror="this.style.visibility='hidden'"`)}${S.busy.has(c.n) ? `<div class="busy">${S.busy.get(c.n)}</div>` : ""}</div>
       <div class="picbar">
         <button class="linkbtn" onclick="toggle('strip',${c.n})">${strip ? T("장면 고르기 닫기 ▲", "Close frames ▲") : T("다른 장면 고르기 ▼", "Choose another frame ▼")}</button>
-        ${c.ill ? "" : `<button class="linkbtn" onclick="illustrateCard(${i})" ${S.busy.has(c.n) ? "disabled" : ""}>${icon("draw")} ${T("그림으로", "Drawing")}</button>`}
+        <button class="linkbtn" onclick="illustrateCard(${i})" ${S.busy.has(c.n) ? "disabled" : ""} title="Muse Image · $0.01">${icon("draw")} ${c.ill ? T("다시 그리기", "Redraw") : T("그림으로", "Drawing")}</button>
         <span class="seg mini">${[["photo", T("사진", "Photo")], ...(c.ill ? [["ill", T("그림", "Drawing")]] : []), ["clip", T("움직임", "Motion")]].map(([v, l]) =>
             `<button class="${(c.view || "photo") === v ? "on" : ""}" onclick="setView(${i},'${v}')">${l}</button>`).join("")}</span>
       </div>
@@ -592,8 +615,12 @@ function saveNow() {
   }).catch(() => setSave("error"));
   return S.saving;
 }
+function jumpHtml(per) {
+  return S.data.cards.map((_, i) => `<button class="${per[i]?.length ? "bad" : ""}" onclick="document.getElementById('row${i}').scrollIntoView({behavior:'smooth',block:'center'})">${i + 1}</button>`).join("");
+}
 function updateIssues() {
   const { per, global, gaps } = issues();
+  const j = $("#jump"); if (j) j.innerHTML = jumpHtml(per);
   $("#chip").innerHTML = chipHtml(Object.keys(per).length + global.length);
   $("#global").innerHTML = global.map(g => `<div class="issue">${esc(g)}</div>`).join("");
   S.data.cards.forEach((c, i) => {
@@ -610,7 +637,7 @@ function changed() { edit(); saveNow(); }
 function typed(i, k, el) { S.data.cards[i][k] = el.value; autosize(el); scheduleSave(); }
 function snapshot() { return JSON.parse(JSON.stringify(S.data.cards)); }
 function undoable(msg, before) { toast(msg, T("되돌리기", "Undo"), () => { S.data.cards = before; changed(); }); }
-function move(i, d) { const cs = S.data.cards; [cs[i], cs[i + d]] = [cs[i + d], cs[i]]; changed(); }
+function move(i, d) { const before = snapshot(), cs = S.data.cards; [cs[i], cs[i + d]] = [cs[i + d], cs[i]]; changed(); undoable(T("순서를 바꿨어요.", "Order changed."), before); }
 function del(i) { const before = snapshot(); S.data.cards.splice(i, 1); changed(); undoable(T("카드를 뺐어요.", "Card removed."), before); }
 function merge(i) {
   const before = snapshot(), cs = S.data.cards, a = cs[i], b = cs[i + 1];
@@ -657,7 +684,13 @@ async function illustrateCard(i, quiet) {
   if (!quiet) saveNow();
   return r.ok;
 }
-async function illustrateAll() {
+function illustrateAll() {
+  const n = S.data.cards.filter(c => !c.ill && !S.busy.has(c.n)).length;
+  if (!n) return toast(T("모든 카드에 이미 그림이 있어요. 카드마다 '다시 그리기'로 바꿀 수 있어요.", "Every card already has a drawing. Use 'Redraw' on a card to replace one."));
+  // 값이 드는 일이라 한 번 더 묻는다. 16장에 59초 걸린 실측(3장씩 동시에)으로 시간을 어림한다
+  toast(T(`그림 ${n}장 · 약 $${(n * 0.01).toFixed(2)} · 약 ${Math.ceil(n * 3.7)}초`, `${n} drawings · about $${(n * 0.01).toFixed(2)} · about ${Math.ceil(n * 3.7)} s`), T("만들기", "Make"), illustrateMissing);
+}
+async function illustrateMissing() {
   const todo = S.data.cards.map((c, i) => [c, i]).filter(([c]) => !c.ill && !S.busy.has(c.n)).map(([, i]) => i);
   let done = 0, fail = 0;
   const worker = async () => { while (todo.length) { const i = todo.shift(); (await illustrateCard(i, true)) ? done++ : fail++; } };
@@ -728,8 +761,8 @@ function tablet() {
   const c = cs[S.idx], last = S.idx === cs.length - 1;
   $("#main").innerHTML = `<div class="tab">
     <button class="exit" onclick="go({run:S.run,view:'use'})">${icon("x")}${T("나가기", "Exit")}</button>
-    <div class="imgwrap">${media(c)}<div class="zone l" onclick="flip(-1)"></div><div class="zone r" onclick="flip(1)"></div></div>
-    <div class="txt">${text(c)}</div>
+    <div class="imgwrap">${media(c)}<div class="zone l" onclick="flip(-1)" role="button" aria-label="${T("이전 카드", "Previous card")}"></div><div class="zone r" onclick="flip(1)" role="button" aria-label="${T("다음 카드", "Next card")}"></div></div>
+    <div class="txt" onclick="sayCard(S.data.cards[S.idx])" title="${T("눌러서 듣기", "Tap to hear")}">${text(c)} <span class="hear">${icon("sound")}</span></div>
     <div class="bar">
       <button class="navb" onclick="flip(-1)" ${S.idx ? "" : "disabled"}>${T("◀ 이전", "◀ Back")}</button>
       <div class="mid"><div class="dots">${cs.map((_, j) => `<i class="${j === S.idx ? "on" : ""}"></i>`).join("")}</div>${S.idx + 1} / ${cs.length}</div>
@@ -746,7 +779,7 @@ function coach() {
   $("#main").innerHTML = `<div class="tab coachv">
     <button class="exit" onclick="coachExit()">${icon("x")}${T("나가기", "Exit")}</button>
     <button class="exit voice" id="cvoice" onclick="setVoice(!C.voice)"></button>
-    <div class="cam"><video id="cvid" muted playsinline></video><div class="pill" id="cpill">${T("카메라 꺼짐", "Camera off")}</div></div>
+    <div class="cam"><video id="cvid" muted playsinline></video><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
     <div class="lvtag" id="clv" hidden></div>
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
     <div class="imgwrap" id="cwrap"></div>
@@ -808,6 +841,11 @@ function speak(force, again, only) {
   if (!only && lang !== "ko") parts.push([c.en, "en-US"]);
   speechSynthesis.cancel();
   for (const [t, l] of parts) { const u = new SpeechSynthesisUtterance(t); u.lang = l; u.rate = 0.9; speechSynthesis.speak(u); }
+}
+function sayCard(c) {  // 태블릿: 문장을 누르면 읽어 준다(누를 때만)
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  for (const [t, l] of [[lang !== "en" && c.ko, "ko-KR"], [lang !== "ko" && c.en, "en-US"]]) if (t) { const u = new SpeechSynthesisUtterance(t); u.lang = l; u.rate = 0.9; speechSynthesis.speak(u); }
 }
 // 안경 화면(/glasses)에 지금 카드를 알린다
 function glassesSync(again) {

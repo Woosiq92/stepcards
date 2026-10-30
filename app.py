@@ -153,19 +153,38 @@ async def upload(file: UploadFile):
     finally:
         tmp.unlink(missing_ok=True)
     run = pipeline.Run(dest)
-    with RUNNING_LOCK:  # 도는 중이거나 이미 끝난 실행은 다시 돌리지 않는다
-        if run.dir.name in RUNNING or any(e.get("stage") == "done" for e in run.events):
-            return {"id": run.dir.name}
-        RUNNING.add(run.dir.name)
+    if not any(e.get("stage") == "done" for e in run.events):  # 이미 끝난 실행은 다시 돌리지 않는다
+        start(run.dir.name, dest)
+    return {"id": run.dir.name}
+
+
+def start(run_id, video):
+    """카드 만들기를 뒤에서 돌린다. 같은 실행이 이미 돌고 있으면 False"""
+    with RUNNING_LOCK:
+        if run_id in RUNNING:
+            return False
+        RUNNING.add(run_id)
 
     def go():
         try:
-            pipeline.main(dest)
+            pipeline.main(video)
         finally:
             with RUNNING_LOCK:
-                RUNNING.discard(run.dir.name)
+                RUNNING.discard(run_id)
     threading.Thread(target=go, daemon=True).start()
-    return {"id": run.dir.name}
+    return True
+
+
+@app.post("/api/runs/{run_id}/retry")
+def retry(run_id: str):
+    """멈춘 실행을 같은 영상으로 다시 돌린다(영상을 다시 올리지 않아도 되게)"""
+    d = run_dir(run_id)
+    video = Path((read(d, "progress.json") or {}).get("video_path") or "")
+    if not video.is_file():
+        raise HTTPException(404, "영상 파일이 없습니다")
+    if not start(run_id, video):
+        raise HTTPException(409, "아직 만드는 중입니다")
+    return {"id": run_id}
 
 
 @app.get("/api/runs/{run_id}/progress")
