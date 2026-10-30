@@ -103,7 +103,8 @@ Deploy (for example Railway, from this GitHub repository): the `Dockerfile` inst
 | `JUDGE_KEY` | optional second key for judges: everything works, with daily limits on the calls that cost credits (6 videos, 60 drawings, 20 agent requests, about 30 minutes of Coach mode) |
 | `TEACHER_KEYS` | optional per-teacher keys, `name:key,name:key`: each teacher sees the samples plus their own card sets, and can edit or delete only their own (Coach mode works on any set). `APP_KEY` stays the admin key |
 | `ALERT_WEBHOOK` | optional webhook URL (Discord or Slack style): a one-line alert when card making stops or the server hits an unhandled error |
-| `CACHE_DAYS` / `RETAIN_DAYS` | motion-clip and glasses-image caches are rebuilt on demand and removed after `CACHE_DAYS` (30); if `RETAIN_DAYS` is set, teacher card sets untouched for that many days are removed with their videos (samples are kept) |
+| `COMPACT_DAYS` / `ARCHIVE_DAYS` / `RETAIN_DAYS` / `CACHE_DAYS` | storage lifecycle (14 / 90 / off / 30 days), see Running it for real |
+| `TEACHER_QUOTA_MB` / `TEACHER_MAX_SETS` | per-teacher storage limits (5000 MB / 50 sets) |
 | `STEP_MODEL` / `SAM_MODEL` / `ASR_MODEL` | model names, if Meta renames or retires one |
 | `DATA_DIR` | a persistent volume path (for example `/data`), so card sets survive redeploys |
 
@@ -135,7 +136,9 @@ Tests (checker, server, Coach decisions; no paid model calls): `.venv/bin/pip in
 - **Cost guards**: Coach mode pauses its camera after 5 minutes without a step change; uploads are limited to 500 MB and 10 minutes on the server, and refused when less than 2 GB is free.
 - **Restarts**: card making that was interrupted by a restart or redeploy is marked as stopped, so "Try again" appears instead of an endless "Making".
 - **Health and alerts**: `/api/health` (free space, jobs, key present) is Railway's health check (`railway.json`); `ALERT_WEBHOOK` sends failures to a chat.
-- **Backups**: each card set can be downloaded as a .zip from the Use page; for the whole volume, turn on Railway's volume backups.
+- **Storage over time** (`storage.py`, runs every 6 hours): the audio file is deleted once speech is transcribed; a card set unused for `COMPACT_DAYS` (14) keeps a 640 px silent copy of its video instead of the original and drops its 1-second frames and caches (frames come back from the copy when the frame strip is opened); after `ARCHIVE_DAYS` (90) only cards, drawings and text are kept; with `RETAIN_DAYS` set, sets are deleted after that many days, with a warning on the home and edit pages for the last 7 days. Each teacher has a quota (`TEACHER_QUOTA_MB` 5000, `TEACHER_MAX_SETS` 50). Measured on the samples, compacting cuts a set by roughly three quarters. Design notes: per-component sizes and the full lifecycle.
+- **Admin page** (`#view=admin`, admin key): every card set with owner, stage, last use and size by part; per-owner totals; compact, archive, .zip and delete buttons.
+- **Backups**: a teacher-data backup (cards, drawings, titles, owners, audit; no video) is written every day to `backups/` and kept for 7 days, downloadable from the admin page; each card set also downloads as a .zip from the Use page. Railway volume backups need a paid plan.
 - **Without an API key** (for example after the hackathon credit ends) the site still starts: viewing, printing, tablet and glasses views work, and cards can still be made on a school computer with Muse Glimmer. A school deployment should use its own paid Meta API key, or Glimmer for anything involving students.
 - **Reproducible builds**: the base image is pinned (`python:3.14.8-slim`) and Python packages are pinned in `requirements.txt`.
 

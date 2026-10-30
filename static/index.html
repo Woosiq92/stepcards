@@ -91,6 +91,11 @@
   .keyask form { background:var(--paper); color:var(--ink); border-radius:var(--r-l); padding:24px; width:min(380px,100%); display:grid; gap:10px; box-shadow:var(--sh-3); }
   .keyask input { font:inherit; padding:12px; border:1px solid var(--line2); border-radius:12px; } .keyask input:focus { outline:none; border-color:var(--accent); box-shadow:var(--focus); }
   .pastcard { position:relative; }
+  .adminlink { margin-top:28px; } .adminlink a { color:var(--muted); font-weight:500; }
+  .adminrow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 14px; }
+  .admintable { width:100%; border-collapse:collapse; background:var(--paper); border-radius:var(--r); overflow:hidden; box-shadow:var(--sh-1); font-size:13px; }
+  .admintable th, .admintable td { padding:8px 10px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; } .admintable td:first-child { white-space:normal; }
+  .admintable .btn { padding:4px 10px; font-size:12px; margin-right:4px; }
   .ask { display:flex; align-items:center; gap:10px; background:var(--paper); border-radius:999px; padding:6px 6px 6px 14px; box-shadow:var(--sh-1); margin:0 0 10px; }
   .ask .ci { color:var(--accent); display:grid; } .ask input { flex:1; min-width:0; border:none; font:inherit; font-size:15px; background:transparent; color:var(--ink); } .ask input:focus { outline:none; }
   .askbox { background:var(--paper); border-radius:var(--r); padding:14px 18px; box-shadow:var(--sh-1); margin:0 0 12px; display:grid; gap:8px; }
@@ -360,15 +365,15 @@ async function route() {
   stopCoach();
   const p = new URLSearchParams(location.hash.slice(1));
   const run = p.get("run");
-  if (run !== S.run) { S.run = run; S.data = null; S.undo = null; S.idx = 0; S.open.clear(); S.strip.clear(); }
-  S.view = run ? (p.get("view") || "making") : "home";
+  if (run !== S.run) { S.run = run; S.data = null; S.undo = null; S.framesOk = false; S.idx = 0; S.open.clear(); S.strip.clear(); }
+  S.view = run ? (p.get("view") || "making") : p.get("view") === "admin" ? "admin" : "home";
   if (run && !S.data) { const r = await fetch(`/api/runs/${run}/cards`); if (r.ok) S.data = await r.json(); else if (r.status === 404 && (await fetch(`/api/runs/${run}/progress`)).status === 404) S.view = "missing"; }
   if (["edit", "use", "tablet", "coach"].includes(S.view) && !S.data) S.view = "making";
   document.body.classList.toggle("tabmode", S.view === "tablet" || S.view === "coach");
   document.documentElement.lang = ui;
   $("#uiseg").innerHTML = [["ko", "한국어"], ["en", "English"]].map(([v, l]) => `<button class="${ui === v ? "on" : ""}" onclick="setUi('${v}')">${l}</button>`).join("");
   header();
-  ({ home, making, edit, use, tablet, coach, missing })[S.view]();
+  ({ home, making, edit, use, tablet, coach, missing, admin })[S.view]();
 }
 
 /* 위쪽 1·2·3 단계 표시 */
@@ -409,6 +414,27 @@ function toast(msg, label, act) {
   setTimeout(() => t.remove(), 6000);
 }
 
+/* 관리자 화면: 저장 공간을 카드 묶음·교사별로 보고 정리·보관·백업 */
+const mb = b => b >= 1073741824 ? `${(b / 1073741824).toFixed(1)}GB` : `${(b / 1048576).toFixed(b < 10485760 ? 1 : 0)}MB`;
+async function admin() {
+  const r = await fetch("/api/admin/storage");
+  if (!r.ok) { $("#main").innerHTML = `<h2>${T("관리자 화면", "Admin")}</h2><p class="sub">${T("관리자 키로 들어와야 볼 수 있어요.", "Sign in with the admin key to see this page.")}</p><button class="btn primary" onclick="askKey().then(ok => ok && admin())">${T("관리자 키 넣기", "Enter admin key")}</button>`; return; }
+  const d = await r.json(), used = d.total - d.free, stageName = s => ({ making: T("만드는 중", "making"), done: T("완성", "done"), compact: T("정리됨", "compacted"), archived: T("보관됨", "archived"), error: T("멈춤", "stopped") })[s] || s;
+  $("#main").innerHTML = `<h2>${T("저장 공간 관리", "Storage")}</h2>
+    <p class="sub">${T(`전체 ${mb(d.total)} 중 ${mb(used)} 사용 (${Math.round(used / d.total * 100)}%) · 정리 ${d.policy.compact_days}일 · 보관 ${d.policy.archive_days}일 · 삭제 ${d.policy.retain_days || "끔"}${d.policy.retain_days ? "일" : ""} · 교사 한도 ${d.policy.max_sets}묶음·${d.policy.quota_mb}MB`,
+      `${mb(used)} of ${mb(d.total)} used (${Math.round(used / d.total * 100)}%) · compact after ${d.policy.compact_days} d · archive after ${d.policy.archive_days} d · delete ${d.policy.retain_days ? "after " + d.policy.retain_days + " d" : "off"} · per teacher ${d.policy.max_sets} sets, ${d.policy.quota_mb} MB`)}</p>
+    <div class="adminrow">${Object.entries(d.owners).map(([o, v]) => `<span class="chip ok">${esc(o)} · ${v.sets} · ${mb(v.bytes)}</span>`).join("")}
+      <a class="btn" href="/api/admin/backup.zip">${icon("share")} ${T("교사 자료 백업 받기", "Download teacher backup")}</a></div>
+    <table class="admintable"><thead><tr><th>${T("카드 묶음", "Card set")}</th><th>${T("주인", "Owner")}</th><th>${T("단계", "Stage")}</th><th>${T("마지막 사용", "Last used")}</th><th>${T("영상", "Video")}</th><th>${T("사진·소리", "Frames·audio")}</th><th>${T("카드", "Cards")}</th><th>${T("합계", "Total")}</th><th></th></tr></thead>
+    <tbody>${d.runs.sort((a, b) => b.size.total - a.size.total).map(x => `<tr><td><a href="#run=${x.id}&view=edit">${esc(x.title)}</a></td><td>${esc(x.owner)}</td><td>${stageName(x.stage)}</td>
+      <td>${x.last_used ? new Date(x.last_used * 1000).toLocaleDateString() : "–"}</td><td>${mb(x.size.video)}</td><td>${mb(x.size.frames + x.size.audio)}</td><td>${mb(x.size.cards)}</td><td><b>${mb(x.size.total)}</b></td>
+      <td>${x.owner === "seed" ? "" : `${x.stage === "done" ? `<button class="btn" onclick="adminDo('${x.id}','compact')">${T("정리", "Compact")}</button>` : ""}${["done", "compact"].includes(x.stage) ? `<button class="btn" onclick="adminDo('${x.id}','archive')">${T("보관", "Archive")}</button>` : ""}<a class="btn" href="/api/runs/${x.id}/export.zip">.zip</a><button class="btn" onclick="delRun('${x.id}')">${T("지우기", "Delete")}</button>`}</td></tr>`).join("")}</tbody></table>`;
+}
+async function adminDo(id, action) {
+  toast(T("처리하는 중…", "Working…"));
+  const r = await fetch(`/api/admin/runs/${id}/${action}`, { method: "POST" });
+  toast(r.ok ? T("끝났어요.", "Done.") : T("하지 못했어요.", "Could not do that.")); admin();
+}
 function missing() {
   $("#main").innerHTML = `<h2>${T("이 카드 묶음이 없어요", "This card set doesn't exist")}</h2>
     <p class="sub">${T("지워졌거나 주소가 잘못되었어요.", "It was removed, or the link is wrong.")}</p>
@@ -461,9 +487,11 @@ async function home() {
       <a class="pastcard" href="#run=${r.id}&view=${r.done ? "edit" : "making"}">
         ${r.thumb ? `<img src="/runs/${r.id}/${r.thumb}" alt="">` : '<div class="ph"></div>'}
         <div class="pt"><strong>${esc(runTitle(r))}</strong>
+        ${r.delete_on && r.delete_on * 1000 - Date.now() < 7 * 864e5 ? `<span class="red">${T(`${Math.max(0, Math.ceil((r.delete_on * 1000 - Date.now()) / 864e5))}일 뒤 지워져요`, `deleted in ${Math.max(0, Math.ceil((r.delete_on * 1000 - Date.now()) / 864e5))} days`)}</span>` : ""}
         <span class="muted">${r.done ? `${T(`카드 ${r.count}장`, `${r.count} cards`)}${r.issues ? ` · <span class="red">${T(`확인할 곳 ${r.issues}`, `${r.issues} to check`)}</span>` : T(" · 확인 끝", " · all checks passed")}` : T("만드는 중", "in progress")}</span></div>
         ${r.use ? "" : `<button class="del" title="${T("지우기", "Delete")}" aria-label="${T("지우기", "Delete")}" onclick="event.preventDefault();delRun('${r.id}')">${icon("x")}</button>`}
-      </a>`).join("")}</div>` : ""}`;
+      </a>`).join("")}</div>` : ""}
+    <p class="muted adminlink"><a href="#view=admin">${T("저장 공간 관리(관리자)", "Storage (admin)")}</a></p>`;
   const drop = $("#drop"), file = $("#file");
   file.onchange = () => file.files[0] && upload(file.files[0]);
   drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
@@ -477,7 +505,7 @@ function delRun(id) {
   toast(T("이 카드 묶음과 올린 영상을 지울까요? 되돌릴 수 없어요.", "Delete this card set and its video? This can't be undone."), T("지우기", "Delete"), async () => {
     const r = await fetch(`/api/runs/${id}`, { method: "DELETE" });
     toast(r.ok ? T("지웠어요.", "Deleted.") : T("지우지 못했어요. 만드는 중이면 끝난 뒤에 지워 주세요.", "Could not delete. If it is still being made, try after it finishes."));
-    home();
+    S.view === "admin" ? admin() : home();
   });
 }
 // 카드 만들기를 이 맥의 공개 가중치 모델로: 영상·소리가 맥 밖으로 나가지 않는다(받아쓰기·물건 테두리는 건너뜀)
@@ -635,6 +663,8 @@ function edit() {
     <div id="askres"></div>
     <nav class="jump" id="jump" aria-label="${T("카드로 바로 가기", "Jump to card")}">${jumpHtml(per)}</nav>
     <p class="hint">${T("문장을 누르면 바로 고쳐져요. 사진이 마음에 안 들면 '다른 장면 고르기'를 누르세요.", "Click a sentence to edit it. If a photo is not right, use 'Choose another frame'.")}</p>
+    ${S.data.stage === "archived" ? `<div class="issue">${T("오래 쓰지 않아 보관된 카드 묶음이에요. 카드·그림·인쇄·따라 하기는 그대로 되지만, 영상이 정리되어 장면 바꾸기와 움직임 카드는 쓸 수 없어요.", "This card set was archived after long disuse. Cards, drawings, printing and Coach mode still work; the video was removed, so frame changes and motion cards are off.")}</div>` : ""}
+    ${S.data.delete_on && S.data.delete_on * 1000 - Date.now() < 7 * 864e5 ? `<div class="issue">${T(`이 카드 묶음은 ${new Date(S.data.delete_on * 1000).toLocaleDateString("ko-KR")}에 지워져요. 열거나 고치면 기간이 늘어나요. 필요하면 카드 쓰기 화면에서 백업(.zip)을 받아 두세요.`, `This card set will be deleted on ${new Date(S.data.delete_on * 1000).toLocaleDateString("en-US")}. Opening or editing it extends that; download a backup (.zip) from the Use page if you need it.`)}</div>` : ""}
     ${S.data.caught?.length ? `<details class="caught"><summary>${icon("check")} ${T(`검사기가 첫 답에서 ${S.data.caught.length}곳을 잡아 다시 만들게 했어요 → ${S.data.tries}번째에 통과`, `The code checker caught ${S.data.caught.length} problem(s) in the first answer and sent them back → passed on try ${S.data.tries}`)}</summary>
       <ul>${S.data.caught.map(m => `<li>${esc(problemText(m, true))}</li>`).join("")}</ul></details>` : ""}
     <div id="global">${global.map(g => `<div class="issue">${esc(g)}</div>`).join("")}</div>
@@ -649,9 +679,9 @@ function rowHtml(c, i, iss = []) {
     <div>
       <div class="pic">${media(c, `onerror="this.style.visibility='hidden'"`)}${S.busy.has(c.n) ? `<div class="busy">${S.busy.get(c.n)}</div>` : ""}</div>
       <div class="picbar">
-        <button class="linkbtn" onclick="toggle('strip',${c.n})">${strip ? T("장면 고르기 닫기 ▲", "Close frames ▲") : T("다른 장면 고르기 ▼", "Choose another frame ▼")}</button>
+        ${S.data.stage === "archived" ? "" : `<button class="linkbtn" onclick="toggle('strip',${c.n})">${strip ? T("장면 고르기 닫기 ▲", "Close frames ▲") : T("다른 장면 고르기 ▼", "Choose another frame ▼")}</button>`}
         <button class="linkbtn" onclick="illustrateCard(${i})" ${S.busy.has(c.n) ? "disabled" : ""} title="Muse Image · $0.01">${icon("draw")} ${c.ill ? T("다시 그리기", "Redraw") : T("그림으로", "Drawing")}</button>
-        <span class="seg mini">${[["photo", T("사진", "Photo")], ...(c.ill ? [["ill", T("그림", "Drawing")]] : []), ["clip", T("움직임", "Motion")]].map(([v, l]) =>
+        <span class="seg mini">${[["photo", T("사진", "Photo")], ...(c.ill ? [["ill", T("그림", "Drawing")]] : []), ...(S.data.stage === "archived" ? [] : [["clip", T("움직임", "Motion")]])].map(([v, l]) =>
             `<button class="${(c.view || "photo") === v ? "on" : ""}" onclick="setView(${i},'${v}')">${l}</button>`).join("")}</span>
       </div>
     </div>
@@ -694,7 +724,14 @@ function between(i, gaps) {
   </div>`;
 }
 function autosize(el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; }
-function toggle(which, n) { const s = S[which]; s.has(n) ? s.delete(n) : s.add(n); edit(); }
+async function toggle(which, n) {
+  const s = S[which]; s.has(n) ? s.delete(n) : s.add(n);
+  if (which === "strip" && s.has(n) && S.data.stage === "compact" && !S.framesOk) {  // 정리된 묶음은 1초 사진을 사본에서 다시 뽑는다
+    S.busy.set(n, T("장면을 준비하는 중…", "Preparing frames…")); edit();
+    S.framesOk = (await fetch(`/api/runs/${S.run}/frames`, { method: "POST" })).ok; S.busy.delete(n);
+  }
+  edit();
+}
 
 /* 고친 내용은 저절로 저장하고, 저장할 때마다 서버가 규칙 검사를 다시 한다 */
 function setSave(s) { S.saveState = s; const el = $("#saved"); if (el) el.textContent = saveText(); }

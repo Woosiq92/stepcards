@@ -3,6 +3,7 @@ import json, os, subprocess, tempfile, threading, uuid
 from pathlib import Path
 
 os.environ["DATA_DIR"] = tempfile.mkdtemp(prefix="stepcards_test_")
+os.environ["MAINTENANCE"] = "0"  # 시험 중에는 정리 스레드를 돌리지 않는다
 import pytest
 from fastapi.testclient import TestClient
 from PIL import Image

@@ -349,6 +349,7 @@ def build(run, fresh, look=False, local=False):
         cards = highlight(run, result["steps"], local)
         cards_file.write_text(json.dumps({"duration": duration, "status": result["status"], "problems": result["problems"],
                                           "warnings": result["warnings"], "cards": cards}, ensure_ascii=False, indent=1))
+    run.path("audio.wav").unlink(missing_ok=True)  # 받아쓰기(speech.json)가 끝나면 다시 쓰지 않는다(묶음 크기의 약 20%)
     run.log("done", f"완료: {run.dir}")
 
 

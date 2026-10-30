@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageDraw
 import coach
 import pipeline
+import storage
 from check import check
 
 ROOT = Path(__file__).parent
@@ -47,27 +48,6 @@ def mark_interrupted():
 mark_interrupted()
 
 
-def sweep():
-    """저장소가 끝없이 늘지 않게: 다시 만들 수 있는 캐시(움직임 영상·안경용 사진)는 CACHE_DAYS 지나면 지우고,
-    RETAIN_DAYS(기본 0=끔)가 있으면 그동안 아무도 고치지 않은 교사 카드 묶음과 올린 영상을 지운다(견본 제외)"""
-    now, cache_days, keep_days = time.time(), int(os.environ.get("CACHE_DAYS", 30)), int(os.environ.get("RETAIN_DAYS", 0))
-    for f in list(RUNS.glob("*/clips/*")) + list(RUNS.glob("*/glass/*")):
-        if now - f.stat().st_mtime > cache_days * 86400:
-            f.unlink(missing_ok=True)
-    if keep_days:
-        for d in RUNS.iterdir():
-            c = d / "cards.json"
-            if d.is_dir() and d.name not in SEED_INDEX and c.exists() and now - c.stat().st_mtime > keep_days * 86400:
-                try:
-                    v = Path(json.loads((d / "progress.json").read_text()).get("video_path") or "")
-                except (OSError, ValueError):
-                    v = Path("")
-                shutil.rmtree(d)
-                if v.is_file() and v.resolve().parent == UPLOADS.resolve():
-                    v.unlink()
-
-
-sweep()
 APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정: 키를 아는 사람만 크레딧을 쓰고 카드를 바꾸게
 JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 수 있지만 하루 한도가 있다(제출 설명에 적는 키)
 JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "coach": 900, "frame": 60, "retry": 6}  # 하루 횟수. 따라 하기 900번 ≈ 30분
@@ -221,7 +201,8 @@ def runs(request: Request):
             seed = SEED_INDEX.get(d.name, {})
             out.append({"id": d.name, "video": prog["video"], "title": (data or {}).get("title") or seed.get("title", ""), "title_en": seed.get("title_en", ""), "use": seed.get("use", ""),
                         "done": data is not None, "count": len(cs),
-                        "issues": len(data["problems"]) if data else 0, "thumb": cs[0]["image"] if cs else None})
+                        "issues": len(data["problems"]) if data else 0, "thumb": cs[0]["image"] if cs else None,
+                        "stage": storage.stage(d), "delete_on": None if d.name in SEED_INDEX else storage.delete_on(d)})
     return out
 
 
@@ -275,6 +256,11 @@ async def upload(request: Request, file: UploadFile, local: bool = Form(False)):
             os.replace(tmp, dest)
     finally:
         tmp.unlink(missing_ok=True)
+    role = getattr(request.state, "who", "admin")
+    if role != "admin":  # 교사(심사) 한 사람이 저장소를 다 쓰지 않게
+        n, used = storage.owned_usage(RUNS, UPLOADS, role)
+        if n >= storage.TEACHER_MAX_SETS or used + dest.stat().st_size > storage.TEACHER_QUOTA_MB << 20:
+            raise HTTPException(403, f"저장 한도({storage.TEACHER_MAX_SETS}묶음·{storage.TEACHER_QUOTA_MB}MB)를 넘었습니다")
     run = pipeline.Run(dest)
     if not (run.dir / "owner.txt").exists():  # 처음 올린 사람이 주인(교사 키는 자기 것만 고친다)
         (run.dir / "owner.txt").write_text(getattr(request.state, "who", "admin"))
@@ -347,7 +333,9 @@ def cards(run_id: str):
     # 검사기가 첫 답에서 잡아 다시 만들게 한 것(화면에 보여 준다). 견본은 영어 제목도
     splits = [e for e in (read(d, "progress.json") or {}).get("events", []) if e.get("stage") == "split" and "n" in e]
     caught = splits[0]["problems"] if len(splits) > 1 and splits[0].get("problems") else []
-    return {**data, "caught": caught, "tries": len(splits), "title_en": SEED_INDEX.get(run_id, {}).get("title_en", "")}
+    storage.touch_used(d)
+    return {**data, "caught": caught, "tries": len(splits), "title_en": SEED_INDEX.get(run_id, {}).get("title_en", ""),
+            "stage": storage.stage(d), "delete_on": storage.delete_on(d) if run_id not in SEED_INDEX else None}
 
 
 @app.put("/api/runs/{run_id}/cards")
@@ -377,6 +365,8 @@ def _save(d, body):
 def reframe(run_id: str, n: int, t: int):
     """n번 카드 사진을 t초 장면으로 바꾸고 강조 상자를 다시 찾는다."""
     d = run_dir(run_id)
+    if storage.stage(d) == "archived":
+        raise HTTPException(409, "보관된 카드 묶음이라 영상이 없습니다")
     card = next((c for c in card_list(d) if c["n"] == n), None)
     if card is None:
         raise HTTPException(404, "없는 카드입니다")
@@ -458,7 +448,7 @@ def now_set(run_id: str, body: dict):
     key = now_key(run_id, body.get("s", ""))
     v = NOW.get(key, {}).get("v", 0) + 1
     NOW[key] = {"i": max(0, min(n - 1, int(body.get("i", 0)))), "again": bool(body.get("again")), "by": str(body.get("by", ""))[:10], "v": v,
-                   "lv": max(0, min(4, int(body.get("lv") or 0))), "fin": bool(body.get("fin"))}  # fin = 마지막 단계까지 마침  # 도움 단계(0=끔, 1 글 → 4 움직임)
+                   "lv": max(0, min(4, int(body.get("lv") or 0))), "fin": bool(body.get("fin")), "t": round(time.time())}  # fin = 마지막 단계까지 마침  # 도움 단계(0=끔, 1 글 → 4 움직임)
     save_state()
     return NOW[key]
 
@@ -488,6 +478,8 @@ def glass_img(run_id: str, i: int, ill: int = 1):
 def card_clip(run_id: str, n: int, g: int = 0):
     """n번 카드의 움직임(대표 장면 앞뒤 최대 4초). g=1 은 안경 화면용(한 변 400px·7만 화소 아래)"""
     d = run_dir(run_id)
+    if storage.stage(d) == "archived":
+        raise HTTPException(409, "보관된 카드 묶음이라 영상이 없습니다")
     c = next((c for c in card_list(d) if c["n"] == n), None)
     if c is None:
         raise HTTPException(404, "없는 카드입니다")
@@ -513,11 +505,84 @@ def qr(run_id: str, request: Request, to: str = "tablet", lang: str = "ko", s: s
     return Response(buf.getvalue(), media_type="image/svg+xml", headers={"Cache-Control": "no-store"})
 
 
+BACKUPS = DATA / "backups"
+
+
+def maintenance_loop():
+    """6시간마다 저장 공간 정리(storage.maintain): 소리 파일·캐시·정리·보관·삭제·기록·교사 자료 백업"""
+    while True:
+        try:
+            did = storage.maintain(RUNS, UPLOADS, set(SEED_INDEX), BACKUPS, NOW, running=set(RUNNING))
+            save_state()
+            print("[maintain]", did, flush=True)
+            du = shutil.disk_usage(RUNS)
+            if du.used / du.total > 0.9:
+                pipeline.alert(f"StepCards: 저장 공간 {du.used / du.total:.0%} 사용")
+        except Exception as e:  # 정리가 실패해도 서버는 계속
+            pipeline.alert(f"StepCards: 저장 공간 정리 실패 ({type(e).__name__})")
+        time.sleep(6 * 3600)
+
+
+if os.environ.get("MAINTENANCE", "1") == "1":
+    threading.Thread(target=maintenance_loop, daemon=True).start()
+
+
+def admin_only(request):
+    if who(request) != "admin":
+        raise HTTPException(403, "관리자 키가 필요합니다")
+
+
+@app.get("/api/admin/storage")
+def admin_storage(request: Request):
+    """관리자 화면: 카드 묶음마다 크기·주인·단계·마지막 사용, 교사별 합계, 전체"""
+    admin_only(request)
+    rows = []
+    for d in sorted(RUNS.iterdir()):
+        if d.is_dir() and (d / "progress.json").exists():
+            data = read(d, "cards.json") or {}
+            rows.append({"id": d.name, "title": data.get("title") or SEED_INDEX.get(d.name, {}).get("title") or storage.progress(d).get("video", ""),
+                         "owner": owner_of(d.name) or ("seed" if d.name in SEED_INDEX else "admin"), "stage": storage.stage(d),
+                         "last_used": storage.last_used(d), "delete_on": storage.delete_on(d), "size": storage.report(d, UPLOADS)})
+    du = shutil.disk_usage(RUNS)
+    owners = {}
+    for r in rows:
+        o = owners.setdefault(r["owner"], {"sets": 0, "bytes": 0}); o["sets"] += 1; o["bytes"] += r["size"]["total"]
+    return {"runs": rows, "owners": owners, "free": du.free, "total": du.total,
+            "policy": {"compact_days": storage.COMPACT_DAYS, "archive_days": storage.ARCHIVE_DAYS, "retain_days": storage.RETAIN_DAYS,
+                       "quota_mb": storage.TEACHER_QUOTA_MB, "max_sets": storage.TEACHER_MAX_SETS},
+            "backups": [f.name for f in sorted(BACKUPS.glob("teacher-*.zip"))]}
+
+
+@app.post("/api/admin/runs/{run_id}/{action}")
+def admin_action(run_id: str, action: str, request: Request):
+    admin_only(request)
+    d = run_dir(run_id)
+    if run_id in SEED_INDEX or action not in ("compact", "archive"):
+        raise HTTPException(400, "견본이거나 모르는 동작입니다")
+    ok = (storage.compact if action == "compact" else storage.archive)(d, RUNS, UPLOADS)
+    return {"ok": ok, "stage": storage.stage(d)}
+
+
+@app.get("/api/admin/backup.zip")
+def admin_backup(request: Request):
+    admin_only(request)
+    return FileResponse(storage.backup(RUNS, BACKUPS, set(SEED_INDEX)), media_type="application/zip", filename="stepcards-teacher-backup.zip")
+
+
+@app.post("/api/runs/{run_id}/frames")
+def frames(run_id: str):
+    """정리된 카드 묶음에서 장면 고르기를 열면 1초 사진을 다시 뽑는다"""
+    d = run_dir(run_id)
+    if storage.stage(d) == "archived":
+        raise HTTPException(409, "보관된 카드 묶음입니다")
+    return {"ok": storage.ensure_frames(d)}
+
+
 @app.get("/api/health")
 def health():
     """상태 점검(Railway healthcheck·바깥 감시용): 저장 공간, 도는 작업, 키 여부"""
     du = shutil.disk_usage(RUNS)
-    return {"ok": du.free > MIN_FREE_GB << 30, "free_gb": round(du.free / 2**30, 1), "used_pct": round(du.used / du.total * 100),
+    return {"ok": du.free > MIN_FREE_GB << 30 and du.used / du.total < 0.9, "free_gb": round(du.free / 2**30, 1), "used_pct": round(du.used / du.total * 100),
             "card_sets": sum(1 for d in RUNS.iterdir() if d.is_dir()), "making": len(RUNNING), "api_key": bool(pipeline.API_KEY)}
 
 
