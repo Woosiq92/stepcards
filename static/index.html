@@ -238,14 +238,14 @@
   .lvtag { position:absolute; top:18px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.1); backdrop-filter:blur(12px); padding:6px 6px 6px 14px; border-radius:99px; font-size:14px; font-weight:700; z-index:3; white-space:nowrap; }
   .lvtag i { width:8px; height:8px; border-radius:50%; background:var(--dark3); } .lvtag i.on { background:#fff; }
   .lvtag span { margin:0 4px 0 6px; }
-  .lvtag button { border:none; background:var(--accent); color:#fff; border-radius:99px; padding:5px 12px; font-weight:700; font-size:13px; }
+  .lvtag button { border:none; background:var(--accent); color:#fff; border-radius:99px; padding:0 16px; min-height:44px; font-weight:700; font-size:14px; }
   .helpbtn { display:flex; flex-direction:column; align-items:center; gap:10px; background:var(--dark2); color:#cfd9e3; border:2px dashed var(--dark3); border-radius:var(--r-l); padding:40px 48px; font-size:20px; font-weight:700; }
   .helpbtn .ico { width:36px; height:36px; }
   #csum { z-index:6; }
   .sumgrid { display:grid; grid-template-columns:repeat(2,minmax(0,220px)); gap:10px; }
   .sumgrid div { background:var(--dark2); border-radius:var(--r); padding:12px 16px; display:flex; flex-direction:column; text-align:left; }
   .sumgrid span { color:#a9b8c6; }
-  .coachv .voice { right:auto; left:272px; } .coachv #ctxt { cursor:pointer; }
+  .coachv .voice { right:124px; } .coachv #ctxt { cursor:pointer; }
   .coachv .cstart ~ .voice { z-index:5; }
   .cstart { position:absolute; inset:0; background:radial-gradient(120% 80% at 50% 0%, #16212c 0%, var(--dark) 60%); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; z-index:4; text-align:center; padding:24px; }
   .cstart .glyph { width:72px; height:72px; border-radius:22px; background:var(--accent); display:grid; place-items:center; box-shadow:0 12px 32px rgba(0,100,224,.4); }
@@ -264,7 +264,7 @@
     .tab .mid { flex:1; min-width:0; } .dots i { flex:1; max-width:22px; min-width:4px; } .dots { flex-wrap:nowrap; }
     .coachv .cam { width:120px; top:12px; left:12px; border-radius:12px; } .coachv .cam video { min-height:68px; }
     .tab .exit { top:12px; right:12px; }
-    .coachv .exit.voice { left:auto; right:12px; top:58px; }
+    .coachv .exit.voice { right:112px; top:12px; } .coachv .cam { width:96px; } .coachv .cam video { min-height:54px; } .coachv .pill { font-size:10px; }
     .lvtag { top:auto; bottom:150px; } .sumgrid { grid-template-columns:1fr 1fr; }
     .coachv .imgwrap { padding:100px 16px 8px; }
     .againtag { top:auto; bottom:170px; font-size:17px; }
@@ -289,8 +289,10 @@ let keyAsk = null;
 window.fetch = async (u, o = {}) => {
   const r = await rawFetch(u, o);
   if (r.status !== 401 || !o.method || o.method === "GET" || String(u) === "/login") return r;
+  if (Date.now() - keyDeclined < 60000) return r;  // 방금 '취소'했으면 1분 동안은 다시 묻지 않는다(자동 저장·따라 하기가 창을 계속 띄우지 않게)
   return (await askKey()) ? rawFetch(u, o) : r;
 };
+let keyDeclined = 0;
 function askKey() {
   return keyAsk ??= new Promise(done => {
     const box = document.createElement("div");
@@ -300,7 +302,7 @@ function askKey() {
       <input type="password" autocomplete="current-password" aria-label="${T("접속 키", "Access key")}" placeholder="${T("접속 키", "Access key")}">
       <span class="red" hidden></span>
       <div><button class="btn primary">${T("확인", "OK")}</button> <button type="button" class="btn">${T("취소", "Cancel")}</button></div></form>`;
-    const end = ok => { box.remove(); keyAsk = null; done(ok); };
+    const end = ok => { box.remove(); keyAsk = null; if (!ok) keyDeclined = Date.now(); done(ok); };
     box.querySelector("button[type=button]").onclick = () => end(false);
     box.querySelector("form").onsubmit = async e => {
       e.preventDefault();
@@ -565,7 +567,8 @@ function chipHtml(n) {
 }
 function saveText() {
   return { saved: T("✓ 저장됨", "✓ Saved"), dirty: T("고치는 중…", "Editing…"), saving: T("저장 중…", "Saving…"),
-           error: T("저장하지 못했어요. 서버가 켜져 있는지 확인해 주세요.", "Could not save. Check that the server is running.") }[S.saveState];
+           error: T("저장하지 못했어요. 서버가 켜져 있는지 확인해 주세요.", "Could not save. Check that the server is running."),
+           readonly: T("보기 전용이라 저장되지 않아요 · 접속 키가 있으면 다시 고쳐 보세요", "View only: changes are not saved without the access key") }[S.saveState];
 }
 function edit() {
   const cs = S.data.cards, { per, global, gaps } = issues();
@@ -656,6 +659,7 @@ function saveNow() {
   S.saving = S.saving.then(async () => {
     setSave("saving");
     const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards, title }) });
+    if (r.status === 401) return setSave("readonly");
     if (!r.ok) throw new Error(r.status);
     const d = await r.json();
     Object.assign(S.data, { problems: d.problems, warnings: d.warnings, status: d.status });
@@ -703,7 +707,7 @@ function updateIssues() {
   });
   header();
 }
-window.addEventListener("beforeunload", e => { if (S.saveState !== "saved") e.preventDefault(); });
+window.addEventListener("beforeunload", e => { if (!["saved", "readonly"].includes(S.saveState)) e.preventDefault(); });
 
 function changed() { edit(); saveNow(); }
 function typed(i, k, el) { S.data.cards[i][k] = el.value; autosize(el); scheduleSave(); }
@@ -921,7 +925,7 @@ function coach() {
       <label class="linkbtn" style="cursor:pointer">${T("영상 파일로 시험하기", "Try with a video file")}<input type="file" accept="video/*" hidden onchange="coachFile(this.files[0])"></label>
     </div>
   </div>`;
-  C.started = false; C.shown = -1; C.max = {}; setVoice(C.voice); setHelp(C.help);
+  C.started = false; C.shown = -1; C.max = {}; C.manual = false; C.againSaid = -1; setVoice(C.voice); setHelp(C.help);
   coachCard();
   clearInterval(C.sync);
   C.sync = setInterval(async () => {
@@ -1025,6 +1029,10 @@ function coachCard() {
   $("#cnext").onclick = last ? () => coachEnd(true) : () => coachFlip(1);
 }
 function coachFlip(d) { S.idx = Math.max(0, Math.min(S.data.cards.length - 1, S.idx + d)); C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); }
+function watching(d) {  // 학생 화면에는 '지켜보는 중'만. 판단 시간은 교사용으로 마우스를 올리면 보인다
+  pill(T(`지켜보는 중${C.local ? " · 이 맥" : ""}`, `Watching${C.local ? " · this Mac" : ""}`));
+  const el = $("#cpill"); if (el) el.title = `${d.latency} s`;
+}
 function pill(t) { const el = $("#cpill"); if (el) el.textContent = t; }
 async function coachCamera() {
   try {
@@ -1055,9 +1063,10 @@ function coachStart() {
 async function coachLoop() {
   while (C.running && S.view === "coach") {
     const cs = S.data.cards, cur = S.idx + 1;
-    if (C.buf.length >= 2 && cur <= cs.length) {
+    if (!C.manual && C.buf.length >= 2 && cur <= cs.length) {
       let d = null;  // 네트워크 오류도 '판단 못 함'으로 보고 계속 본다
-      try { const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev, local: C.local }) }); if (r.ok) d = await r.json(); } catch { d = null; }
+      try { const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev, local: C.local }) }); if (r.ok) d = await r.json();
+        if (r.status === 401) { C.manual = true; pill(T("자동 넘김은 접속 키가 필요해요 · 이전·다음으로 넘겨요", "Auto-advance needs the access key · use Back and Next")); continue; } } catch { d = null; }
       if (!C.running || S.idx + 1 !== cur) continue;  // 그 사이 사람이 직접 넘겼으면 결과는 버린다
       if (!d) { pill(T("판단하지 못했어요 · 다시 보는 중", "No answer · watching again")); }
       else {
@@ -1070,9 +1079,9 @@ async function coachLoop() {
           C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); pill(T(`${S.idx + 1}번 카드로 넘겼어요`, `Moved to card ${S.idx + 1}`));
         }
         else if (d.decision === "again") {
-          $("#cagain").hidden = false; glassesSync(true); speak(false, true); clearTimeout(C.againTimer); C.againTimer = setTimeout(() => { const a = $("#cagain"); if (a) a.hidden = true; }, 4000);
-          pill(T(`지켜보는 중 · ${d.latency}초${C.local ? " · 이 맥" : ""}`, `Watching · ${d.latency} s${C.local ? " · this Mac" : ""}`));
-        } else pill(T(`지켜보는 중 · ${d.latency}초${C.local ? " · 이 맥" : ""}`, `Watching · ${d.latency} s${C.local ? " · this Mac" : ""}`));
+          $("#cagain").hidden = false; glassesSync(true); if (C.againSaid !== S.idx) { C.againSaid = S.idx; speak(false, true); } C.buf = []; clearTimeout(C.againTimer); C.againTimer = setTimeout(() => { const a = $("#cagain"); if (a) a.hidden = true; }, 4000);
+          watching(d);
+        } else watching(d);
       }
     }
     await new Promise(r => setTimeout(r, 1500));
