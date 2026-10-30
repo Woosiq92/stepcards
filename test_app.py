@@ -253,3 +253,18 @@ def test_upload_local(monkeypatch):
     assert client.post("/api/upload", files={"file": ("a.mp4", uuid.uuid4().bytes)}, data={"local": "true"}).status_code == 200
     gate.set()
     assert calls == [{"local": True}]
+
+
+# 심사위원 키: 다 해 볼 수 있지만 크레딧이 드는 요청은 하루 한도까지
+def test_judge_key_daily_limit(monkeypatch):
+    rid, d = make_run()
+    monkeypatch.setattr(A, "APP_KEY", "teach-1"); monkeypatch.setattr(A, "JUDGE_KEY", "judge-9")
+    monkeypatch.setitem(A.JUDGE_LIMITS, "agent", 2); A.JUDGE_USE.update(day="", n={})
+    import agent
+    monkeypatch.setattr(agent, "run", lambda *a: {"changes": [], "note": "", "problems": [], "checks": 0, "cost": 0})
+    c = TestClient(A.app, base_url="https://testserver")
+    assert c.post("/login", data={"k": "judge-9"}).status_code == 200 and "sc_judge" in c.cookies
+    cards = json.loads((d / "cards.json").read_text())["cards"]
+    assert c.put(f"/api/runs/{rid}/cards", json={"cards": cards}).status_code == 200   # 저장은 세지 않음
+    codes = [c.post(f"/api/runs/{rid}/agent", json={"instruction": "x"}).status_code for _ in range(3)]
+    assert codes == [200, 200, 429]

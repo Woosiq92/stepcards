@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>StepCards</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230064e0'/%3E%3Cpath d='m7 12.5 3 3 7-7' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
   :root {
     --bg:#f1f4f7; --paper:#fff; --raised:#f7f9fb; --ink:#1c2b33; --ink2:#344854; --muted:#65788a; --line:#dde3e9; --line2:#cbd2d9;
@@ -95,6 +96,8 @@
   .askbox { background:var(--paper); border-radius:var(--r); padding:14px 18px; box-shadow:var(--sh-1); margin:0 0 12px; display:grid; gap:8px; }
   .askrow { display:flex; gap:10px; align-items:flex-start; } .askrow .n { width:26px; height:26px; font-size:12px; flex:none; } .askrow s { color:var(--muted); }
   .askbtns { display:flex; gap:8px; }
+  .caught { background:var(--ok-soft); color:var(--ok); border-radius:var(--r); padding:10px 14px; margin:0 0 12px; font-size:14px; }
+  .caught summary { cursor:pointer; font-weight:700; } .caught summary .ico { width:18px; height:18px; } .caught ul { margin:6px 0 0; padding-left:20px; color:var(--ink2); }
   .jump { display:flex; gap:6px; overflow-x:auto; padding:2px 0 10px; scrollbar-width:none; }
   .jump button { flex:none; min-width:34px; height:34px; border-radius:99px; border:1px solid var(--line2); background:var(--paper); font-weight:700; font-size:13px; color:var(--ink2); }
   .jump button.bad { border-color:var(--bad); color:var(--bad); background:var(--bad-soft); }
@@ -296,6 +299,7 @@ const rawFetch = window.fetch.bind(window);
 let keyAsk = null;
 window.fetch = async (u, o = {}) => {
   const r = await rawFetch(u, o);
+  if (r.status === 429) toast(T("심사용 키의 오늘 한도를 다 썼어요. 보기는 계속 돼요.", "The judge key has reached today's limit. Viewing still works."));
   if (r.status !== 401 || !o.method || o.method === "GET" || String(u) === "/login") return r;
   if (Date.now() - keyDeclined < 60000) return r;  // 방금 '취소'했으면 1분 동안은 다시 묻지 않는다(자동 저장·따라 하기가 창을 계속 띄우지 않게)
   return (await askKey()) ? rawFetch(u, o) : r;
@@ -623,6 +627,8 @@ function edit() {
     <div id="askres"></div>
     <nav class="jump" id="jump" aria-label="${T("카드로 바로 가기", "Jump to card")}">${jumpHtml(per)}</nav>
     <p class="hint">${T("문장을 누르면 바로 고쳐져요. 사진이 마음에 안 들면 '다른 장면 고르기'를 누르세요.", "Click a sentence to edit it. If a photo is not right, use 'Choose another frame'.")}</p>
+    ${S.data.caught?.length ? `<details class="caught"><summary>${icon("check")} ${T(`검사기가 첫 답에서 ${S.data.caught.length}곳을 잡아 다시 만들게 했어요 → ${S.data.tries}번째에 통과`, `The code checker caught ${S.data.caught.length} problem(s) in the first answer and sent them back → passed on try ${S.data.tries}`)}</summary>
+      <ul>${S.data.caught.map(m => `<li>${esc(problemText(m, true))}</li>`).join("")}</ul></details>` : ""}
     <div id="global">${global.map(g => `<div class="issue">${esc(g)}</div>`).join("")}</div>
     <div class="list">${cs.map((c, i) => rowHtml(c, i, per[i]) + between(i, gaps)).join("")}</div>`;
   document.querySelectorAll("textarea.say").forEach(autosize);
@@ -829,7 +835,7 @@ function segHtml() {
 }
 function use() {
   const cs = S.data.cards, nIss = (S.data.problems || []).length, pages = Math.ceil(cs.length / 6);
-  const title = esc(S.data.title || "");
+  const title = esc((ui === "en" && S.data.title_en) || S.data.title || "");
   let sheets = "";
   for (let p = 0; p < pages; p++)
     sheets += `<div class="sheet">${title ? `<div class="shead">${title} · ${p + 1}/${pages}</div>` : ""}${cs.slice(p * 6, p * 6 + 6).map((c, j) =>
@@ -1109,7 +1115,7 @@ async function coachLoop() {
     if (!C.manual && C.buf.length >= 2 && cur <= cs.length) {
       let d = null;  // 네트워크 오류도 '판단 못 함'으로 보고 계속 본다
       try { const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev, local: C.local }) }); if (r.ok) d = await r.json();
-        if (r.status === 401) { C.manual = true; pill(T("자동 넘김은 접속 키가 필요해요 · 이전·다음으로 넘겨요", "Auto-advance needs the access key · use Back and Next")); continue; } } catch { d = null; }
+        if (r.status === 401 || r.status === 429) { C.manual = true; pill(T("자동 넘김은 접속 키가 필요해요 · 이전·다음으로 넘겨요", "Auto-advance needs the access key · use Back and Next")); continue; } } catch { d = null; }
       if (!C.running || S.idx + 1 !== cur) continue;  // 그 사이 사람이 직접 넘겼으면 결과는 버린다
       if (!d) { pill(T("판단하지 못했어요 · 다시 보는 중", "No answer · watching again")); }
       else {

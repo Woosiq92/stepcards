@@ -35,7 +35,7 @@ Tested so far: latte making (café training, two videos including a creator's re
 4. **Use**: send the cards as images through the phone's share sheet (messengers, text) or save them as one image, print six cards per A4 page (plus a task-analysis record sheet for the teacher), flip through on a tablet, or start **Coach mode**.
 5. **Coach mode**: a camera watches the learner. Muse Spark looks at the last two frames and says which step is happening; SAM 3.1 confirms the object in hand before the next card appears. If a later step shows up, the current card is shown again first; if it shows up twice in a row, the cards follow the learner. No praise, no scores, nothing stored — camera frames are never saved. Optional "help only when needed" (a prompt hierarchy, as in special-education practice): each card starts as text only; if the step takes more than twice as long as in the demonstration (10–60 s), or the learner presses Help (also on the glasses), it adds the picture, then reads it aloud (skipped if the teacher turned sound off), then plays the motion clip. On the last card, when the model sees the step finished twice in a row (or someone presses Done), a plain "All steps done" screen appears, with how far help went on each card; this is shown once and not saved. Back and Next always work by hand.
 
-6. **Glasses display** (`/glasses?run=<id>`): a 600×600 web app for Meta Ray-Ban Display. Black background (transparent on the glasses' additive display), focus-and-select controls only, about 16 KB first load. It shows the same card as Coach mode, and Back/Next on the glasses move Coach mode too. Tested in desktop Chrome at 600×600; not yet tested on glasses or in Meta's simulator.
+6. **Glasses display** (`/glasses?run=<id>`): a 600×600 web app for Meta Ray-Ban Display. Black background (transparent on the glasses' additive display), focus-and-select controls only, about 16 KB first load. It shows the same card as Coach mode, and Back/Next on the glasses move Coach mode too. Checked in Meta's Ray-Ban Display Simulator (Chrome extension) and built to Meta's web-app guidance (toolkit colours and 88 px buttons, drawings shown on a see-through black background, one action per press, system Back asks before leaving). Not yet tested on physical glasses. Today the camera is a phone or tablet and the glasses are the display and Help/Next input; a glasses camera through Meta's Wearables Device Access Toolkit (a native phone app) is the next step.
 
 The interface is available in Korean and English (switch at the top right). Card text can be Korean, English, or both.
 
@@ -47,7 +47,7 @@ The interface is available in Korean and English (switch at the top right). Card
 | `muse-spark-1.3` (agent) | teacher-request agent: rewrites sentences, calling the code checker (`check_cards` tool) until it passes |
 | `sam-3.1` | outlining the object in hand; confirming the object before Coach mode moves on |
 | `muse-voice-transcribe-1.0` | transcribing what the demonstrator says (`/v1/asr/transcribe`, endpointing mode) |
-
+| `muse-image-1.0` | drawing cards: redraws a card's photo as a simple illustration, with one fixed style for every card (`/v1/images/edits`) |
 | `Muse Glimmer 30B` (open weights) | optional, on this Mac: making cards (step splitting and sentences) and Coach mode step recognition — video and camera frames never leave the computer |
 
 All other calls go to the Meta Model API (`https://api.meta.ai/v1`).
@@ -58,12 +58,20 @@ From runs recorded in this build (small samples, see notes):
 
 - 6 min 2 s first-person latte video → 19 cards in 2.9 min for about $0.20 (another run: 22 cards, 3.4 min, about $0.36).
 - 3 min 13 s latte video → 15–17 cards for about $0.09–0.12 per run (4 runs).
-- The checker sent a step back to the model in 1 of 8 full runs so far; that run passed on the second try.
-- Coach mode, replaying a video as the camera: about 3.6 s per decision (two frames, minimal reasoning; 4 frames with default reasoning took 9–11 s), about $0.08 per minute.
+- The checker sends failures back with reasons. Example: on the family-recipe video the first answer wrote "썰으세요" (a common misspelling of "써세요", slice) on 5 cards; the checker named each one, and the second answer passed. Across recorded runs most first answers already pass.
+- Coach mode, replaying the same video the cards were made from as the camera (a replay test, not live use): about 3.6 s per decision (two frames, minimal reasoning; 4 frames with default reasoning took 9–11 s), about $0.08 per minute.
 
 - Coach mode on this Mac with Muse Glimmer 30B (Q4 GGUF, llama.cpp, 48 GB Apple Silicon): reached the last card in the same replay test at about 4.7 s per decision, $0. Glimmer writes a long reasoning trace first (18–21 s per answer); pre-filling the start of the JSON answer skips it with about the same accuracy (Glimmer 15 and 13 of 16 cards, Muse Spark 15 and 14, on two single-frame-pair tests). The SAM check is skipped in this mode because SAM runs on the API.
 
 - Making cards on this Mac with Muse Glimmer (same prompt, checker and retries; frames 2–3 s apart): napkin video, 11 steps, 8 of the 10 steps in the video's own captions (Muse Spark: also 8 of 10), passed the checker on the third try, about 3.3 min, $0; dance video, the same 3 steps as the instructor's captions, about 2.4 min. Korean sentences were rougher than Muse Spark's (one misspelling the checker caught but the model could not fix).
+
+Step accuracy against the sample videos' own on-screen step captions (not a teacher's task analysis):
+
+| Sample | Steps in the video's captions | Matched by the cards |
+|---|---|---|
+| Napkin butterfly fold | 10 | 8 (the last two shaping steps, mostly off-screen, were missed) |
+| Shoki dance | 3 | 3, with matching times |
+| Bedside cabinet (manual video) | 16 numbered steps | cards follow steps 1–16 in order |
 
 Not measured yet: time to make the same cards by hand, and step accuracy against a teacher's own task analysis.
 
@@ -92,6 +100,7 @@ Deploy (for example Railway, from this GitHub repository): the `Dockerfile` inst
 |---|---|
 | `MODEL_API_KEY` | Meta Model API key |
 | `APP_KEY` | an access key; anyone can view the cards, but adding videos, drawings, the agent, Coach mode and edits ask for this key once (they cost credits or change cards) |
+| `JUDGE_KEY` | optional second key for judges: everything works, with daily limits on the calls that cost credits (6 videos, 60 drawings, 20 agent requests, about 30 minutes of Coach mode) |
 | `DATA_DIR` | a persistent volume path (for example `/data`), so card sets survive redeploys |
 
 The key is asked inside the app the first time an action needs it; a cookie keeps it for 30 days. On the glasses, add the web app as `https://<host>/glasses?run=<id>` (the Use page shows QR codes for it and for the tablet view). A phone camera or glasses web app needs HTTPS, which the host provides.
@@ -116,7 +125,7 @@ Tests (checker, server, Coach decisions; no paid model calls): `.venv/bin/pip in
 
 ## Privacy
 
-- Runs locally; videos and cards stay on the machine (`runs/`).
+- Run on your own computer, videos and cards stay there (`runs/`). The hosted demo sends frames to the Meta Model API to make cards and run Coach mode.
 - Do not use videos of students. Our tests and demo use adult demonstrations only.
 - Coach mode never stores camera frames and keeps no records of the learner.
 - For school use, both making cards and Coach mode can run on Muse Glimmer on the school's own computer, so student video never leaves it.

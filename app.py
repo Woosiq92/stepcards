@@ -30,6 +30,9 @@ for s in sorted(SEED.iterdir()) if SEED.is_dir() else []:
         p["video_path"] = str(RUNS / s.name / "video.mp4")
         (RUNS / s.name / "progress.json").write_text(json.dumps(p, ensure_ascii=False))
 APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정: 키를 아는 사람만 크레딧을 쓰고 카드를 바꾸게
+JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 수 있지만 하루 한도가 있다(제출 설명에 적는 키)
+JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "coach": 900, "frame": 60, "retry": 6}  # 하루 횟수. 따라 하기 900번 ≈ 30분
+JUDGE_USE = {"day": "", "n": {}}
 NOW_PATH = re.compile(r"/api/runs/\w+/now$")
 app = FastAPI()
 
@@ -42,12 +45,23 @@ async def need_key(request: Request, call_next):
         return await call_next(request)
     if request.url.path == "/login" and request.method == "POST":
         k = str((await request.form()).get("k", ""))
-        if not hmac.compare_digest(k.encode(), APP_KEY.encode()):
-            return JSONResponse({"error": "wrong key"}, 401)
-        r = JSONResponse({"ok": True})
-        r.set_cookie("sc_key", APP_KEY, max_age=60 * 60 * 24 * 30, httponly=True, secure=True, samesite="lax")
-        return r
+        for name, key in (("sc_key", APP_KEY), ("sc_judge", JUDGE_KEY)):
+            if key and hmac.compare_digest(k.encode(), key.encode()):
+                r = JSONResponse({"ok": True})
+                r.set_cookie(name, key, max_age=60 * 60 * 24 * 30, httponly=True, secure=True, samesite="lax")
+                return r
+        return JSONResponse({"error": "wrong key"}, 401)
     if hmac.compare_digest(request.cookies.get("sc_key", "").encode(), APP_KEY.encode()):
+        return await call_next(request)
+    if JUDGE_KEY and hmac.compare_digest(request.cookies.get("sc_judge", "").encode(), JUDGE_KEY.encode()):
+        kind = next((k for k in JUDGE_LIMITS if request.url.path.rstrip("/").endswith(k)), None)
+        if kind:  # 크레딧이 드는 요청만 센다. 날이 바뀌면 처음부터
+            today = time.strftime("%Y-%m-%d")
+            if JUDGE_USE["day"] != today:
+                JUDGE_USE.update(day=today, n={})
+            if JUDGE_USE["n"].get(kind, 0) >= JUDGE_LIMITS[kind]:
+                return JSONResponse({"error": "daily limit for the judge key"}, 429)
+            JUDGE_USE["n"][kind] = JUDGE_USE["n"].get(kind, 0) + 1
         return await call_next(request)
     return JSONResponse({"error": "key required"}, 401)
 CARDS_LOCK = threading.Lock()  # cards.json 읽고-고치고-쓰기가 동시에 겹치지 않게
@@ -204,10 +218,14 @@ def progress(run_id: str):
 
 @app.get("/api/runs/{run_id}/cards")
 def cards(run_id: str):
-    data = read(run_dir(run_id), "cards.json")
+    d = run_dir(run_id)
+    data = read(d, "cards.json")
     if data is None:
         raise HTTPException(404, "아직 카드가 없습니다")
-    return data
+    # 검사기가 첫 답에서 잡아 다시 만들게 한 것(화면에 보여 준다). 견본은 영어 제목도
+    splits = [e for e in (read(d, "progress.json") or {}).get("events", []) if e.get("stage") == "split" and "n" in e]
+    caught = splits[0]["problems"] if len(splits) > 1 and splits[0].get("problems") else []
+    return {**data, "caught": caught, "tries": len(splits), "title_en": SEED_INDEX.get(run_id, {}).get("title_en", "")}
 
 
 @app.put("/api/runs/{run_id}/cards")
