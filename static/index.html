@@ -173,6 +173,14 @@
   .seg button.on { background:var(--paper); color:var(--ink); box-shadow:var(--sh-1); }
   .picbar .seg, .langrow .seg { background:var(--bg); }
   .sheet { background:#fff; width:100%; max-width:794px; aspect-ratio:210/297; margin:0 auto 28px; box-shadow:var(--sh-2); border-radius:6px; padding:4%; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(3,minmax(0,1fr)); gap:3%; }
+  .sheet { position:relative; }
+  .shead { position:absolute; top:1.2%; left:4%; right:4%; font-size:12px; font-weight:700; color:var(--muted); }
+  .record { background:#fff; max-width:794px; margin:0 auto 28px; padding:32px; box-shadow:var(--sh-2); border-radius:6px; }
+  .rhead { display:flex; justify-content:space-between; align-items:baseline; font-size:18px; } .rkey { font-size:13px; color:var(--muted); margin:6px 0 12px; }
+  .record table { width:100%; border-collapse:collapse; font-size:14px; } .record th, .record td { border:1px solid #9aa7b3; padding:4px 6px; text-align:left; vertical-align:middle; }
+  .record th:nth-child(n+4), .record td:nth-child(n+4) { width:9%; } .record td:first-child { width:28px; text-align:center; font-weight:700; }
+  .record td img { width:72px; aspect-ratio:16/9; object-fit:cover; display:block; } .record thead { display:table-header-group; } .record tr { break-inside:avoid; }
+  .recordbar { max-width:794px; margin:12px auto 12px; } .recordbar h3 { margin-top:16px; }
   .pcard { border:2px solid var(--ink); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; position:relative; min-height:0; }
   .pcard img { width:100%; aspect-ratio:16/9; object-fit:cover; display:block; }
   .pcard .txt { padding:6px 10px; font-size:clamp(12px,2.2vw,19px); font-weight:700; }
@@ -182,7 +190,10 @@
   @media print {
     header, .noprint { display:none !important; } main { padding:0; max-width:none; } body { background:#fff; }
     .sheet { box-shadow:none; border-radius:0; margin:0; max-width:none; width:210mm; height:297mm; aspect-ratio:auto; padding:12mm; gap:6mm; break-after:page; }
-    .pcard .txt { font-size:18px; }
+    .pcard .txt { font-size:24px; flex:1; display:flex; flex-direction:column; justify-content:center; padding:6px 12px; }
+    .shead { top:4mm; font-size:10px; }
+    body[data-print=record] .sheet, body:not([data-print=record]) .record { display:none !important; }
+    .record { box-shadow:none; margin:0; max-width:none; padding:12mm; }
   }
   body.tabmode header { display:none; } body.tabmode main { padding:0; max-width:none; }
   .tab { position:fixed; inset:0; background:var(--dark); color:#fff; display:flex; flex-direction:column; user-select:none; }
@@ -673,16 +684,22 @@ function segHtml() {
 }
 function use() {
   const cs = S.data.cards, nIss = (S.data.problems || []).length, pages = Math.ceil(cs.length / 6);
+  const title = esc(S.data.title || "");
   let sheets = "";
   for (let p = 0; p < pages; p++)
-    sheets += `<div class="sheet">${cs.slice(p * 6, p * 6 + 6).map((c, j) =>
-      `<div class="pcard"><img src="${imgSrc(c)}" alt=""><div class="n">${p * 6 + j + 1}</div><div class="txt">${text(c)}</div></div>`).join("")}</div>`;
+    sheets += `<div class="sheet">${title ? `<div class="shead">${title} · ${p + 1}/${pages}</div>` : ""}${cs.slice(p * 6, p * 6 + 6).map((c, j) =>
+      `<div class="pcard"><img src="${imgSrc(c)}" alt="${esc(c.ko)}"><div class="n">${p * 6 + j + 1}</div><div class="txt">${text(c)}</div></div>`).join("")}</div>`;
+  // 교사용 기록지: 카드마다 한 줄, 날짜 칸에 그날 도움 단계를 손으로 적는다(서버에는 아무것도 남기지 않음)
+  const record = `<div class="record"><div class="rhead"><b>${title || T("과제분석 기록지", "Task-analysis record")}</b><span>${T("이름", "Name")} ______________</span></div>
+    <div class="rkey">${T("적는 법: ○ 혼자 · 1 글 · 2 그림 · 3 소리 · 4 움직임 · 5 손으로 도움", "Key: ○ on own · 1 text · 2 picture · 3 sound · 4 motion · 5 hands-on help")}</div>
+    <table><thead><tr><th>#</th><th></th><th>${T("할 일", "Step")}</th>${"<th>/</th>".repeat(6)}</tr></thead>
+    <tbody>${cs.map((c, i) => `<tr><td>${i + 1}</td><td><img src="${imgSrc(c)}" alt=""></td><td>${text(c)}</td>${"<td></td>".repeat(6)}</tr>`).join("")}</tbody></table></div>`;
   $("#main").innerHTML = `
     <div class="noprint">
       <h2>${T("카드 쓰기", "Use the cards")}</h2>
       ${nIss ? `<div class="issue">${T(`아직 확인할 곳이 ${nIss}곳 있어요.`, `${nIss} item(s) still need checking.`)} <a href="#run=${S.run}&view=edit">${T("고치러 가기", "Go fix")}</a></div>` : ""}
       <div class="choices three">
-        <button class="choice" onclick="window.print()"><span class="ci">${icon("print")}</span><div class="t">${T("종이로 인쇄하기", "Print")}</div><div class="d">${T(`A4 한 장에 카드 6장 · 아래 미리보기 그대로 나와요 (${pages}쪽)`, `Six cards per A4 page, exactly as previewed below (${pages} pages)`)}</div></button>
+        <button class="choice" onclick="printWhat('cards')"><span class="ci">${icon("print")}</span><div class="t">${T("종이로 인쇄하기", "Print")}</div><div class="d">${T(`A4 한 장에 카드 6장 · 아래 미리보기 그대로 나와요 (${pages}쪽)`, `Six cards per A4 page, exactly as previewed below (${pages} pages)`)}</div></button>
         <button class="choice" onclick="go({run:S.run,view:'tablet'})"><span class="ci">${icon("tablet")}</span><div class="t">${T("태블릿으로 한 장씩 보기", "Tablet, one card at a time")}</div><div class="d">${T("화면 오른쪽을 누르거나 밀면 다음 카드로 넘어가요", "Tap the right side or swipe for the next card")}</div></button>
         <button class="choice feat" onclick="go({run:S.run,view:'coach'})"><span class="ci">${icon("glasses")}</span><div class="t">${T("따라 하기", "Coach mode")}</div><div class="d">${T("카메라가 하는 모습을 보고, 다음 카드를 알아서 띄워 줘요", "A camera watches the learner and shows the next card at the right time")}</div></button>
       </div>
@@ -697,8 +714,14 @@ function use() {
       <div class="langrow"><span class="muted">${T("카드 글자", "Card language")}</span> ${segHtml()}</div>
       <h3>${T("인쇄 미리보기", "Print preview")}</h3>
     </div>
-    ${sheets}`;
+    ${sheets}
+    <div class="noprint recordbar"><h3>${T("교사용 기록지", "Teacher's record sheet")}</h3>
+      <p class="muted">${T("카드마다 한 줄. 날짜 칸에 그날 학생이 받은 도움 단계를 적어요. 따라 하기 끝 화면의 요약을 옮겨 적기 좋아요.", "One row per card. Write the help level the learner needed that day; copy it from the Coach end screen.")}</p>
+      <button class="btn" onclick="printWhat('record')">${icon("print")} ${T("기록지 인쇄", "Print record sheet")}</button></div>
+    ${record}`;
 }
+function printWhat(w) { document.body.dataset.print = w; window.print(); }
+addEventListener("afterprint", () => { delete document.body.dataset.print; });  // 그냥 Ctrl+P 는 카드 인쇄
 function tablet() {
   const cs = S.data.cards;
   S.idx = Math.min(S.idx, cs.length - 1);
