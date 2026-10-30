@@ -45,40 +45,106 @@ def mark_interrupted():
 
 
 mark_interrupted()
+
+
+def sweep():
+    """저장소가 끝없이 늘지 않게: 다시 만들 수 있는 캐시(움직임 영상·안경용 사진)는 CACHE_DAYS 지나면 지우고,
+    RETAIN_DAYS(기본 0=끔)가 있으면 그동안 아무도 고치지 않은 교사 카드 묶음과 올린 영상을 지운다(견본 제외)"""
+    now, cache_days, keep_days = time.time(), int(os.environ.get("CACHE_DAYS", 30)), int(os.environ.get("RETAIN_DAYS", 0))
+    for f in list(RUNS.glob("*/clips/*")) + list(RUNS.glob("*/glass/*")):
+        if now - f.stat().st_mtime > cache_days * 86400:
+            f.unlink(missing_ok=True)
+    if keep_days:
+        for d in RUNS.iterdir():
+            c = d / "cards.json"
+            if d.is_dir() and d.name not in SEED_INDEX and c.exists() and now - c.stat().st_mtime > keep_days * 86400:
+                try:
+                    v = Path(json.loads((d / "progress.json").read_text()).get("video_path") or "")
+                except (OSError, ValueError):
+                    v = Path("")
+                shutil.rmtree(d)
+                if v.is_file() and v.resolve().parent == UPLOADS.resolve():
+                    v.unlink()
+
+
+sweep()
 APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정: 키를 아는 사람만 크레딧을 쓰고 카드를 바꾸게
 JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 수 있지만 하루 한도가 있다(제출 설명에 적는 키)
 JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "coach": 900, "frame": 60, "retry": 6}  # 하루 횟수. 따라 하기 900번 ≈ 30분
 JUDGE_USE = {"day": "", "n": {}}
+TEACHERS = dict(x.strip().split(":", 1) for x in os.environ.get("TEACHER_KEYS", "").split(",") if ":" in x)  # 교사별 키 "이름:키,이름:키"
 NOW_PATH = re.compile(r"/api/runs/\w+/now$")
+RUN_PATH = re.compile(r"/api/runs/(\w+)(?=/|$)")
+STATE = DATA / "state.json"  # 안경·따라 하기 맞추기 상태와 심사용 키 사용량: 서버를 다시 켜도 이어지게
+
+
+def load_state():
+    try:
+        st = json.loads(STATE.read_text())
+        NOW.update(st.get("now", {})); JUDGE_USE.update(st.get("judge", {}))
+    except (OSError, ValueError):
+        pass
+
+
+def save_state():
+    tmp = STATE.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"now": NOW, "judge": JUDGE_USE}, ensure_ascii=False))
+    os.replace(tmp, STATE)
+NOW = {}
+load_state()
 app = FastAPI()
 
 
-def has_key(request):
-    """교사 키나 심사용 키가 있는지(키를 설정하지 않은 로컬은 늘 참)"""
+def eq(a, b):
+    return bool(b) and hmac.compare_digest(a.encode(), b.encode())
+
+
+def who(request):
+    """요청한 사람: admin(APP_KEY) / teacher:이름(TEACHER_KEYS) / judge / ''(키 없음). 키를 설정하지 않은 로컬은 admin"""
     if not APP_KEY:
-        return True
-    return any(key and hmac.compare_digest(request.cookies.get(name, "").encode(), key.encode())
-               for name, key in (("sc_key", APP_KEY), ("sc_judge", JUDGE_KEY)))
+        return "admin"
+    c = request.cookies
+    if eq(c.get("sc_key", ""), APP_KEY):
+        return "admin"
+    name = next((n for n, k in TEACHERS.items() if eq(c.get("sc_teacher", ""), k)), None)
+    if name:
+        return "teacher:" + name
+    return "judge" if eq(c.get("sc_judge", ""), JUDGE_KEY) else ""
+
+
+def has_key(request):
+    return bool(who(request))
+
+
+def owner_of(run_id):
+    f = RUNS / run_id / "owner.txt"
+    return f.read_text().strip() if f.exists() else ""
 
 
 @app.middleware("http")
 async def need_key(request: Request, call_next):
-    """보기(GET)는 누구나. 돈이 들거나 데이터를 바꾸는 요청만 접속 키(쿠키)가 있어야 한다.
+    """보기(GET)는 누구나. 돈이 들거나 데이터를 바꾸는 요청만 키(쿠키)가 있어야 한다.
+    교사 키는 자기가 올린 카드 묶음만 고치고 지울 수 있다(따라 하기는 누구 것이든). 바꾸는 요청은 카드 묶음마다 기록을 남긴다.
     키는 화면 안 입력 칸에서 POST /login 으로 받는다. 안경·따라 하기의 지금 카드 맞추기(/now)는 키 없이"""
-    if not APP_KEY or request.method in ("GET", "HEAD") or NOW_PATH.match(request.url.path):
+    path = request.url.path
+    if not APP_KEY or request.method in ("GET", "HEAD") or NOW_PATH.match(path):
         return await call_next(request)
-    if request.url.path == "/login" and request.method == "POST":
+    if path == "/login" and request.method == "POST":
         k = str((await request.form()).get("k", ""))
-        for name, key in (("sc_key", APP_KEY), ("sc_judge", JUDGE_KEY)):
-            if key and hmac.compare_digest(k.encode(), key.encode()):
+        for name, key in [("sc_key", APP_KEY), ("sc_judge", JUDGE_KEY)] + [("sc_teacher", tk) for tk in TEACHERS.values()]:
+            if eq(k, key):
                 r = JSONResponse({"ok": True})
                 r.set_cookie(name, key, max_age=60 * 60 * 24 * 30, httponly=True, secure=True, samesite="lax")
                 return r
         return JSONResponse({"error": "wrong key"}, 401)
-    if hmac.compare_digest(request.cookies.get("sc_key", "").encode(), APP_KEY.encode()):
-        return await call_next(request)
-    if JUDGE_KEY and hmac.compare_digest(request.cookies.get("sc_judge", "").encode(), JUDGE_KEY.encode()):
-        kind = next((k for k in JUDGE_LIMITS if request.url.path.rstrip("/").endswith(k)), None)
+    role = who(request)
+    if not role:
+        return JSONResponse({"error": "key required"}, 401)
+    m = RUN_PATH.match(path)
+    if m and role.startswith("teacher:") and not path.endswith("/coach") and owner_of(m.group(1)) != role:
+        return JSONResponse({"error": "another teacher's card set"}, 403)
+    if role == "judge":
+        kind = next((k for k in JUDGE_LIMITS if path.rstrip("/").endswith(k)), None)
         if kind:  # 크레딧이 드는 요청만 센다. 날이 바뀌면 처음부터
             today = time.strftime("%Y-%m-%d")
             if JUDGE_USE["day"] != today:
@@ -86,8 +152,14 @@ async def need_key(request: Request, call_next):
             if JUDGE_USE["n"].get(kind, 0) >= JUDGE_LIMITS[kind]:
                 return JSONResponse({"error": "daily limit for the judge key"}, 429)
             JUDGE_USE["n"][kind] = JUDGE_USE["n"].get(kind, 0) + 1
-        return await call_next(request)
-    return JSONResponse({"error": "key required"}, 401)
+            save_state()
+    request.state.who = role
+    if m and not path.endswith("/coach") and (RUNS / m.group(1)).is_dir():  # 누가 무엇을 바꿨는지(따라 하기 판단은 너무 잦아서 뺀다)
+        with (RUNS / m.group(1) / "audit.jsonl").open("a") as f:
+            f.write(json.dumps({"t": round(time.time()), "who": role, "do": f"{request.method} {path[len(m.group(0)):] or '/'}"}, ensure_ascii=False) + "\n")
+    return await call_next(request)
+
+
 CARDS_LOCK = threading.Lock()  # cards.json 읽고-고치고-쓰기가 동시에 겹치지 않게
 RUNNING, RUNNING_LOCK = set(), threading.Lock()  # 파이프라인이 도는 실행 id: 같은 영상을 또 올려도 두 번 돌리지 않게
 CARD_PATH = re.compile(r"cards/[\w.-]+\.(jpg|png)")
@@ -140,10 +212,10 @@ def index():
 @app.get("/api/runs")
 def runs(request: Request):
     """처음 화면 목록. 키가 없으면 견본만: 교사가 올린 카드 묶음은 주소(추측하기 어려운 id)를 아는 사람만 연다"""
-    out, show_all = [], has_key(request)
+    out, role = [], who(request)
     for d in sorted(RUNS.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
         prog = read(d, "progress.json") if d.is_dir() else None
-        if prog and (show_all or d.name in SEED_INDEX):
+        if prog and (role == "admin" or d.name in SEED_INDEX or (role and owner_of(d.name) == role)):
             data = read(d, "cards.json")
             cs = data["cards"] if data else []
             seed = SEED_INDEX.get(d.name, {})
@@ -181,7 +253,7 @@ def video_seconds(path):
 
 
 @app.post("/api/upload")
-async def upload(file: UploadFile, local: bool = Form(False)):
+async def upload(request: Request, file: UploadFile, local: bool = Form(False)):
     UPLOADS.mkdir(parents=True, exist_ok=True)
     tmp, h = UPLOADS / f".{uuid.uuid4().hex}.part", hashlib.sha256()
     try:  # 이름이 같은 다른 영상이 옛 영상을 덮지 않게 내용 해시를 이름 앞에 붙인다
@@ -204,6 +276,8 @@ async def upload(file: UploadFile, local: bool = Form(False)):
     finally:
         tmp.unlink(missing_ok=True)
     run = pipeline.Run(dest)
+    if not (run.dir / "owner.txt").exists():  # 처음 올린 사람이 주인(교사 키는 자기 것만 고친다)
+        (run.dir / "owner.txt").write_text(getattr(request.state, "who", "admin"))
     if not local and not pipeline.API_KEY:
         raise HTTPException(503, "Meta API 키가 없어 이 맥에서 만들기만 됩니다")
     if local and not coach.local_ready():
@@ -360,7 +434,6 @@ def coach_check(run_id: str, body: dict):
 
 
 # 안경 화면(Ray-Ban Display 웹앱)과 따라 하기 화면이 같은 카드를 보게 하는 공유 상태. 메모리에만 둔다
-NOW = {}
 
 
 @app.get("/glasses")
@@ -369,17 +442,25 @@ def glasses():
 
 
 @app.get("/api/runs/{run_id}/now")
-def now_get(run_id: str):
-    return NOW.get(run_id, {"i": 0, "again": False, "by": "", "v": 0, "lv": 0})
+def now_get(run_id: str, s: str = ""):
+    return NOW.get(now_key(run_id, s), {"i": 0, "again": False, "by": "", "v": 0, "lv": 0})
+
+
+def now_key(run_id, s):
+    """같은 카드 묶음을 여러 학생이 동시에 쓰면 따라 하기 화면마다 짝 코드(s)로 나눈다. 없으면 카드 묶음 하나에 하나"""
+    s = re.sub(r"[^a-z0-9]", "", str(s).lower())[:8]
+    return f"{run_id}|{s}" if s else run_id
 
 
 @app.post("/api/runs/{run_id}/now")
 def now_set(run_id: str, body: dict):
     n = len(read(run_dir(run_id), "cards.json")["cards"])
-    v = NOW.get(run_id, {}).get("v", 0) + 1
-    NOW[run_id] = {"i": max(0, min(n - 1, int(body.get("i", 0)))), "again": bool(body.get("again")), "by": str(body.get("by", ""))[:10], "v": v,
+    key = now_key(run_id, body.get("s", ""))
+    v = NOW.get(key, {}).get("v", 0) + 1
+    NOW[key] = {"i": max(0, min(n - 1, int(body.get("i", 0)))), "again": bool(body.get("again")), "by": str(body.get("by", ""))[:10], "v": v,
                    "lv": max(0, min(4, int(body.get("lv") or 0))), "fin": bool(body.get("fin"))}  # fin = 마지막 단계까지 마침  # 도움 단계(0=끔, 1 글 → 4 움직임)
-    return NOW[run_id]
+    save_state()
+    return NOW[key]
 
 
 @app.get("/api/runs/{run_id}/glass/{i}.jpg")
@@ -420,16 +501,45 @@ def card_clip(run_id: str, n: int, g: int = 0):
 
 
 @app.get("/api/runs/{run_id}/qr.svg")
-def qr(run_id: str, request: Request, to: str = "tablet", lang: str = "ko"):
+def qr(run_id: str, request: Request, to: str = "tablet", lang: str = "ko", s: str = ""):
     """학생 기기로 넘기는 QR: 태블릿 보기나 안경 화면 주소(보기는 키 없이 된다)"""
     import segno
     run_dir(run_id)
     base = f"{request.headers.get('x-forwarded-proto', request.url.scheme)}://{request.headers.get('host', request.url.netloc)}"
     lang = lang if lang in ("ko", "en", "both") else "ko"
-    url = f"{base}/glasses?run={run_id}&lang={lang}" if to == "glasses" else f"{base}/?ui={lang if lang != 'both' else 'ko'}#run={run_id}&view=tablet"
+    url = f"{base}/glasses?run={run_id}&lang={lang}" + (f"&s={re.sub(r'[^a-z0-9]', '', s.lower())[:8]}" if s else "") if to == "glasses" else f"{base}/?ui={lang if lang != 'both' else 'ko'}#run={run_id}&view=tablet"
     buf = io.BytesIO()
     segno.make(url, error="m").save(buf, kind="svg", scale=6, border=2, dark="#1c2b33")
     return Response(buf.getvalue(), media_type="image/svg+xml", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/health")
+def health():
+    """상태 점검(Railway healthcheck·바깥 감시용): 저장 공간, 도는 작업, 키 여부"""
+    du = shutil.disk_usage(RUNS)
+    return {"ok": du.free > MIN_FREE_GB << 30, "free_gb": round(du.free / 2**30, 1), "used_pct": round(du.used / du.total * 100),
+            "card_sets": sum(1 for d in RUNS.iterdir() if d.is_dir()), "making": len(RUNNING), "api_key": bool(pipeline.API_KEY)}
+
+
+@app.get("/api/runs/{run_id}/export.zip")
+def export(run_id: str):
+    """카드 묶음 내려받기(백업·다른 서버로 옮기기): 카드·사진·그림·제목. 영상과 1초 사진은 빼서 작게"""
+    import zipfile
+    d = run_dir(run_id)
+    if not (d / "cards.json").exists():
+        raise HTTPException(404, "아직 카드가 없습니다")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.write(d / "cards.json", "cards.json")
+        for f in sorted((d / "cards").glob("*")):
+            z.write(f, f"cards/{f.name}")
+    return Response(buf.getvalue(), media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="stepcards_{run_id}.zip"'})
+
+
+@app.exception_handler(Exception)
+async def crashed(request: Request, e: Exception):  # 처리 못 한 오류는 알림으로(무엇이 터졌는지만, 내용은 로그에)
+    pipeline.alert(f"StepCards: 서버 오류 {request.method} {request.url.path} ({type(e).__name__})")
+    return JSONResponse({"error": "server error"}, 500)
 
 
 @app.get("/api/local")

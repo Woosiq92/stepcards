@@ -299,3 +299,38 @@ def test_upload_checks(monkeypatch):
     assert client.post("/api/upload", files={"file": ("x.mp4", b"not a video")}).status_code == 400
     monkeypatch.setattr(pipeline, "API_KEY", "")
     assert client.post("/api/upload", files={"file": ("v.mp4", VIDEO.read_bytes())}).status_code == 503
+
+
+# 교사 키: 자기가 올린 것만 고치고 지운다(따라 하기는 누구 것이든), 목록에는 견본+자기 것, 바꾼 것은 기록
+def test_teacher_keys(monkeypatch):
+    mine, dm = make_run(); other, do = make_run()
+    (dm / "owner.txt").write_text("teacher:kim"); (do / "owner.txt").write_text("teacher:lee")
+    monkeypatch.setattr(A, "APP_KEY", "admin-1"); monkeypatch.setattr(A, "TEACHERS", {"kim": "kk-1", "lee": "ll-2"})
+    c = TestClient(A.app, base_url="https://testserver")
+    assert c.post("/login", data={"k": "kk-1"}).status_code == 200 and "sc_teacher" in c.cookies
+    ids = [r["id"] for r in c.get("/api/runs").json()]
+    assert mine in ids and other not in ids
+    cards = json.loads((dm / "cards.json").read_text())["cards"]
+    assert c.put(f"/api/runs/{mine}/cards", json={"cards": cards}).status_code == 200
+    assert c.put(f"/api/runs/{other}/cards", json={"cards": cards}).status_code == 403
+    assert c.delete(f"/api/runs/{other}").status_code == 403
+    assert "teacher:kim" in (dm / "audit.jsonl").read_text()
+
+
+# 같은 카드 묶음도 짝 코드가 다르면 따로 넘어간다, 상태는 파일에 남는다
+def test_now_sessions():
+    rid, d = make_run()
+    client.post(f"/api/runs/{rid}/now", json={"i": 1, "s": "ab12"})
+    assert client.get(f"/api/runs/{rid}/now", params={"s": "ab12"}).json()["i"] == 1
+    assert client.get(f"/api/runs/{rid}/now", params={"s": "zz99"}).json()["i"] == 0
+    assert f"{rid}|ab12" in json.loads(A.STATE.read_text())["now"]
+
+
+def test_health_and_export():
+    rid, d = make_run()
+    h = client.get("/api/health").json()
+    assert h["ok"] in (True, False) and "free_gb" in h
+    r = client.get(f"/api/runs/{rid}/export.zip")
+    import zipfile, io as _io
+    names = zipfile.ZipFile(_io.BytesIO(r.content)).namelist()
+    assert "cards.json" in names and "cards/01.jpg" in names

@@ -33,6 +33,7 @@
 <script>
 // 안경 화면: 따라 하기 화면이 고른 카드를 그대로 보여 준다. 초점 이동(상하좌우)+선택(Enter)만으로 조작
 const run = new URLSearchParams(location.search).get("run");
+const pair = new URLSearchParams(location.search).get("s") || "";  // 따라 하기 화면의 짝 코드(같은 카드 묶음을 여러 명이 써도 따로)
 const lang = new URLSearchParams(location.search).get("lang") || (() => { try { return localStorage.getItem("lang") || "ko"; } catch { return "ko"; } })();  // 안경 브라우저는 교사 설정을 모르니 주소로 받는다
 const K = lang === "en";
 document.documentElement.lang = K ? "en" : "ko";
@@ -89,21 +90,21 @@ document.addEventListener("keydown", e => {
 async function finish() { await send({ i: cur.i, by: "glasses", fin: true }); }
 async function restart() { await send({ i: 0, by: "glasses", lv: cur.lv ? 1 : 0 }); }
 async function send(body) {
-  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, s: pair }) });
   if (r.ok) { cur = await r.json(); draw(false); }
 }
 async function help() {  // 도움 단계 한 칸 올리기(따라 하기 화면이 받아서 그림·소리·움직임을 더 보여 준다)
-  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: cur.i, lv: cur.lv + 1, by: "glasses" }) });
+  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: cur.i, lv: cur.lv + 1, by: "glasses", s: pair }) });
   if (r.ok) { cur = await r.json(); draw(false); }
 }
 async function flip(d) {
   const i = Math.max(0, Math.min(cards.length - 1, cur.i + d));
-  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i, by: "glasses", lv: cur.lv ? 1 : 0 }) });
+  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i, by: "glasses", lv: cur.lv ? 1 : 0, s: pair }) });
   if (r.ok) { cur = await r.json(); draw(false); }
 }
 async function poll() {
   try {
-    const d = await (await fetch(`/api/runs/${run}/now`)).json();
+    const d = await (await fetch(`/api/runs/${run}/now?s=${pair}`)).json();
     if (d.v !== cur.v) {  // 교사가 사진·그림·움직임을 바꿨을 수 있다(처음 한 번은 이미 받았다)
       if (cur.v !== -1) cards = (await (await fetch(`/api/runs/${run}/cards`)).json()).cards;
       if (!cards.length) { document.getElementById("m").innerHTML = `<div class="msg" id="msg">${K ? "No card set" : "카드 묶음이 없어요"}</div>`; cur = d; }

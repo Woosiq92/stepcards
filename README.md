@@ -101,6 +101,10 @@ Deploy (for example Railway, from this GitHub repository): the `Dockerfile` inst
 | `MODEL_API_KEY` | Meta Model API key |
 | `APP_KEY` | an access key; anyone can view the cards, but adding videos, drawings, the agent, Coach mode and edits ask for this key once (they cost credits or change cards) |
 | `JUDGE_KEY` | optional second key for judges: everything works, with daily limits on the calls that cost credits (6 videos, 60 drawings, 20 agent requests, about 30 minutes of Coach mode) |
+| `TEACHER_KEYS` | optional per-teacher keys, `name:key,name:key`: each teacher sees the samples plus their own card sets, and can edit or delete only their own (Coach mode works on any set). `APP_KEY` stays the admin key |
+| `ALERT_WEBHOOK` | optional webhook URL (Discord or Slack style): a one-line alert when card making stops or the server hits an unhandled error |
+| `CACHE_DAYS` / `RETAIN_DAYS` | motion-clip and glasses-image caches are rebuilt on demand and removed after `CACHE_DAYS` (30); if `RETAIN_DAYS` is set, teacher card sets untouched for that many days are removed with their videos (samples are kept) |
+| `STEP_MODEL` / `SAM_MODEL` / `ASR_MODEL` | model names, if Meta renames or retires one |
 | `DATA_DIR` | a persistent volume path (for example `/data`), so card sets survive redeploys |
 
 The key is asked inside the app the first time an action needs it; a cookie keeps it for 30 days. On the glasses, add the web app as `https://<host>/glasses?run=<id>` (the Use page shows QR codes for it and for the tablet view). A phone camera or glasses web app needs HTTPS, which the host provides.
@@ -122,6 +126,18 @@ Tests (checker, server, Coach decisions; no paid model calls): `.venv/bin/pip in
 | `coach_sim.py`, `coach_bench*.py` | Coach mode replay test and latency measurements |
 | `exp1-3.py` | first experiments (video input modes, stability, SAM prompts) |
 | `demo/` | scripted screen recording and demo video assembly |
+
+## Running it for real
+
+- **Who sees what**: without a key, the home page lists only the sample sets; card sets that teachers upload are unlisted and open only by their link (an unguessable id), which is what the QR codes carry.
+- **Accounts**: one admin key, optional per-teacher keys (own sets only), and a judge key with daily limits. Every change to a card set is appended to its `audit.jsonl` (who, when, what).
+- **Several learners at once**: each Coach screen has its own pairing code, and its glasses link carries that code, so learners using the same card set don't move each other's cards. This state and the judge-key usage survive restarts (`state.json`).
+- **Cost guards**: Coach mode pauses its camera after 5 minutes without a step change; uploads are limited to 500 MB and 10 minutes on the server, and refused when less than 2 GB is free.
+- **Restarts**: card making that was interrupted by a restart or redeploy is marked as stopped, so "Try again" appears instead of an endless "Making".
+- **Health and alerts**: `/api/health` (free space, jobs, key present) is Railway's health check (`railway.json`); `ALERT_WEBHOOK` sends failures to a chat.
+- **Backups**: each card set can be downloaded as a .zip from the Use page; for the whole volume, turn on Railway's volume backups.
+- **Without an API key** (for example after the hackathon credit ends) the site still starts: viewing, printing, tablet and glasses views work, and cards can still be made on a school computer with Muse Glimmer. A school deployment should use its own paid Meta API key, or Glimmer for anything involving students.
+- **Reproducible builds**: the base image is pinned (`python:3.14.8-slim`) and Python packages are pinned in `requirements.txt`.
 
 ## Privacy
 

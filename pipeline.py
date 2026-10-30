@@ -306,6 +306,16 @@ def highlight(run, steps, local=False):
     return cards
 
 
+def alert(text):
+    """오류 알림: ALERT_WEBHOOK(디스코드·슬랙 등 웹훅 주소)이 있으면 한 줄 보낸다. 알림이 실패해도 일은 계속"""
+    url = os.environ.get("ALERT_WEBHOOK")
+    if url:
+        try:
+            requests.post(url, json={"content": text, "text": text}, timeout=5)
+        except requests.RequestException:
+            pass
+
+
 def main(video, fresh=False, look=False, local=False):
     run = Run(video)
     run.events = []  # 진행판은 이번 실행만 보여 준다
@@ -314,6 +324,7 @@ def main(video, fresh=False, look=False, local=False):
         build(run, fresh, look, local)
     except Exception as e:
         run.log("error", f"멈췄어요: {type(e).__name__}: {str(e)[:200]}")
+        alert(f"StepCards: 카드 만들기가 멈췄어요 ({run.dir.name}, {type(e).__name__})")
         raise
 
 
