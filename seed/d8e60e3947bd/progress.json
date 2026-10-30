@@ -1,0 +1,65 @@
+{
+ "video": "dance_shoki.mp4",
+ "video_path": "",
+ "events": [
+  {
+   "t": 1793264508.8,
+   "stage": "start",
+   "msg": "dance_shoki.mp4 → d8e60e3947bd"
+  },
+  {
+   "t": 1793264509.2,
+   "stage": "extract",
+   "msg": "영상 108초, 사진 109장"
+  },
+  {
+   "t": 1793264524.0,
+   "stage": "listen",
+   "msg": "말 2구간 받아씀",
+   "n": 2,
+   "cost": 0.0054
+  },
+  {
+   "t": 1793264540.8,
+   "stage": "split",
+   "msg": "1번째 시도: 단계 4개, 문제 0개 (17초, $0.056)",
+   "n": 4,
+   "problems": [],
+   "warnings": [],
+   "cost": 0.0557
+  },
+  {
+   "t": 1793264543.4,
+   "stage": "highlight",
+   "msg": "1단계 '': 못 찾음",
+   "i": 1,
+   "total": 4
+  },
+  {
+   "t": 1793264546.2,
+   "stage": "highlight",
+   "msg": "2단계 '': 못 찾음",
+   "i": 2,
+   "total": 4
+  },
+  {
+   "t": 1793264549.8,
+   "stage": "highlight",
+   "msg": "3단계 '': 못 찾음",
+   "i": 3,
+   "total": 4
+  },
+  {
+   "t": 1793264552.1,
+   "stage": "highlight",
+   "msg": "4단계 '': 못 찾음",
+   "i": 4,
+   "total": 4
+  },
+  {
+   "t": 1793264552.1,
+   "stage": "done",
+   "msg": "완료: runs/d8e60e3947bd"
+  }
+ ]
+}

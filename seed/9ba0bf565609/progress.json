@@ -1,0 +1,219 @@
+{
+ "video": "latte.mp4",
+ "events": [
+  {
+   "t": 1793161774.3,
+   "stage": "start",
+   "msg": "latte.mp4 → 9ba0bf565609"
+  },
+  {
+   "t": 1793161776.0,
+   "stage": "extract",
+   "msg": "영상 193초, 사진 193장"
+  },
+  {
+   "t": 1793161798.7,
+   "stage": "split",
+   "msg": "1번째 시도: 단계 17개, 문제 0개 (23초, $0.091)",
+   "problems": [],
+   "warnings": [],
+   "cost": 0.0911
+  },
+  {
+   "t": 1793161804.4,
+   "stage": "highlight",
+   "msg": "1단계 'small cream cheese cup': 상자 찾음(small cream cheese cup, 손과 겹침)"
+  },
+  {
+   "t": 1793161807.9,
+   "stage": "highlight",
+   "msg": "2단계 'small cream cheese cup': 상자 찾음(small cream cheese cup, 손과 겹침)"
+  },
+  {
+   "t": 1793161810.6,
+   "stage": "highlight",
+   "msg": "3단계 'wooden spoon': 상자 찾음(spoon, 손과 겹침)"
+  },
+  {
+   "t": 1793161815.3,
+   "stage": "highlight",
+   "msg": "4단계 'wooden spoon': 못 찾음"
+  },
+  {
+   "t": 1793161818.8,
+   "stage": "highlight",
+   "msg": "5단계 'electric milk frother': 못 찾음"
+  },
+  {
+   "t": 1793161820.3,
+   "stage": "highlight",
+   "msg": "6단계 'small glass bowl': 못 찾음"
+  },
+  {
+   "t": 1793161823.3,
+   "stage": "highlight",
+   "msg": "7단계 'electric milk frother': 못 찾음"
+  },
+  {
+   "t": 1793161825.1,
+   "stage": "highlight",
+   "msg": "8단계 'white espresso machine': 상자 찾음(white espresso machine, 손과 안 겹침)"
+  },
+  {
+   "t": 1793161827.1,
+   "stage": "highlight",
+   "msg": "9단계 'chocolate syrup bottle': 상자 찾음(chocolate syrup bottle, 손과 겹침)"
+  },
+  {
+   "t": 1793161828.8,
+   "stage": "highlight",
+   "msg": "10단계 'small glass pitcher': 상자 찾음(small glass pitcher, 손과 겹침)"
+  },
+  {
+   "t": 1793161831.4,
+   "stage": "highlight",
+   "msg": "11단계 'ice cube': 못 찾음"
+  },
+  {
+   "t": 1793161835.3,
+   "stage": "highlight",
+   "msg": "12단계 'small plastic cup': 상자 찾음(small plastic cup, 손과 겹침)"
+  },
+  {
+   "t": 1793161837.5,
+   "stage": "highlight",
+   "msg": "13단계 'small glass pitcher': 못 찾음"
+  },
+  {
+   "t": 1793161838.9,
+   "stage": "highlight",
+   "msg": "14단계 'clear glass pitcher': 상자 찾음(clear glass pitcher, 손과 겹침)"
+  },
+  {
+   "t": 1793161840.6,
+   "stage": "highlight",
+   "msg": "15단계 'metal sifter': 상자 찾음(metal sifter, 손과 겹침)"
+  },
+  {
+   "t": 1793161842.2,
+   "stage": "highlight",
+   "msg": "16단계 'green straw': 상자 찾음(green straw, 손과 안 겹침)"
+  },
+  {
+   "t": 1793161843.9,
+   "stage": "highlight",
+   "msg": "17단계 'green straw': 상자 찾음(green straw, 손과 겹침)"
+  },
+  {
+   "t": 1793161843.9,
+   "stage": "done",
+   "msg": "완료: runs/9ba0bf565609"
+  },
+  {
+   "t": 1793162047.8,
+   "stage": "start",
+   "msg": "latte.mp4 → 9ba0bf565609"
+  },
+  {
+   "t": 1793162047.8,
+   "stage": "extract",
+   "msg": "영상 193초, 사진 193장"
+  },
+  {
+   "t": 1793162089.8,
+   "stage": "split",
+   "msg": "1번째 시도: 단계 16개, 문제 0개 (42초, $0.103)",
+   "problems": [],
+   "warnings": [
+    "8·9단계 사이 45~69초가 비어 있습니다."
+   ],
+   "cost": 0.1032
+  },
+  {
+   "t": 1793162093.4,
+   "stage": "highlight",
+   "msg": "1단계 'cream cheese cup': 상자 찾음(cream cheese cup, 손과 겹침)"
+  },
+  {
+   "t": 1793162098.1,
+   "stage": "highlight",
+   "msg": "2단계 'cream cheese cup': 상자 찾음(cream cheese cup, 손과 겹침)"
+  },
+  {
+   "t": 1793162100.8,
+   "stage": "highlight",
+   "msg": "3단계 'wooden spoon': 상자 찾음(wooden spoon, 손과 겹침)"
+  },
+  {
+   "t": 1793162102.3,
+   "stage": "highlight",
+   "msg": "4단계 'wooden spoon': 상자 찾음(wooden spoon, 손과 겹침)"
+  },
+  {
+   "t": 1793162110.6,
+   "stage": "highlight",
+   "msg": "5단계 'electric frother': 상자 찾음(silver metal device with thin black rod, 손과 안 겹침)"
+  },
+  {
+   "t": 1793162114.3,
+   "stage": "highlight",
+   "msg": "6단계 'small glass bowl': 상자 찾음(small clear round container holding white grains, 손과 겹침)"
+  },
+  {
+   "t": 1793162123.0,
+   "stage": "highlight",
+   "msg": "7단계 'electric frother': 상자 찾음(silver metal device with thin black rod, 손과 안 겹침)"
+  },
+  {
+   "t": 1793162125.1,
+   "stage": "highlight",
+   "msg": "8단계 'white espresso machine': 상자 찾음(white espresso machine, 손과 겹침)"
+  },
+  {
+   "t": 1793162126.7,
+   "stage": "highlight",
+   "msg": "9단계 'chocolate syrup bottle': 상자 찾음(chocolate syrup bottle, 손과 겹침)"
+  },
+  {
+   "t": 1793162128.5,
+   "stage": "highlight",
+   "msg": "10단계 'small glass pitcher': 상자 찾음(small glass pitcher, 손과 겹침)"
+  },
+  {
+   "t": 1793162140.3,
+   "stage": "highlight",
+   "msg": "11단계 'ice cube': 못 찾음"
+  },
+  {
+   "t": 1793162142.7,
+   "stage": "highlight",
+   "msg": "12단계 'milk cup': 상자 찾음(short transparent container holding white liquid, 손과 겹침)"
+  },
+  {
+   "t": 1793162144.7,
+   "stage": "highlight",
+   "msg": "13단계 'espresso pitcher': 상자 찾음(tiny transparent jug holding dark brown liquid, 손과 겹침)"
+  },
+  {
+   "t": 1793162147.7,
+   "stage": "highlight",
+   "msg": "14단계 'foam pitcher': 상자 찾음(clear jug holding thick white liquid, 손과 겹침)"
+  },
+  {
+   "t": 1793162149.8,
+   "stage": "highlight",
+   "msg": "15단계 'metal sifter': 상자 찾음(metal sifter, 손과 겹침)"
+  },
+  {
+   "t": 1793162151.0,
+   "stage": "highlight",
+   "msg": "16단계 'green straw': 상자 찾음(green straw, 손과 겹침)"
+  },
+  {
+   "t": 1793162151.0,
+   "stage": "done",
+   "msg": "완료: runs/9ba0bf565609"
+  }
+ ],
+ "video_path": ""
+}

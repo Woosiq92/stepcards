@@ -1,0 +1,377 @@
+{
+ "duration": 362,
+ "status": "ok",
+ "problems": [],
+ "warnings": [
+  "1·2단계 사이 1~18초가 비어 있습니다.",
+  "3·4단계 사이 51~70초가 비어 있습니다.",
+  "7·8단계 사이 97~124초가 비어 있습니다.",
+  "8·9단계 사이 133~171초가 비어 있습니다.",
+  "9·10단계 사이 176~195초가 비어 있습니다.",
+  "14·15단계 사이 254~272초가 비어 있습니다."
+ ],
+ "cards": [
+  {
+   "start": 0,
+   "end": 1,
+   "rep": 0,
+   "ko": "전원을 켜세요.",
+   "en": "Turn on the machine.",
+   "object": "espresso machine",
+   "look": "large silver and black box with screen",
+   "n": 1,
+   "image": "cards/01.jpg",
+   "frame_t": 0,
+   "box": [
+    115,
+    79,
+    771,
+    719
+   ],
+   "box_prompt": "espresso machine",
+   "box_touches_hand": true
+  },
+  {
+   "start": 18,
+   "end": 33,
+   "rep": 24,
+   "ko": "원두 18그램을 계량하세요.",
+   "en": "Weigh 18g of beans.",
+   "object": "coffee bag",
+   "look": "white orange and black paper",
+   "n": 2,
+   "image": "cards/02.jpg",
+   "frame_t": 24,
+   "box": null,
+   "box_prompt": null,
+   "box_touches_hand": false
+  },
+  {
+   "start": 47,
+   "end": 51,
+   "rep": 48,
+   "ko": "원두를 호퍼에 넣으세요.",
+   "en": "Pour beans into the hopper.",
+   "object": "small black cup",
+   "look": "small matte black square",
+   "n": 3,
+   "image": "cards/03.jpg",
+   "frame_t": 48,
+   "box": [
+    534,
+    82,
+    707,
+    252
+   ],
+   "box_prompt": "small black cup",
+   "box_touches_hand": true
+  },
+  {
+   "start": 70,
+   "end": 72,
+   "rep": 71,
+   "ko": "포터필터를 장착하세요.",
+   "en": "Place the portafilter under the grinder.",
+   "object": "portafilter",
+   "look": "metal with black handle",
+   "n": 4,
+   "image": "cards/04.jpg",
+   "frame_t": 70,
+   "box": [
+    717,
+    669,
+    951,
+    716
+   ],
+   "box_prompt": "metal with black handle",
+   "box_touches_hand": true
+  },
+  {
+   "start": 74,
+   "end": 76,
+   "rep": 75,
+   "ko": "분쇄 버튼을 누르세요.",
+   "en": "Press the grind button.",
+   "object": "grind button",
+   "look": "small round silver dial",
+   "n": 5,
+   "image": "cards/05.jpg",
+   "frame_t": 75,
+   "box": [
+    810,
+    178,
+    831,
+    204
+   ],
+   "box_prompt": "grind button",
+   "box_touches_hand": true
+  },
+  {
+   "start": 77,
+   "end": 93,
+   "rep": 85,
+   "ko": "분쇄될 때까지 기다리세요.",
+   "en": "Wait until grinding finishes.",
+   "object": "espresso machine",
+   "look": "large silver and black box with screen",
+   "n": 6,
+   "image": "cards/06.jpg",
+   "frame_t": 89,
+   "box": [
+    244,
+    21,
+    921,
+    719
+   ],
+   "box_prompt": "espresso machine",
+   "box_touches_hand": true
+  },
+  {
+   "start": 94,
+   "end": 97,
+   "rep": 95,
+   "ko": "포터필터를 빼내세요.",
+   "en": "Remove the portafilter.",
+   "object": "portafilter",
+   "look": "metal with black handle",
+   "n": 7,
+   "image": "cards/07.jpg",
+   "frame_t": 95,
+   "box": [
+    529,
+    597,
+    757,
+    719
+   ],
+   "box_prompt": "metal with black handle",
+   "box_touches_hand": true
+  },
+  {
+   "start": 124,
+   "end": 133,
+   "rep": 128,
+   "ko": "도구로 가루를 푸세요.",
+   "en": "Fluff grounds with the WDT tool.",
+   "object": "WDT tool",
+   "look": "black with wooden handle",
+   "n": 8,
+   "image": "cards/08.jpg",
+   "frame_t": 128,
+   "box": [
+    934,
+    85,
+    1260,
+    571
+   ],
+   "box_prompt": "tool",
+   "box_touches_hand": true
+  },
+  {
+   "start": 171,
+   "end": 176,
+   "rep": 174,
+   "ko": "탬퍼로 꾹 누르세요.",
+   "en": "Tamp firmly with the tamper.",
+   "object": "black tamper",
+   "look": "short black cylinder with white letters",
+   "n": 9,
+   "image": "cards/09.jpg",
+   "frame_t": 172,
+   "box": [
+    756,
+    158,
+    979,
+    542
+   ],
+   "box_prompt": "black tamper",
+   "box_touches_hand": true
+  },
+  {
+   "start": 195,
+   "end": 198,
+   "rep": 197,
+   "ko": "퍽 스크린을 올리세요.",
+   "en": "Place the puck screen on top.",
+   "object": "puck screen",
+   "look": "round silver disc with small holes",
+   "n": 10,
+   "image": "cards/10.jpg",
+   "frame_t": 197,
+   "box": [
+    868,
+    198,
+    1128,
+    421
+   ],
+   "box_prompt": "round silver disc with small holes",
+   "box_touches_hand": true
+  },
+  {
+   "start": 200,
+   "end": 205,
+   "rep": 202,
+   "ko": "포터필터를 잠그세요.",
+   "en": "Lock the portafilter in.",
+   "object": "portafilter",
+   "look": "metal with black handle",
+   "n": 11,
+   "image": "cards/11.jpg",
+   "frame_t": 202,
+   "box": null,
+   "box_prompt": null,
+   "box_touches_hand": false
+  },
+  {
+   "start": 210,
+   "end": 212,
+   "rep": 211,
+   "ko": "잔을 받치세요.",
+   "en": "Place the cup underneath.",
+   "object": "white mug",
+   "look": "plain white ceramic",
+   "n": 12,
+   "image": "cards/12.jpg",
+   "frame_t": 211,
+   "box": [
+    849,
+    329,
+    1246,
+    710
+   ],
+   "box_prompt": "white mug",
+   "box_touches_hand": true
+  },
+  {
+   "start": 213,
+   "end": 248,
+   "rep": 230,
+   "ko": "샷이 나올 때까지 기다리세요.",
+   "en": "Wait until the shot finishes.",
+   "object": "espresso machine",
+   "look": "large silver and black box with screen",
+   "n": 13,
+   "image": "cards/13.jpg",
+   "frame_t": 230,
+   "box": [
+    22,
+    0,
+    1279,
+    719
+   ],
+   "box_prompt": "espresso machine",
+   "box_touches_hand": false
+  },
+  {
+   "start": 249,
+   "end": 254,
+   "rep": 250,
+   "ko": "잔을 꺼내세요.",
+   "en": "Remove the cup.",
+   "object": "white mug",
+   "look": "plain white ceramic with light coffee",
+   "n": 14,
+   "image": "cards/14.jpg",
+   "frame_t": 253,
+   "box": [
+    434,
+    467,
+    837,
+    719
+   ],
+   "box_prompt": "white mug",
+   "box_touches_hand": true
+  },
+  {
+   "start": 272,
+   "end": 277,
+   "rep": 275,
+   "ko": "우유를 피처에 부으세요.",
+   "en": "Pour milk into the pitcher.",
+   "object": "milk carton",
+   "look": "purple and white paper",
+   "n": 15,
+   "image": "cards/15.jpg",
+   "frame_t": 275,
+   "box": [
+    773,
+    359,
+    995,
+    570
+   ],
+   "box_prompt": "milk carton",
+   "box_touches_hand": true
+  },
+  {
+   "start": 292,
+   "end": 311,
+   "rep": 305,
+   "ko": "우유를 스팀으로 데우세요.",
+   "en": "Heat the milk with steam.",
+   "object": "milk pitcher",
+   "look": "shiny silver metal with black handle",
+   "n": 16,
+   "image": "cards/16.jpg",
+   "frame_t": 297,
+   "box": [
+    614,
+    498,
+    1067,
+    710
+   ],
+   "box_prompt": "shiny silver metal with black handle",
+   "box_touches_hand": true
+  },
+  {
+   "start": 325,
+   "end": 352,
+   "rep": 335,
+   "ko": "데운 우유를 잔에 부으세요.",
+   "en": "Pour the heated milk into the cup.",
+   "object": "milk pitcher",
+   "look": "shiny silver metal with black handle",
+   "n": 17,
+   "image": "cards/17.jpg",
+   "frame_t": 335,
+   "box": [
+    725,
+    138,
+    1005,
+    441
+   ],
+   "box_prompt": "milk pitcher",
+   "box_touches_hand": true
+  },
+  {
+   "start": 353,
+   "end": 355,
+   "rep": 354,
+   "ko": "가루를 뿌리세요.",
+   "en": "Sprinkle powder on top.",
+   "object": "spice shaker",
+   "look": "small clear with orange lid",
+   "n": 18,
+   "image": "cards/18.jpg",
+   "frame_t": 354,
+   "box": null,
+   "box_prompt": null,
+   "box_touches_hand": false
+  },
+  {
+   "start": 359,
+   "end": 361,
+   "rep": 360,
+   "ko": "컵을 저어주세요.",
+   "en": "Stir the cup.",
+   "object": "stir stick",
+   "look": "thin white",
+   "n": 19,
+   "image": "cards/19.jpg",
+   "frame_t": 360,
+   "box": null,
+   "box_prompt": null,
+   "box_touches_hand": false
+  }
+ ],
+ "edited_at": 1793170933.843913,
+ "title": "아이스 라테 만들기 · 눈높이 영상 (견본)"
+}

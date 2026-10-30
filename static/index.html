@@ -73,7 +73,8 @@
   .uses div { background:var(--paper); border-radius:var(--r); padding:16px; box-shadow:var(--sh-1); display:flex; flex-direction:column; gap:4px; }
   .uses div:first-child { background:var(--dark); color:#fff; } .uses div:first-child .muted { color:#a9b8c6; } .uses div:first-child .fi { background:var(--accent); color:#fff; }
   .uses .fi { width:36px; height:36px; border-radius:10px; background:var(--accent-soft); color:var(--accent); display:grid; place-items:center; margin-bottom:6px; }
-  .uses strong { font-size:15px; } .uses .muted { font-size:13px; }
+  .uses strong { font-size:15px; }
+  .uses .ex { margin-top:auto; padding-top:8px; font-size:13px; } .uses div:first-child .ex { color:#8cc0ff; } .uses .muted { font-size:13px; }
   @media (max-width:1000px) { .uses { grid-template-columns:repeat(2,1fr); } }
   @media (max-width:560px) { .uses { grid-template-columns:1fr; } }
   .past { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
@@ -418,12 +419,16 @@ async function home() {
     </div>
     <h3>${T("이런 곳에 써요", "Where it helps")}</h3>
     <div class="uses">${[
-      ["check", T("특수교육 직무 훈련", "Special-education job training"), T("음료 만들기, 빨래, 포장을 한 동작씩. 교사가 확인한 카드로 따라 해요.", "Drinks, laundry, packing — one action at a time, from cards the teacher checked.")],
-      ["glasses", T("신입 직원 교육", "New staff training"), T("숙련자가 한 번 해 보이면 매장 방식 그대로. 한국어·영어 카드로 이주 노동자도.", "A senior shows it once; new staff follow the store's own way, in Korean or English.")],
-      ["video", T("크리에이터 따라 하기", "Follow-along for creators"), T("요리·공예 영상을 올린 사람이 따라 하기 판도 함께 내요.", "Creators publish a step-by-step version of their own video.")],
-      ["tablet", T("조립·설치 안내", "Assembly and setup"), T("처음 하는 조립을 지금 몇 번째인지 맞춰 가며.", "First-time assembly, with the current step tracked.")],
-      ["draw", T("가족 손기술 남기기", "Family know-how"), T("부모님 요리법을 한 번 찍어 카드로 남겨요.", "Film a parent's recipe once and keep it as cards.")],
-    ].map(([i, t, d]) => `<div><span class="fi">${icon(i)}</span><strong>${t}</strong><span class="muted">${d}</span></div>`).join("")}</div>
+      ["special", "check", T("특수교육 직무 훈련", "Special-education job training"), T("음료 만들기, 빨래, 포장을 한 동작씩. 교사가 확인한 카드로 따라 해요.", "Drinks, laundry, packing — one action at a time, from cards the teacher checked.")],
+      ["staff", "glasses", T("신입 직원 교육", "New staff training"), T("숙련자가 한 번 해 보이면 매장 방식 그대로. 한국어·영어 카드로 이주 노동자도.", "A senior shows it once; new staff follow the store's own way, in Korean or English.")],
+      ["creator", "video", T("크리에이터 따라 하기", "Follow-along for creators"), T("요리·공예 영상을 올린 사람이 따라 하기 판도 함께 내요.", "Creators publish a step-by-step version of their own video.")],
+      ["assembly", "tablet", T("조립·설치 안내", "Assembly and setup"), T("처음 하는 조립을 지금 몇 번째인지 맞춰 가며.", "First-time assembly, with the current step tracked.")],
+      ["family", "draw", T("가족 손기술 남기기", "Family know-how"), T("부모님 요리법을 한 번 찍어 카드로 남겨요.", "Film a parent's recipe once and keep it as cards.")],
+    ].map(([use, i, t, d]) => {  // 견본이 있는 칸은 눌러서 예시 카드 묶음을 연다
+      const ex = runs.filter(r => r.use === use && r.done);
+      return `<div><span class="fi">${icon(i)}</span><strong>${t}</strong><span class="muted">${d}</span>
+        ${ex.map(r => `<a class="ex" href="#run=${r.id}&view=use">${T("예시", "Example")}: ${esc(r.title.replace(/ \(견본\)$/, ""))} →</a>`).join("")}</div>`;
+    }).join("")}</div>
     ${runs.length ? `<h3>${T("지난 카드 묶음", "Previous card sets")}</h3><div class="past">${runs.map(r => `
       <a class="pastcard" href="#run=${r.id}&view=${r.done ? "edit" : "making"}">
         ${r.thumb ? `<img src="/runs/${r.id}/${r.thumb}" alt="">` : '<div class="ph"></div>'}

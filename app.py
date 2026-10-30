@@ -16,6 +16,7 @@ RUNS = DATA / "runs"
 UPLOADS = DATA / "samples" / "uploads"
 RUNS.mkdir(parents=True, exist_ok=True)
 SEED = ROOT / "seed"  # 새로 배포해도 바로 볼 수 있는 견본 카드 묶음(CC BY 영상). 지워도 서버를 다시 켜면 돌아온다
+SEED_INDEX = json.loads((SEED / "index.json").read_text()) if (SEED / "index.json").exists() else {}  # 견본마다 제목과 쓰임새(처음 화면 '이런 곳에 써요' 예시)
 for s in sorted(SEED.iterdir()) if SEED.is_dir() else []:
     if not s.is_dir():
         continue
@@ -106,7 +107,9 @@ def runs():
         if prog:
             data = read(d, "cards.json")
             cs = data["cards"] if data else []
-            out.append({"id": d.name, "video": prog["video"], "title": (data or {}).get("title", ""), "done": data is not None, "count": len(cs),
+            seed = SEED_INDEX.get(d.name, {})
+            out.append({"id": d.name, "video": prog["video"], "title": (data or {}).get("title") or seed.get("title", ""), "use": seed.get("use", ""),
+                        "done": data is not None, "count": len(cs),
                         "issues": len(data["problems"]) if data else 0, "thumb": cs[0]["image"] if cs else None})
     return out
 

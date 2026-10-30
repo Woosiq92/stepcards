@@ -1,0 +1,177 @@
+{
+ "video": "pov_latte_narrated.mp4",
+ "video_path": "",
+ "events": [
+  {
+   "t": 1793170713.2,
+   "stage": "start",
+   "msg": "pov_latte_narrated.mp4 → 807dcf4d2be2"
+  },
+  {
+   "t": 1793170713.2,
+   "stage": "extract",
+   "msg": "영상 362초, 사진 362장"
+  },
+  {
+   "t": 1793170756.0,
+   "stage": "listen",
+   "msg": "말 9구간 받아씀",
+   "n": 9,
+   "cost": 0.0181
+  },
+  {
+   "t": 1793170797.7,
+   "stage": "split",
+   "msg": "1번째 시도: 단계 19개, 문제 0개 (42초, $0.178)",
+   "n": 19,
+   "problems": [],
+   "warnings": [
+    "1·2단계 사이 1~18초가 비어 있습니다.",
+    "3·4단계 사이 51~70초가 비어 있습니다.",
+    "7·8단계 사이 97~124초가 비어 있습니다.",
+    "8·9단계 사이 133~171초가 비어 있습니다.",
+    "9·10단계 사이 176~195초가 비어 있습니다.",
+    "14·15단계 사이 254~272초가 비어 있습니다."
+   ],
+   "cost": 0.1783
+  },
+  {
+   "t": 1793170801.5,
+   "stage": "highlight",
+   "msg": "1단계 'espresso machine': 상자 찾음(espresso machine, 손과 겹침)",
+   "i": 1,
+   "total": 19
+  },
+  {
+   "t": 1793170817.8,
+   "stage": "highlight",
+   "msg": "2단계 'coffee bag': 못 찾음",
+   "i": 2,
+   "total": 19
+  },
+  {
+   "t": 1793170819.2,
+   "stage": "highlight",
+   "msg": "3단계 'small black cup': 상자 찾음(small black cup, 손과 겹침)",
+   "i": 3,
+   "total": 19
+  },
+  {
+   "t": 1793170823.5,
+   "stage": "highlight",
+   "msg": "4단계 'portafilter': 상자 찾음(metal with black handle, 손과 겹침, 사진 71→70초)",
+   "i": 4,
+   "total": 19
+  },
+  {
+   "t": 1793170825.8,
+   "stage": "highlight",
+   "msg": "5단계 'grind button': 상자 찾음(grind button, 손과 겹침)",
+   "i": 5,
+   "total": 19
+  },
+  {
+   "t": 1793170833.7,
+   "stage": "highlight",
+   "msg": "6단계 'espresso machine': 상자 찾음(espresso machine, 손과 겹침, 사진 85→89초)",
+   "i": 6,
+   "total": 19
+  },
+  {
+   "t": 1793170837.9,
+   "stage": "highlight",
+   "msg": "7단계 'portafilter': 상자 찾음(metal with black handle, 손과 겹침)",
+   "i": 7,
+   "total": 19
+  },
+  {
+   "t": 1793170843.0,
+   "stage": "highlight",
+   "msg": "8단계 'WDT tool': 상자 찾음(tool, 손과 겹침)",
+   "i": 8,
+   "total": 19
+  },
+  {
+   "t": 1793170847.4,
+   "stage": "highlight",
+   "msg": "9단계 'black tamper': 상자 찾음(black tamper, 손과 겹침, 사진 174→172초)",
+   "i": 9,
+   "total": 19
+  },
+  {
+   "t": 1793170849.8,
+   "stage": "highlight",
+   "msg": "10단계 'puck screen': 상자 찾음(round silver disc with small holes, 손과 겹침)",
+   "i": 10,
+   "total": 19
+  },
+  {
+   "t": 1793170857.1,
+   "stage": "highlight",
+   "msg": "11단계 'portafilter': 못 찾음",
+   "i": 11,
+   "total": 19
+  },
+  {
+   "t": 1793170859.1,
+   "stage": "highlight",
+   "msg": "12단계 'white mug': 상자 찾음(white mug, 손과 겹침)",
+   "i": 12,
+   "total": 19
+  },
+  {
+   "t": 1793170866.4,
+   "stage": "highlight",
+   "msg": "13단계 'espresso machine': 상자 찾음(espresso machine, 손과 안 겹침)",
+   "i": 13,
+   "total": 19
+  },
+  {
+   "t": 1793170872.7,
+   "stage": "highlight",
+   "msg": "14단계 'white mug': 상자 찾음(white mug, 손과 겹침, 사진 250→253초)",
+   "i": 14,
+   "total": 19
+  },
+  {
+   "t": 1793170874.6,
+   "stage": "highlight",
+   "msg": "15단계 'milk carton': 상자 찾음(milk carton, 손과 겹침)",
+   "i": 15,
+   "total": 19
+  },
+  {
+   "t": 1793170879.2,
+   "stage": "highlight",
+   "msg": "16단계 'milk pitcher': 상자 찾음(shiny silver metal with black handle, 손과 겹침, 사진 305→297초)",
+   "i": 16,
+   "total": 19
+  },
+  {
+   "t": 1793170880.7,
+   "stage": "highlight",
+   "msg": "17단계 'milk pitcher': 상자 찾음(milk pitcher, 손과 겹침)",
+   "i": 17,
+   "total": 19
+  },
+  {
+   "t": 1793170883.6,
+   "stage": "highlight",
+   "msg": "18단계 'spice shaker': 못 찾음",
+   "i": 18,
+   "total": 19
+  },
+  {
+   "t": 1793170886.4,
+   "stage": "highlight",
+   "msg": "19단계 'stir stick': 못 찾음",
+   "i": 19,
+   "total": 19
+  },
+  {
+   "t": 1793170886.4,
+   "stage": "done",
+   "msg": "완료: runs/807dcf4d2be2"
+  }
+ ]
+}
