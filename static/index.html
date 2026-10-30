@@ -65,6 +65,7 @@
   .drop .plus { width:64px; height:64px; border-radius:50%; background:var(--accent); color:#fff; display:grid; place-items:center; margin-bottom:8px; box-shadow:0 6px 16px rgba(0,100,224,.3); }
   .drop .plus svg { width:28px; height:28px; stroke-width:2.2; }
   .drop .btn { margin-top:10px; pointer-events:none; }
+  .drop .makewhere { margin-top:6px; } .drop #mkwhered { max-width:360px; font-size:13px; }
   .flow { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:40px 0 8px; }
   .flow div { background:var(--paper); border-radius:var(--r); padding:20px; box-shadow:var(--sh-1); }
   .flow .fi { width:40px; height:40px; border-radius:12px; background:var(--accent-soft); color:var(--accent); display:grid; place-items:center; margin-bottom:12px; }
@@ -429,6 +430,9 @@ async function home() {
       <div class="big">${T("영상을 여기에 끌어다 놓거나, 눌러서 고르세요", "Drop a video here, or click to choose one")}</div>
       <div class="muted">${T("1~5분 · 손과 물건이 잘 보이게 · 학생이 나오는 영상은 넣지 마세요", "1–5 minutes · hands and objects clearly visible · no videos of students")}</div>
       <span class="btn primary">${T("영상 고르기", "Choose a video")}</span>
+      <span class="seg makewhere" id="mkwhere" hidden onclick="event.preventDefault();event.stopPropagation()">
+        <button class="on" onclick="makeWhere(false)">${T("Meta API", "Meta API")}</button><button onclick="makeWhere(true)">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button></span>
+      <span class="muted" id="mkwhered" hidden></span>
     </label></div>
     <div class="flow">
       <div><span class="fi">${icon("video")}</span><strong>${T("1. 영상 넣기", "1. Add video")}</strong><span class="muted">${T("몇 분 뒤 카드가 나와요.", "Cards are ready in a few minutes.")}</span></div>
@@ -458,6 +462,8 @@ async function home() {
   file.onchange = () => file.files[0] && upload(file.files[0]);
   drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
   drop.ondragleave = () => drop.classList.remove("over");
+  S.makeLocal = false;
+  fetch("/api/local").then(r => r.json()).then(d => { if (d.ready && $("#mkwhere")) { $("#mkwhere").hidden = false; makeWhere(false); } }).catch(() => {});
   drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) upload(f); };
 }
 // 지우기는 되돌릴 수 없어서 한 번 더 묻는다(브라우저 확인 창 대신 아래 알림의 단추)
@@ -468,12 +474,20 @@ function delRun(id) {
     home();
   });
 }
+// 카드 만들기를 이 맥의 공개 가중치 모델로: 영상·소리가 맥 밖으로 나가지 않는다(받아쓰기·물건 테두리는 건너뜀)
+function makeWhere(local) {
+  S.makeLocal = local;
+  $("#mkwhere").querySelectorAll("button").forEach((b, i) => b.classList.toggle("on", i === +local));
+  const d = $("#mkwhered"); d.hidden = false;
+  d.textContent = local ? T("영상이 이 맥 밖으로 나가지 않아요. 말 받아쓰기와 물건 테두리는 건너뛰고, 몇 분 더 걸려요.", "The video never leaves this Mac. Speech and object outlines are skipped, and it takes a few minutes longer.")
+                        : T("Meta Model API로 만들어요. 가장 빠르고, 말과 물건까지 봐요.", "Made with the Meta Model API: fastest, and uses speech and objects.");
+}
 async function upload(f) {
   if (!f.type.startsWith("video/")) return toast(T("영상 파일만 넣을 수 있어요.", "Only video files can be added."));
   const dur = await new Promise(res => { const v = document.createElement("video"); v.preload = "metadata"; v.onloadedmetadata = () => res(v.duration); v.onerror = () => res(0); v.src = URL.createObjectURL(f); });
   if (dur > 600) return toast(T(`영상이 ${Math.round(dur / 60)}분이에요. 10분 안으로 잘라서 넣어 주세요(1~5분이 가장 좋아요).`, `This video is ${Math.round(dur / 60)} min. Please trim it to under 10 minutes (1–5 is best).`));
   $("#drop").innerHTML = `<div class="big">${T("영상을 올리는 중…", "Uploading…")}</div>`;
-  const fd = new FormData(); fd.append("file", f);
+  const fd = new FormData(); fd.append("file", f); if (S.makeLocal) fd.append("local", "true");
   const r = await fetch("/api/upload", { method: "POST", body: fd });
   if (!r.ok) { toast(T("올리지 못했어요. 다시 해 주세요.", "Upload failed. Please try again.")); return home(); }
   go({ run: (await r.json()).id, view: "making" });
@@ -493,6 +507,7 @@ async function making() {
     const st = (ok, now) => ok ? "done" : now ? "now" : "wait";
     const s1 = st(has("extract"), !err && !has("extract"));
     const listenEv = ev.find(e => e.stage === "listen");
+    const local = ev.some(e => e.stage === "start" && e.local);  // 이 맥에서(Glimmer) 만드는 중
     const sL = st(!!listenEv, !err && has("extract") && !listenEv);
     const s2 = st(has("highlight") || done, !err && !!listenEv && !has("highlight"));
     const s3 = st(done, !err && has("highlight") && !done);
@@ -506,11 +521,11 @@ async function making() {
       <div class="stages">
         <div class="stage ${s1}"><span class="ic"></span><div><strong>${T("영상에서 1초마다 사진 뽑기", "Take a frame every second")}</strong></div></div>
         <div class="stage ${sL}"><span class="ic"></span><div><strong>${T("영상 속 말 받아쓰기 (Muse Voice Transcribe)", "Transcribe what was said (Muse Voice Transcribe)")}</strong>
-          ${listenEv ? `<div class="muted">${listenEv.n ? T(`말 ${listenEv.n}구간 받아씀 · 양과 재료 이름을 문장에 넣을 때 써요`, `${listenEv.n} speech turns · used for amounts and names in the sentences`) : T("영상에 말소리가 없음", "No speech in this video")}</div>` : ""}</div></div>
-        <div class="stage ${s2}"><span class="ic"></span><div><strong>${T("동작마다 단계를 나누고 문장 쓰기 (Muse Spark)", "Split into one-action steps and write sentences (Muse Spark)")}</strong>
+          ${listenEv ? `<div class="muted">${listenEv.local ? T("이 맥에서 만들기라 건너뛰었어요(소리가 밖으로 나가지 않게)", "Skipped: making on this Mac, so audio stays here") : listenEv.n ? T(`말 ${listenEv.n}구간 받아씀 · 양과 재료 이름을 문장에 넣을 때 써요`, `${listenEv.n} speech turns · used for amounts and names in the sentences`) : T("영상에 말소리가 없음", "No speech in this video")}</div>` : ""}</div></div>
+        <div class="stage ${s2}"><span class="ic"></span><div><strong>${local ? T("동작마다 단계를 나누고 문장 쓰기 (Muse Glimmer · 이 맥)", "Split into one-action steps and write sentences (Muse Glimmer · this Mac)") : T("동작마다 단계를 나누고 문장 쓰기 (Muse Spark)", "Split into one-action steps and write sentences (Muse Spark)")}</strong>
           ${last ? `<div class="muted">${T(`단계 ${last.n}개`, `${last.n} steps`)} · ${last.problems.length ? T("고칠 곳이 남아 확인이 필요해요", "some issues remain for a person to check") : T("규칙 검사 통과", "passed the rule check")}</div>` : ""}
           ${retried.length ? `<div class="detail">${T("규칙 검사에서 걸린 곳이 있어서, 이유를 알려 주고 다시 만들게 했어요.", "The rule check found a problem, so the model was told why and asked to try again.")}<ul>${retried.flatMap(s => s.problems).map(x => `<li>${esc(problemText(x, true))}</li>`).join("")}</ul></div>` : ""}</div></div>
-        <div class="stage ${s3}"><span class="ic"></span><div><strong>${T("카드마다 사진을 고르고, 손에 든 물건에 테두리 그리기 (SAM 3.1)", "Pick a photo per card and outline the object in hand (SAM 3.1)")}</strong>
+        <div class="stage ${s3}"><span class="ic"></span><div><strong>${local ? T("카드마다 사진 고르기 (물건 테두리는 건너뜀)", "Pick a photo per card (object outlines skipped)") : T("카드마다 사진을 고르고, 손에 든 물건에 테두리 그리기 (SAM 3.1)", "Pick a photo per card and outline the object in hand (SAM 3.1)")}</strong>
           ${total && !done ? `<div class="prog"><i style="width:${hl.length / total * 100}%"></i></div><div class="muted">${hl.length} / ${total}</div>` : ""}</div></div>
       </div>
       ${hl.length ? `<div class="thumbs">${hl.map(e => `<img src="/runs/${S.run}/cards/${pad(e.i)}.jpg" alt="">`).join("")}</div>` : ""}

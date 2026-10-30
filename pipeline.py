@@ -151,12 +151,33 @@ def ask_steps(run, content, look):
 
 
 # ②③ 단계 나누기 + 검사, 걸리면 이유를 붙여 다시
-def split_steps(run, duration, frames, speech=(), look=False, every=1):
-    """every>1이면 every초 간격의 거친 사진만 주고, 경계는 look_closer로 확대해 찾게 한다."""
+# ②-2 이 맥에서 만들기(Muse Glimmer, llama.cpp -c 32768): 같은 질문·검사·재시도, 영상이 맥 밖으로 나가지 않는다
+LOCAL_URL = os.environ.get("GLIMMER_URL", "http://127.0.0.1:8791/v1")
+local_client = OpenAI(base_url=LOCAL_URL, api_key="local", timeout=1800)
+LOCAL_MAX_FRAMES = 60  # 32K 문맥에 들어가는 사진 수(실험: 48~55장이 1.5~1.8만 토큰)
+LOCAL_PREFILL = '{"steps":[{"start":'  # 답 머리말을 주면 긴 생각 글을 건너뛰고 바로 JSON
+
+
+def ask_steps_local(content):
+    msgs = [{"role": "user", "content": [{"type": "text", "text": c["text"]} if c["type"] == "input_text"
+                                         else {"type": "image_url", "image_url": {"url": c["image_url"]}} for c in content]},
+            {"role": "assistant", "content": LOCAL_PREFILL}]
+    r = local_client.chat.completions.create(model="glimmer", messages=msgs, max_tokens=4000, temperature=0)
+    body = r.choices[0].message.content or ""
+    return (body if body.lstrip().startswith("{") else LOCAL_PREFILL + body), 0.0  # 머리말 뒤에 JSON 을 처음부터 다시 쓰기도 한다
+
+
+def split_steps(run, duration, frames, speech=(), look=False, every=1, local=False):
+    """every>1이면 every초 간격의 거친 사진만 주고, 경계는 look_closer로 확대해 찾게 한다.
+    local이면 이 맥의 Glimmer 에 묻는다(사진은 문맥에 맞게 간격을 넓히고, look_closer 는 쓰지 않는다)."""
+    if local:
+        every, look = max(1, -(-len(frames) // LOCAL_MAX_FRAMES)), False
     content = []
     for i, p in enumerate(frames[::every]):
         content += [{"type": "input_text", "text": f"t={i * every}s"}, {"type": "input_image", "image_url": data_url(p)}]
-    if every > 1:
+    if every > 1 and local:
+        content.append({"type": "input_text", "text": f"These frames are {every} seconds apart. Give step times in seconds of the video."})
+    elif every > 1:
         content.append({"type": "input_text", "text": f"These overview frames are {every} seconds apart, so short steps and exact boundaries "
                         f"are not visible. Use look_closer on each part where a step starts or ends to get exact times."})
     if speech:  # 동작·시간은 사진으로, 양·재료 이름은 말에서
@@ -170,7 +191,7 @@ def split_steps(run, duration, frames, speech=(), look=False, every=1):
     for attempt in range(1 + MAX_RETRY):
         ask = content if feedback is None else content + [{"type": "input_text", "text": feedback}]
         t0 = time.time()
-        text, cost = ask_steps(run, ask, look)
+        text, cost = ask_steps_local(ask) if local else ask_steps(run, ask, look)
         run.path(f"steps_try{attempt + 1}.txt").write_text(text)
         try:
             steps = parse_json(text)
@@ -248,7 +269,7 @@ def find_box(img, s):
     return None, None, False
 
 
-def highlight(run, steps):
+def highlight(run, steps, local=False):
     cards_dir = run.path("cards")
     cards_dir.mkdir(exist_ok=True)
     cards = []
@@ -256,11 +277,13 @@ def highlight(run, steps):
         img = cards_dir / f"{i:02d}.jpg"
         # 대표 시각 → 구간 1/4·1/2·3/4 지점. 손과 물건이 겹치는 첫 사진을 쓴다
         times = list(dict.fromkeys([s["rep"]] + [round(s["start"] + (s["end"] - s["start"]) * k / 4) for k in (1, 2, 3)]))
+        if local:  # SAM 은 Meta API 라 사진이 밖으로 나간다 → 대표 시각 사진만
+            times = times[:1]
         best = None
         for t in times:
             tmp = cards_dir / f"{i:02d}_t{t}.jpg"
             grab(run.video, t, tmp)
-            box, used, touch = find_box(tmp, s)
+            box, used, touch = (None, "", False) if local else find_box(tmp, s)
             if best is None or (box and not best[1]) or (touch and not best[3]):
                 best = (t, box, used, touch, tmp)
             if touch:
@@ -275,40 +298,44 @@ def highlight(run, steps):
             pic.save(cards_dir / f"{i:02d}_hl.jpg", quality=85)
         cards.append({**s, "n": i, "image": f"cards/{i:02d}.jpg", "frame_t": t, "box": box, "box_prompt": used, "box_touches_hand": touch})
         moved = f", 사진 {s['rep']}→{t}초" if t != s["rep"] else ""
-        run.log("highlight", f"{i}단계 '{s['object']}': " + (f"상자 찾음({used}, 손과 {'겹침' if touch else '안 겹침'}{moved})" if box else f"못 찾음{moved}"), i=i, total=len(steps))
+        run.log("highlight", f"{i}단계: 사진 {t}초(이 맥에서 만들기라 물건 테두리는 건너뜀)" if local else f"{i}단계 '{s['object']}': " + (f"상자 찾음({used}, 손과 {'겹침' if touch else '안 겹침'}{moved})" if box else f"못 찾음{moved}"), i=i, total=len(steps))
     return cards
 
 
-def main(video, fresh=False, look=False):
+def main(video, fresh=False, look=False, local=False):
     run = Run(video)
     run.events = []  # 진행판은 이번 실행만 보여 준다
-    run.log("start", f"{run.video.name} → {run.dir.name}")
+    run.log("start", f"{run.video.name} → {run.dir.name}" + (" (이 맥에서, Muse Glimmer)" if local else ""), local=local)
     try:
-        build(run, fresh, look)
+        build(run, fresh, look, local)
     except Exception as e:
         run.log("error", f"멈췄어요: {type(e).__name__}: {str(e)[:200]}")
         raise
 
 
-def build(run, fresh, look=False):
+def build(run, fresh, look=False, local=False):
     duration, frames = extract(run)
-    speech = listen(run)
+    if local:  # 받아쓰기는 Meta API 라 건너뛴다(소리가 맥 밖으로 나가지 않게)
+        speech = []
+        run.log("listen", "이 맥에서 만들기라 말 받아쓰기는 건너뜀", n=0, local=True)
+    else:
+        speech = listen(run)
     steps_file = run.path("steps.json")
     if steps_file.exists() and not fresh:
         result = json.loads(steps_file.read_text())
         run.log("split", "저장된 단계 사용(캐시)")
     else:
-        result = split_steps(run, duration, frames, speech, look)
+        result = split_steps(run, duration, frames, speech, look, local=local)
         steps_file.write_text(json.dumps(result, ensure_ascii=False, indent=1))
     cards_file = run.path("cards.json")
     if cards_file.exists() and not fresh:
         run.log("highlight", "저장된 카드 사용(캐시)")
     else:
-        cards = highlight(run, result["steps"])
+        cards = highlight(run, result["steps"], local)
         cards_file.write_text(json.dumps({"duration": duration, "status": result["status"], "problems": result["problems"],
                                           "warnings": result["warnings"], "cards": cards}, ensure_ascii=False, indent=1))
     run.log("done", f"완료: {run.dir}")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], fresh="--fresh" in sys.argv, look="--look" in sys.argv)
+    main(sys.argv[1], fresh="--fresh" in sys.argv, look="--look" in sys.argv, local="--local" in sys.argv)

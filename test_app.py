@@ -43,7 +43,7 @@ def make_run(cards=None):
 # 1. 이름이 같은 다른 영상이 옛 업로드를 덮지 않는다
 def test_upload_same_name_does_not_overwrite(monkeypatch):
     calls = []
-    monkeypatch.setattr(pipeline, "main", lambda v: calls.append(Path(v)))
+    monkeypatch.setattr(pipeline, "main", lambda v, **k: calls.append(Path(v)))
     a = client.post("/api/upload", files={"file": ("same.mp4", b"AAAA")}).json()["id"]
     b = client.post("/api/upload", files={"file": ("same.mp4", b"BBBB")}).json()["id"]
     assert a != b
@@ -131,7 +131,7 @@ def test_key_non_ascii(monkeypatch):
 # 6. 같은 영상을 도는 중에 또 올려도 파이프라인은 하나만
 def test_same_video_while_running_starts_once(monkeypatch):
     go, calls = threading.Event(), []
-    monkeypatch.setattr(pipeline, "main", lambda v: (calls.append(v), go.wait(5)))
+    monkeypatch.setattr(pipeline, "main", lambda v, **k: (calls.append(v), go.wait(5)))
     data = uuid.uuid4().bytes
     ids = {client.post("/api/upload", files={"file": ("x.mp4", data)}).json()["id"] for _ in range(3)}
     go.set()
@@ -140,7 +140,7 @@ def test_same_video_while_running_starts_once(monkeypatch):
 
 def test_done_video_not_rerun(monkeypatch):
     calls = []
-    monkeypatch.setattr(pipeline, "main", lambda v: calls.append(v))
+    monkeypatch.setattr(pipeline, "main", lambda v, **k: calls.append(v))
     data = uuid.uuid4().bytes
     rid = client.post("/api/upload", files={"file": ("y.mp4", data)}).json()["id"]
     for t in threading.enumerate():
@@ -208,7 +208,7 @@ def test_view_open_actions_need_key(monkeypatch):
 def test_retry(monkeypatch):
     rid, d = make_run()
     gate, calls = threading.Event(), []
-    monkeypatch.setattr(pipeline, "main", lambda v: (calls.append(v), gate.wait(5)))
+    monkeypatch.setattr(pipeline, "main", lambda v, **k: (calls.append(v), gate.wait(5)))
     assert client.post(f"/api/runs/{rid}/retry").status_code == 200
     assert client.post(f"/api/runs/{rid}/retry").status_code == 409  # 도는 중
     gate.set()
@@ -240,3 +240,16 @@ def test_glass_drawing_dark_background():
     assert max(out.getpixel((2, 2))) < 30                                   # 바탕 → 검정
     assert out.getpixel((int(50 * sx), int(30 * sx)))[0] > 150              # 빨강 그대로
     assert min(out.getpixel((int(15 * sx), int(50 * sx)))) > 120             # 검은 선 → 밝게
+
+
+# 이 맥에서 만들기: Glimmer 가 꺼져 있으면 409, 켜져 있으면 local 로 넘기고, 다시 만들기도 같은 곳으로
+def test_upload_local(monkeypatch):
+    import coach
+    calls, gate = [], threading.Event()
+    monkeypatch.setattr(pipeline, "main", lambda v, **k: (calls.append(k), gate.wait(5)))
+    monkeypatch.setattr(coach, "local_ready", lambda: False)
+    assert client.post("/api/upload", files={"file": ("a.mp4", uuid.uuid4().bytes)}, data={"local": "true"}).status_code == 409
+    monkeypatch.setattr(coach, "local_ready", lambda: True)
+    assert client.post("/api/upload", files={"file": ("a.mp4", uuid.uuid4().bytes)}, data={"local": "true"}).status_code == 200
+    gate.set()
+    assert calls == [{"local": True}]

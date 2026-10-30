@@ -2,7 +2,7 @@
 # 사용: .venv/bin/python app.py  → http://127.0.0.1:8790
 import hashlib, hmac, io, json, os, re, shutil, threading, time, uuid
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, Request, UploadFile
+from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageDraw
@@ -130,7 +130,7 @@ def delete_run(run_id: str):
 
 
 @app.post("/api/upload")
-async def upload(file: UploadFile):
+async def upload(file: UploadFile, local: bool = Form(False)):
     UPLOADS.mkdir(parents=True, exist_ok=True)
     tmp, h = UPLOADS / f".{uuid.uuid4().hex}.part", hashlib.sha256()
     try:  # 이름이 같은 다른 영상이 옛 영상을 덮지 않게 내용 해시를 이름 앞에 붙인다
@@ -144,12 +144,14 @@ async def upload(file: UploadFile):
     finally:
         tmp.unlink(missing_ok=True)
     run = pipeline.Run(dest)
+    if local and not coach.local_ready():
+        raise HTTPException(409, "이 맥의 Muse Glimmer 서버가 켜져 있지 않습니다")
     if not any(e.get("stage") == "done" for e in run.events):  # 이미 끝난 실행은 다시 돌리지 않는다
-        start(run.dir.name, dest)
+        start(run.dir.name, dest, local)
     return {"id": run.dir.name}
 
 
-def start(run_id, video):
+def start(run_id, video, local=False):
     """카드 만들기를 뒤에서 돌린다. 같은 실행이 이미 돌고 있으면 False"""
     with RUNNING_LOCK:
         if run_id in RUNNING:
@@ -158,7 +160,7 @@ def start(run_id, video):
 
     def go():
         try:
-            pipeline.main(video)
+            pipeline.main(video, local=local)
         finally:
             with RUNNING_LOCK:
                 RUNNING.discard(run_id)
@@ -185,7 +187,9 @@ def retry(run_id: str):
     video = Path((read(d, "progress.json") or {}).get("video_path") or "")
     if not video.is_file():
         raise HTTPException(404, "영상 파일이 없습니다")
-    if not start(run_id, video):
+    prog = read(d, "progress.json") or {}
+    local = any(e.get("stage") == "start" and e.get("local") for e in prog.get("events", []))  # 처음 고른 곳(이 맥/API) 그대로
+    if not start(run_id, video, local):
         raise HTTPException(409, "아직 만드는 중입니다")
     return {"id": run_id}
 

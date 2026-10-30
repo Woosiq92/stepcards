@@ -48,7 +48,7 @@ The interface is available in Korean and English (switch at the top right). Card
 | `sam-3.1` | outlining the object in hand; confirming the object before Coach mode moves on |
 | `muse-voice-transcribe-1.0` | transcribing what the demonstrator says (`/v1/asr/transcribe`, endpointing mode) |
 
-| `Muse Glimmer 30B` (open weights) | optional Coach mode on this Mac: step recognition runs locally, camera frames never leave the computer |
+| `Muse Glimmer 30B` (open weights) | optional, on this Mac: making cards (step splitting and sentences) and Coach mode step recognition — video and camera frames never leave the computer |
 
 All other calls go to the Meta Model API (`https://api.meta.ai/v1`).
 
@@ -63,6 +63,8 @@ From runs recorded in this build (small samples, see notes):
 
 - Coach mode on this Mac with Muse Glimmer 30B (Q4 GGUF, llama.cpp, 48 GB Apple Silicon): reached the last card in the same replay test at about 4.7 s per decision, $0. Glimmer writes a long reasoning trace first (18–21 s per answer); pre-filling the start of the JSON answer skips it with about the same accuracy (Glimmer 15 and 13 of 16 cards, Muse Spark 15 and 14, on two single-frame-pair tests). The SAM check is skipped in this mode because SAM runs on the API.
 
+- Making cards on this Mac with Muse Glimmer (same prompt, checker and retries; frames 2–3 s apart): napkin video, 11 steps, 8 of the 10 steps in the video's own captions (Muse Spark: also 8 of 10), passed the checker on the third try, about 3.3 min, $0; dance video, the same 3 steps as the instructor's captions, about 2.4 min. Korean sentences were rougher than Muse Spark's (one misspelling the checker caught but the model could not fix).
+
 Not measured yet: time to make the same cards by hand, and step accuracy against a teacher's own task analysis.
 
 ## Run it
@@ -76,13 +78,13 @@ echo 'MODEL_API_KEY=...' > .env          # never commit this file
 .venv/bin/python app.py                  # http://127.0.0.1:8790
 ```
 
-Optional, Coach mode on this Mac: download `Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf` and `mmproj-Muse-Glimmer-30B-Q4_K_M.gguf` from `meta-models/Muse-Glimmer-30B-GGUF`, then
+Optional, making cards and Coach mode on this Mac: download `Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf` and `mmproj-Muse-Glimmer-30B-Q4_K_M.gguf` from `meta-models/Muse-Glimmer-30B-GGUF`, then
 
 ```bash
-llama-server -m Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf --mmproj mmproj-Muse-Glimmer-30B-Q4_K_M.gguf -c 8192 -ngl 99 --port 8791
+llama-server -m Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf --mmproj mmproj-Muse-Glimmer-30B-Q4_K_M.gguf -c 32768 -ngl 99 --port 8791
 ```
 
-The Coach screen shows "On this Mac (Muse Glimmer)" when that server is running.
+When that server is running, the home page offers "On this Mac (Muse Glimmer)" for making cards and the Coach screen offers it for Coach mode. Making cards on this Mac uses the same prompt, code checker and retries, sends nothing to the API (speech transcription and SAM outlines are skipped), and gives frames 2–3 s apart to fit the 32K context.
 
 Deploy (for example Railway, from this GitHub repository): the `Dockerfile` installs ffmpeg and the Python packages. Set these variables on the host:
 
@@ -117,7 +119,7 @@ Tests (checker, server, Coach decisions; no paid model calls): `.venv/bin/pip in
 - Runs locally; videos and cards stay on the machine (`runs/`).
 - Do not use videos of students. Our tests and demo use adult demonstrations only.
 - Coach mode never stores camera frames and keeps no records of the learner.
-- For school use, Coach mode can run on Muse Glimmer on the school's own computer so student video never leaves it.
+- For school use, both making cards and Coach mode can run on Muse Glimmer on the school's own computer, so student video never leaves it.
 
 ## Credits
 
