@@ -160,3 +160,12 @@ def test_glass_and_clip_unknown_card_404():
     assert client.get(f"/api/runs/{rid}/clip/9.mp4").status_code == 404
     (d / "cards.json").unlink()
     assert client.get(f"/api/runs/{rid}/glass/0.jpg").status_code == 404
+
+
+# 도움 단계는 0~4 로 맞춰 함께 나누고, 안 보내면 0(끔)
+def test_now_keeps_help_level():
+    rid, d = make_run()
+    assert client.post(f"/api/runs/{rid}/now", json={"i": 1, "lv": 3, "by": "coach"}).json()["lv"] == 3
+    assert client.post(f"/api/runs/{rid}/now", json={"i": 1, "lv": 9, "by": "glasses"}).json()["lv"] == 4
+    assert client.post(f"/api/runs/{rid}/now", json={"i": 0, "by": "glasses"}).json()["lv"] == 0
+    assert client.get(f"/api/runs/{rid}/now").json()["lv"] == 0

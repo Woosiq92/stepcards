@@ -241,14 +241,15 @@ def glasses():
 
 @app.get("/api/runs/{run_id}/now")
 def now_get(run_id: str):
-    return NOW.get(run_id, {"i": 0, "again": False, "by": "", "v": 0})
+    return NOW.get(run_id, {"i": 0, "again": False, "by": "", "v": 0, "lv": 0})
 
 
 @app.post("/api/runs/{run_id}/now")
 def now_set(run_id: str, body: dict):
     n = len(read(run_dir(run_id), "cards.json")["cards"])
     v = NOW.get(run_id, {}).get("v", 0) + 1
-    NOW[run_id] = {"i": max(0, min(n - 1, int(body.get("i", 0)))), "again": bool(body.get("again")), "by": str(body.get("by", ""))[:10], "v": v}
+    NOW[run_id] = {"i": max(0, min(n - 1, int(body.get("i", 0)))), "again": bool(body.get("again")), "by": str(body.get("by", ""))[:10], "v": v,
+                   "lv": max(0, min(4, int(body.get("lv") or 0)))}  # 도움 단계(0=끔, 1 글 → 4 움직임)
     return NOW[run_id]
 
 

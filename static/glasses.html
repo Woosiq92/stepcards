@@ -42,10 +42,11 @@ function draw(again) {
   document.getElementById("m").innerHTML = `
     <div class="top"><span>${cur.i + 1} / ${n}</span><div class="dots">${cards.map((_, j) => `<i class="${j === cur.i ? "on" : j < cur.i ? "done" : ""}"></i>`).join("")}</div></div>
     ${again ? `<div class="again">${K ? "Start with this card" : "이 카드부터 해요"}</div>` : ""}
-    <div class="pic">${c.view === "clip" ? `<video src="/api/runs/${run}/clip/${c.n}.mp4?g=1&t=${c.frame_t ?? c.rep}" autoplay muted loop playsinline></video>`
+    <div class="pic">${cur.lv === 1 ? `<div class="msg">${K ? "Need help? Press Help" : "도움이 필요하면 '도움'을 눌러요"}</div>` : (cur.lv === 4 || (!cur.lv && c.view === "clip")) ? `<video src="/api/runs/${run}/clip/${c.n}.mp4?g=1&t=${c.frame_t ?? c.rep}" autoplay muted loop playsinline></video>`
       : `<img src="/api/runs/${run}/glass/${cur.i}.jpg?v=${cards[cur.i].v || 0}" alt="">`}</div>
     <div class="say">${say(c)}</div>
     <div class="bar"><button id="b" onclick="flip(-1)" ${cur.i ? "" : "disabled"}>${K ? "◀ Back" : "◀ 이전"}</button>
+      ${cur.lv && cur.lv < 4 ? `<button id="h" onclick="help()">${K ? "Help" : "도움"}</button>` : ""}
       <button id="f" onclick="flip(1)" ${cur.i < n - 1 ? "" : "disabled"}>${K ? "Next ▶" : "다음 ▶"}</button></div>`;
   const keep = document.getElementById(had);
   (keep && !keep.disabled ? keep : [document.getElementById("f"), document.getElementById("b")].find(b => !b.disabled))?.focus();
@@ -54,15 +55,20 @@ function draw(again) {
 document.addEventListener("keydown", e => {
   const b = document.getElementById("b"), f = document.getElementById("f");
   if (!b) return;
-  const pick = e.key === "ArrowLeft" ? b : e.key === "ArrowRight" ? f : null;
+  const h = document.getElementById("h");
+  const pick = e.key === "ArrowLeft" ? b : e.key === "ArrowRight" ? f : (e.key === "ArrowUp" || e.key === "ArrowDown") ? h : null;
   if (pick && !pick.disabled) { pick.focus(); e.preventDefault(); return; }
-  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"].includes(e.key) && document.activeElement !== b && document.activeElement !== f) {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"].includes(e.key) && ![b, f, h].includes(document.activeElement)) {
     (f.disabled ? b : f).focus(); e.preventDefault();
   }
 });
+async function help() {  // 도움 단계 한 칸 올리기(따라 하기 화면이 받아서 그림·소리·움직임을 더 보여 준다)
+  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: cur.i, lv: cur.lv + 1, by: "glasses" }) });
+  if (r.ok) { cur = await r.json(); draw(false); }
+}
 async function flip(d) {
   const i = Math.max(0, Math.min(cards.length - 1, cur.i + d));
-  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i, by: "glasses" }) });
+  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i, by: "glasses", lv: cur.lv ? 1 : 0 }) });
   if (r.ok) { cur = await r.json(); draw(false); }
 }
 async function poll() {
