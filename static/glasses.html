@@ -8,21 +8,23 @@
 <style>
   /* Meta Ray-Ban Display: 600x600, 빛을 더하는 화면이라 검은색은 투명하게 보인다 → 바탕은 검정, 글과 단추만 밝게 */
   * { box-sizing:border-box; }
-  html, body { margin:0; height:100%; background:#000; color:#fff; font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; word-break:keep-all; overflow:hidden; }
+  /* 값은 Meta Ray-Ban Display UI 툴킷(theme·text-styles·ButtonLayout)에서: 본문 #fff, 보조 #CFD3D9, 강조 #2694FE, 단추 88px·#30333A, 비활성 0.5 */
+  html, body { margin:0; height:100%; background:#000; color:#fff; font-family:"Noto Sans KR","Noto Sans",-apple-system,"Apple SD Gothic Neo",sans-serif; word-break:keep-all; overflow:hidden; }
   main { height:100%; max-width:600px; margin:0 auto; display:flex; flex-direction:column; align-items:center; padding:20px 24px 18px; gap:12px; }
-  .top { display:flex; align-items:center; gap:10px; width:100%; font-size:20px; font-weight:700; color:#9fb3c8; }
-  .dots { display:flex; gap:5px; flex:1; } .dots i { height:6px; flex:1; border-radius:3px; background:#2b3640; } .dots i.done { background:#4d6a86; } .dots i.on { background:#fff; }
+  .top { display:flex; align-items:center; gap:10px; width:100%; font-size:24px; line-height:32px; font-weight:700; color:#CFD3D9; }
+  .dots { display:flex; gap:5px; flex:1; } .dots i { height:6px; flex:1; border-radius:3px; background:#30333A; } .dots i.done { background:#7d8794; } .dots i.on { background:#fff; }
   .pic { width:100%; flex:1; min-height:0; display:flex; align-items:center; justify-content:center; }
   .pic img, .pic video { max-width:100%; max-height:100%; border-radius:18px; }
   .pic video { width:100%; }
   .say { font-size:clamp(26px,6vw,38px); font-weight:800; line-height:1.25; text-align:center; letter-spacing:-.02em; min-height:1.25em; }
-  .say small { display:block; font-size:.6em; font-weight:600; color:#9fb3c8; letter-spacing:0; margin-top:2px; }
-  .again { position:absolute; top:58px; left:50%; transform:translateX(-50%); background:#0064e0; padding:8px 20px; border-radius:99px; font-size:22px; font-weight:800; white-space:nowrap; }
+  .say small { display:block; font-size:28px; line-height:36px; font-weight:600; color:#CFD3D9; letter-spacing:0; margin-top:2px; }
+  .again { position:absolute; top:58px; left:50%; transform:translateX(-50%); background:#2694FE; padding:8px 20px; border-radius:99px; font-size:22px; font-weight:800; white-space:nowrap; }
   .bar { display:flex; gap:12px; width:100%; }
-  .bar button { flex:1; font:inherit; font-size:22px; font-weight:700; color:#fff; background:#1d2730; border:3px solid transparent; border-radius:99px; padding:10px 0; }
-  .bar button:focus { outline:none; border-color:#fff; background:#0064e0; }
-  .bar button:disabled { opacity:.3; }
-  .msg { margin:auto; font-size:26px; font-weight:700; color:#9fb3c8; text-align:center; }
+  .bar button { flex:1; min-height:88px; font:inherit; font-size:28px; font-weight:700; color:#fff; background:#30333A; border:4px solid transparent; border-radius:9999px; transform:scale(.94); transition:transform .1s; }
+  .bar button:focus { outline:none; border-color:#fff; background:#2694FE; box-shadow:0 0 0 4px rgba(255,255,255,.35); transform:scale(1); }  /* 초점은 색과 크기로 */
+  .bar button:disabled { opacity:.5; }
+  .msg { margin:auto; font-size:32px; line-height:40px; font-weight:700; color:#fff; text-align:center; }
+  .ask { position:fixed; inset:0; background:#000; display:flex; flex-direction:column; justify-content:center; gap:24px; padding:24px; }
   [hidden] { display:none !important; }
 </style>
 </head>
@@ -33,6 +35,7 @@
 const run = new URLSearchParams(location.search).get("run");
 const lang = new URLSearchParams(location.search).get("lang") || (() => { try { return localStorage.getItem("lang") || "ko"; } catch { return "ko"; } })();  // 안경 브라우저는 교사 설정을 모르니 주소로 받는다
 const K = lang === "en";
+document.documentElement.lang = K ? "en" : "ko";
 let cards = [], cur = { i: -1, v: -1 };
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const say = c => lang === "en" ? esc(c.en) : lang === "both" ? `${esc(c.ko)}<small>${esc(c.en)}</small>` : esc(c.ko);
@@ -40,22 +43,38 @@ const say = c => lang === "en" ? esc(c.en) : lang === "both" ? `${esc(c.ko)}<sma
 function draw(again) {
   const c = cards[cur.i], n = cards.length, had = document.activeElement?.id;
   if (cur.fin) {  // 끝 화면에서도 안경만으로 처음부터 다시 할 수 있게
-    document.getElementById("m").innerHTML = `<div class="msg" style="color:#fff;font-size:44px">✓<br>${K ? "All steps done" : "다 했어요"}</div>
-      <div class="bar"><button id="f" onclick="restart()">${K ? "Start over ↺" : "처음으로 ↺"}</button></div>`;
-    document.getElementById("f").focus(); return;
+    document.getElementById("m").innerHTML = `<div class="msg" style="font-size:44px;line-height:56px">✓<br>${K ? "All steps done" : "다 했어요"}</div>
+      <div class="bar"><button id="f" onclick="act(restart)">${K ? "Start over ↺" : "처음으로 ↺"}</button></div>`;
+    if (shown !== "fin") { shown = "fin"; lockUntil = Date.now() + 1000; setTimeout(() => document.getElementById("f")?.focus(), 1000); }  // 빨리 여러 번 집어도 바로 처음으로 가지 않게
+    else document.getElementById("f").focus();
+    return;
   }
   document.getElementById("m").innerHTML = `
-    <div class="top"><span>${cur.i + 1} / ${n}</span><div class="dots">${cards.map((_, j) => `<i class="${j === cur.i ? "on" : j < cur.i ? "done" : ""}"></i>`).join("")}</div></div>
+    <div class="top"><span>${cur.i + 1} / ${n}</span>${n > 12 ? "" : `<div class="dots">${cards.map((_, j) => `<i class="${j === cur.i ? "on" : j < cur.i ? "done" : ""}"></i>`).join("")}</div>`}</div>
     ${again ? `<div class="again">${K ? "Start with this card" : "이 카드부터 해요"}</div>` : ""}
     <div class="pic">${cur.lv === 1 ? `<div class="msg">${K ? "Need help? Press Help" : "도움이 필요하면 '도움'을 눌러요"}</div>` : (cur.lv === 4 || (!cur.lv && c.view === "clip")) ? `<video src="/api/runs/${run}/clip/${c.n}.mp4?g=1&t=${c.frame_t ?? c.rep}" autoplay muted loop playsinline></video>`
-      : `<img src="/api/runs/${run}/glass/${cur.i}.jpg?v=${cards[cur.i].v || 0}" alt="">`}</div>
+      : `<img src="/api/runs/${run}/glass/${cur.i}.jpg?v=${cards[cur.i].v || 0}" alt="${esc(c.ko)}">`}</div>
     <div class="say">${say(c)}</div>
-    <div class="bar"><button id="b" onclick="flip(-1)" ${cur.i ? "" : "disabled"}>${K ? "◀ Back" : "◀ 이전"}</button>
-      ${cur.lv && cur.lv < 4 ? `<button id="h" onclick="help()">${K ? "Help" : "도움"}</button>` : ""}
-      ${cur.i < n - 1 ? `<button id="f" onclick="flip(1)">${K ? "Next ▶" : "다음 ▶"}</button>` : `<button id="f" onclick="finish()">${K ? "Done ✓" : "다 했어요 ✓"}</button>`}</div>`;
+    <div class="bar"><button id="b" onclick="act(() => flip(-1))" ${cur.i ? "" : "disabled"}>${K ? "◀ Previous" : "◀ 이전"}</button>
+      ${cur.lv && cur.lv < 4 ? `<button id="h" onclick="act(help)">${K ? "Help" : "도움"}</button>` : ""}
+      ${cur.i < n - 1 ? `<button id="f" onclick="act(() => flip(1))">${K ? "Next ▶" : "다음 ▶"}</button>` : `<button id="f" onclick="act(finish)">${K ? "Done ✓" : "다 했어요 ✓"}</button>`}</div>`;
+  if (shown !== `${cur.i}|${cur.fin}`) { shown = `${cur.i}|${cur.fin}`; lockUntil = Date.now() + 600; }
   const keep = document.getElementById(had);
   (keep && !keep.disabled ? keep : [document.getElementById("f"), document.getElementById("b")].find(b => !b.disabled))?.focus();
 }
+let shown = "", lockUntil = 0;
+const act = fn => { if (Date.now() >= lockUntil) fn(); };  // 한 번 누르면 한 번만: 화면이 바뀐 직후의 겹친 입력은 버린다
+// 시스템 '뒤로'(손가락 동작)는 바로 끄지 않고 한 번 묻는다. 기록은 하나만 쌓는다(최대 5개 제한)
+history.replaceState({ base: 1 }, ""); history.pushState({ guard: 1 }, "");
+addEventListener("popstate", () => {
+  const box = document.createElement("div"); box.className = "ask";
+  box.innerHTML = `<div class="msg" style="margin:0">${K ? "Stop for now?" : "그만할까요?"}</div><div class="bar">
+    <button id="stay">${K ? "Keep going" : "계속하기"}</button><button id="quit">${K ? "Stop" : "그만하기"}</button></div>`;
+  document.body.append(box);
+  box.querySelector("#stay").onclick = () => { box.remove(); history.pushState({ guard: 1 }, ""); draw(false); };
+  box.querySelector("#quit").onclick = () => history.back();
+  box.querySelector("#stay").focus();
+});
 // 초점이 화면 밖으로 나가면(시뮬레이터 단추 등) 화살표·Enter로 다시 데려온다. ←→ 는 이전·다음 단추로 초점만 옮긴다
 document.addEventListener("keydown", e => {
   const b = document.getElementById("b"), f = document.getElementById("f");
@@ -85,8 +104,8 @@ async function flip(d) {
 async function poll() {
   try {
     const d = await (await fetch(`/api/runs/${run}/now`)).json();
-    if (d.v !== cur.v) {  // 교사가 사진·그림·움직임을 바꿨을 수 있다
-      cards = (await (await fetch(`/api/runs/${run}/cards`)).json()).cards;
+    if (d.v !== cur.v) {  // 교사가 사진·그림·움직임을 바꿨을 수 있다(처음 한 번은 이미 받았다)
+      if (cur.v !== -1) cards = (await (await fetch(`/api/runs/${run}/cards`)).json()).cards;
       if (!cards.length) { document.getElementById("m").innerHTML = `<div class="msg" id="msg">${K ? "No card set" : "카드 묶음이 없어요"}</div>`; cur = d; }
       else {  // 카드가 지워졌으면 마지막 카드로. 그리다 실패하면 cur를 되돌려 다음 확인 때 다시 그린다
         const was = cur; cur = { ...d, i: Math.max(0, Math.min(cards.length - 1, d.i | 0)) };

@@ -321,10 +321,14 @@ def glass_img(run_id: str, i: int, ill: int = 1):
         raise HTTPException(404, "없는 카드입니다")
     c = cs[i]
     src = c["ill"] if ill and c.get("view") == "ill" and c.get("ill") else (c["image"].replace(".jpg", "_hl.jpg") if c.get("box") and not c.get("hl_off") else c["image"])
-    out = d / "glass" / f"{i}_{Path(src).stem}_{c.get('v') or 0}.jpg"
+    out = d / "glass" / f"{i}_{Path(src).stem}_{c.get('v') or 0}_k.jpg"
     if not out.exists():
         im = Image.open(inside(d, src)).convert("RGB")
         im.thumbnail((520, 520))
+        if src == c.get("ill"):  # 렌즈에서 흰색은 가장 밝은 빛이라, 그림의 흰 바탕은 검게(투명), 검은 선은 밝게 바꾼다
+            lum = im.convert("L")
+            im.paste((0, 0, 0), mask=lum.point(lambda v: 255 if v > 232 else 0))
+            im.paste((207, 211, 217), mask=lum.point(lambda v: 255 if v < 48 else 0))
         atomic(out, lambda tmp: im.save(tmp, "JPEG", quality=78))
     return FileResponse(out)
 

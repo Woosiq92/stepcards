@@ -118,7 +118,7 @@ def test_clip_and_glass_cache_ok():
     assert [p.name for p in (d / "clips").iterdir()] == ["1_0_3_1.mp4"]
     r = client.get(f"/api/runs/{rid}/glass/1.jpg")
     assert r.status_code == 200 and r.content[:2] == b"\xff\xd8"
-    assert [p.name for p in (d / "glass").iterdir()] == ["1_02_0.jpg"]
+    assert [p.name for p in (d / "glass").iterdir()] == ["1_02_0_k.jpg"]
 
 
 # 5. 접속 키에 한글이 와도 500 이 아니라 401
@@ -219,3 +219,24 @@ def test_retry(monkeypatch):
         threading.Event().wait(0.05)
     assert client.post(f"/api/runs/{rid}/retry").status_code == 404
     assert len(calls) == 1
+
+
+# 안경용 그림: 흰 바탕은 검게(렌즈에서 투명), 검은 선은 밝게, 색은 그대로
+def test_glass_drawing_dark_background():
+    rid, d = make_run()
+    im = Image.new("RGB", (100, 60), "white")
+    for x in range(30, 70):
+        for y in range(20, 40):
+            im.putpixel((x, y), (200, 30, 40))
+    for x in range(10, 20):
+        im.putpixel((x, 50), (0, 0, 0))
+    im.save(d / "cards" / "01_ill.jpg")
+    data = json.loads((d / "cards.json").read_text())
+    data["cards"][0].update(ill="cards/01_ill.jpg", view="ill")
+    (d / "cards.json").write_text(json.dumps(data))
+    r = client.get(f"/api/runs/{rid}/glass/0.jpg")
+    out = Image.open(__import__("io").BytesIO(r.content)).convert("RGB")
+    sx = out.width / 100
+    assert max(out.getpixel((2, 2))) < 30                                   # 바탕 → 검정
+    assert out.getpixel((int(50 * sx), int(30 * sx)))[0] > 150              # 빨강 그대로
+    assert min(out.getpixel((int(15 * sx), int(50 * sx)))) > 120             # 검은 선 → 밝게
