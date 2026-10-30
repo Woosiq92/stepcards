@@ -17,8 +17,14 @@ UPLOADS = DATA / "samples" / "uploads"
 RUNS.mkdir(parents=True, exist_ok=True)
 SEED = ROOT / "seed"  # 새로 배포해도 바로 볼 수 있는 견본 카드 묶음(CC BY 영상). 지워도 서버를 다시 켜면 돌아온다
 for s in sorted(SEED.iterdir()) if SEED.is_dir() else []:
-    if s.is_dir() and not (RUNS / s.name).exists():
-        shutil.copytree(s, RUNS / s.name)
+    if not s.is_dir():
+        continue
+    new = not (RUNS / s.name).exists()
+    for f in s.rglob("*"):  # 빠진 파일만 채운다(교사가 고친 cards.json 은 그대로)
+        if f.is_file() and not (RUNS / s.name / f.relative_to(s)).exists():
+            (RUNS / s.name / f.relative_to(s)).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(f, RUNS / s.name / f.relative_to(s))
+    if new:
         p = json.loads((RUNS / s.name / "progress.json").read_text())
         p["video_path"] = str(RUNS / s.name / "video.mp4")
         (RUNS / s.name / "progress.json").write_text(json.dumps(p, ensure_ascii=False))

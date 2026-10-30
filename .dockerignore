@@ -8,3 +8,4 @@ __pycache__/
 *.log
 *.mp4
 .git/
+!seed/*/video.mp4
