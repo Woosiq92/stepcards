@@ -115,4 +115,40 @@ if (scene === "coach") {
   await rec.stop();
 }
 
+if (scene === "edit2") {
+  // 데모 v2 장면 4: 문장 고치기(빨강 → 통과) → 한 카드를 사진 → 그림 → 움직임으로 바꿔 보기
+  await page.goto(`${BASE}/#run=${runId}&view=edit`, { waitUntil: "networkidle0" });
+  await wait(800);
+  const rec = await page.screencast({ path: OUT + "edit2.webm" });
+  await wait(2000);
+  const row = "#row2";
+  await page.evaluate(r => document.querySelector(r).scrollIntoView({ block: "center", behavior: "smooth" }), row); await wait(1500);
+  const ta = await page.$(`${row} textarea.say`);
+  const original = await page.evaluate(el => el.value, ta);
+  await ta.click({ clickCount: 3 }); await wait(300);
+  await ta.type("냅킨을 들고 " + original, { delay: 70 });
+  await page.waitForFunction(r => document.querySelector(r).classList.contains("has-bad"), { timeout: 20000 }, row);
+  await wait(3000);
+  await ta.click({ clickCount: 3 }); await wait(300);
+  await ta.type(original, { delay: 70 });
+  await page.waitForFunction(r => !document.querySelector(r).classList.contains("has-bad") && document.querySelector("#saved").textContent.includes("Saved"), { timeout: 20000 }, row);
+  await wait(2000);
+  const view = async label => { await clickText(`${row} .seg.mini button`, label); await wait(2800); };
+  await view("Photo"); await view("Drawing"); await view("Motion"); await wait(1500);
+  await view("Drawing");  // 원래 보기로 돌려 둔다
+  await rec.stop();
+}
+
+if (scene === "montage") {
+  // 데모 v2 장면 7: 과제별 카드 묶음을 차례로(실행 id 를 쉼표로)
+  const runs = runId.split(",");
+  await page.goto(`${BASE}/#run=${runs[0]}&view=edit`, { waitUntil: "networkidle0" });
+  const rec = await page.screencast({ path: OUT + "montage.webm" });
+  for (const r of runs) {
+    await page.goto(`${BASE}/#run=${r}&view=edit`, { waitUntil: "networkidle0" });
+    await wait(2200); await smoothScroll(700, 1500); await wait(800);
+  }
+  await rec.stop();
+}
+
 await browser.close();
