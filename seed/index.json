@@ -1,26 +1,32 @@
 {
  "807dcf4d2be2": {
   "title": "아이스 라테 만들기 · 눈높이 영상 (견본)",
-  "use": "special"
+  "use": "special",
+  "title_en": "Iced latte · eye-level video (sample)"
  },
  "8e1456e529ca": {
   "title": "냅킨 나비 접기 (견본)",
-  "use": "staff"
+  "use": "staff",
+  "title_en": "Napkin butterfly fold (sample)"
  },
  "9ba0bf565609": {
   "title": "블랙 글레이즈드 라테 레시피 (견본)",
-  "use": "creator"
+  "use": "creator",
+  "title_en": "Black glazed latte recipe (sample)"
  },
  "d8e60e3947bd": {
   "title": "쇼키 춤 기초 (견본)",
-  "use": "creator"
+  "use": "creator",
+  "title_en": "Shoki dance basics (sample)"
  },
  "06d0c8e9935c": {
   "title": "바지락 순두부찌개 · 엄마 레시피 (견본)",
-  "use": "family"
+  "use": "family",
+  "title_en": "Clam sundubu-jjigae · mom's recipe (sample)"
  },
  "fa37916f40e3": {
   "title": "침대 옆 서랍장 조립 (견본)",
-  "use": "assembly"
+  "use": "assembly",
+  "title_en": "Bedside cabinet assembly (sample)"
  }
 }

@@ -108,7 +108,7 @@ def runs():
             data = read(d, "cards.json")
             cs = data["cards"] if data else []
             seed = SEED_INDEX.get(d.name, {})
-            out.append({"id": d.name, "video": prog["video"], "title": (data or {}).get("title") or seed.get("title", ""), "use": seed.get("use", ""),
+            out.append({"id": d.name, "video": prog["video"], "title": (data or {}).get("title") or seed.get("title", ""), "title_en": seed.get("title_en", ""), "use": seed.get("use", ""),
                         "done": data is not None, "count": len(cs),
                         "issues": len(data["problems"]) if data else 0, "thumb": cs[0]["image"] if cs else None})
     return out
