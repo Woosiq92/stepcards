@@ -1,0 +1,121 @@
+{
+ "video": "napkin_butterfly.mp4",
+ "video_path": "",
+ "events": [
+  {
+   "t": 1793232438.8,
+   "stage": "start",
+   "msg": "napkin_butterfly.mp4 → 8e1456e529ca"
+  },
+  {
+   "t": 1793232439.7,
+   "stage": "extract",
+   "msg": "영상 140초, 사진 141장"
+  },
+  {
+   "t": 1793232453.7,
+   "stage": "listen",
+   "msg": "영상에 말소리가 없음",
+   "n": 0,
+   "cost": 0.007
+  },
+  {
+   "t": 1793232478.3,
+   "stage": "split",
+   "msg": "1번째 시도: 단계 12개, 문제 0개 (25초, $0.074)",
+   "n": 12,
+   "problems": [],
+   "warnings": [],
+   "cost": 0.0736
+  },
+  {
+   "t": 1793232480.7,
+   "stage": "highlight",
+   "msg": "1단계 'red napkin': 상자 찾음(red napkin, 손과 겹침)",
+   "i": 1,
+   "total": 12
+  },
+  {
+   "t": 1793232483.1,
+   "stage": "highlight",
+   "msg": "2단계 'red napkin': 상자 찾음(red napkin, 손과 겹침)",
+   "i": 2,
+   "total": 12
+  },
+  {
+   "t": 1793232485.0,
+   "stage": "highlight",
+   "msg": "3단계 'red napkin': 상자 찾음(red napkin, 손과 겹침)",
+   "i": 3,
+   "total": 12
+  },
+  {
+   "t": 1793232486.3,
+   "stage": "highlight",
+   "msg": "4단계 'red napkin': 상자 찾음(red napkin, 손과 겹침)",
+   "i": 4,
+   "total": 12
+  },
+  {
+   "t": 1793232487.4,
+   "stage": "highlight",
+   "msg": "5단계 'red napkin': 상자 찾음(red napkin, 손과 겹침)",
+   "i": 5,
+   "total": 12
+  },
+  {
+   "t": 1793232488.6,
+   "stage": "highlight",
+   "msg": "6단계 'red napkin': 상자 찾음(red napkin, 손과 겹침)",
+   "i": 6,
+   "total": 12
+  },
+  {
+   "t": 1793232491.6,
+   "stage": "highlight",
+   "msg": "7단계 'red napkin': 상자 찾음(red napkin, 손과 겹침)",
+   "i": 7,
+   "total": 12
+  },
+  {
+   "t": 1793232493.2,
+   "stage": "highlight",
+   "msg": "8단계 'red napkin': 상자 찾음(red napkin, 손과 겹침)",
+   "i": 8,
+   "total": 12
+  },
+  {
+   "t": 1793232494.1,
+   "stage": "highlight",
+   "msg": "9단계 'red napkin': 상자 찾음(red napkin, 손과 겹침)",
+   "i": 9,
+   "total": 12
+  },
+  {
+   "t": 1793232495.1,
+   "stage": "highlight",
+   "msg": "10단계 'red napkin': 상자 찾음(red napkin, 손과 겹침)",
+   "i": 10,
+   "total": 12
+  },
+  {
+   "t": 1793232496.1,
+   "stage": "highlight",
+   "msg": "11단계 'red napkin': 상자 찾음(red napkin, 손과 겹침)",
+   "i": 11,
+   "total": 12
+  },
+  {
+   "t": 1793232497.3,
+   "stage": "highlight",
+   "msg": "12단계 'red napkin': 상자 찾음(red napkin, 손과 겹침)",
+   "i": 12,
+   "total": 12
+  },
+  {
+   "t": 1793232497.3,
+   "stage": "done",
+   "msg": "완료: runs/8e1456e529ca"
+  }
+ ]
+}

@@ -78,6 +78,12 @@
   @media (max-width:560px) { .uses { grid-template-columns:1fr; } }
   .past { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
   .pastcard { background:var(--paper); border-radius:var(--r); overflow:hidden; color:inherit; font-weight:400; box-shadow:var(--sh-1); transition:box-shadow .15s, transform .15s; }
+  .pastcard { position:relative; }
+  .pastcard .del { position:absolute; top:8px; right:8px; width:32px; height:32px; border-radius:50%; border:none; background:rgba(11,16,21,.6); color:#fff; display:grid; place-items:center; opacity:0; transition:opacity .15s; }
+  .pastcard:hover .del, .pastcard .del:focus-visible { opacity:1; } .pastcard .del .ico { width:16px; height:16px; }
+  @media (hover:none) { .pastcard .del { opacity:1; } }
+  .titlein { font:inherit; font-size:20px; font-weight:700; border:1.5px solid transparent; border-radius:var(--r-s); padding:4px 10px; background:transparent; color:var(--ink); min-width:0; width:min(320px,100%); }
+  .titlein:hover { background:var(--paper); } .titlein:focus { outline:none; border-color:var(--accent); background:#fff; box-shadow:var(--focus); }
   .pastcard:hover { box-shadow:var(--sh-2); transform:translateY(-2px); text-decoration:none; }
   .pastcard img, .pastcard .ph { width:100%; aspect-ratio:16/9; object-fit:cover; display:block; background:var(--line); }
   .pt { padding:12px 16px 14px; display:flex; flex-direction:column; gap:2px; } .pt strong { font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -278,13 +284,13 @@ async function route() {
   const run = p.get("run");
   if (run !== S.run) { S.run = run; S.data = null; S.idx = 0; S.open.clear(); S.strip.clear(); }
   S.view = run ? (p.get("view") || "making") : "home";
-  if (run && !S.data) { const r = await fetch(`/api/runs/${run}/cards`); if (r.ok) S.data = await r.json(); }
+  if (run && !S.data) { const r = await fetch(`/api/runs/${run}/cards`); if (r.ok) S.data = await r.json(); else if (r.status === 404 && (await fetch(`/api/runs/${run}/progress`)).status === 404) S.view = "missing"; }
   if (["edit", "use", "tablet", "coach"].includes(S.view) && !S.data) S.view = "making";
   document.body.classList.toggle("tabmode", S.view === "tablet" || S.view === "coach");
   document.documentElement.lang = ui;
   $("#uiseg").innerHTML = [["ko", "한국어"], ["en", "English"]].map(([v, l]) => `<button class="${ui === v ? "on" : ""}" onclick="setUi('${v}')">${l}</button>`).join("");
   header();
-  ({ home, making, edit, use, tablet, coach })[S.view]();
+  ({ home, making, edit, use, tablet, coach, missing })[S.view]();
 }
 
 /* 위쪽 1·2·3 단계 표시 */
@@ -325,6 +331,11 @@ function toast(msg, label, act) {
   setTimeout(() => t.remove(), 6000);
 }
 
+function missing() {
+  $("#main").innerHTML = `<h2>${T("이 카드 묶음이 없어요", "This card set doesn't exist")}</h2>
+    <p class="sub">${T("지워졌거나 주소가 잘못되었어요.", "It was removed, or the link is wrong.")}</p>
+    <button class="btn primary" onclick="go({})">${T("처음 화면으로", "Back to start")}</button>`;
+}
 /* ① 처음 화면 */
 async function home() {
   const runs = await (await fetch("/api/runs")).json();
@@ -358,14 +369,23 @@ async function home() {
     ${runs.length ? `<h3>${T("지난 카드 묶음", "Previous card sets")}</h3><div class="past">${runs.map(r => `
       <a class="pastcard" href="#run=${r.id}&view=${r.done ? "edit" : "making"}">
         ${r.thumb ? `<img src="/runs/${r.id}/${r.thumb}" alt="">` : '<div class="ph"></div>'}
-        <div class="pt"><strong>${esc(r.video)}</strong>
+        <div class="pt"><strong>${esc(r.title || r.video)}</strong>
         <span class="muted">${r.done ? `${T(`카드 ${r.count}장`, `${r.count} cards`)}${r.issues ? ` · <span class="red">${T(`확인할 곳 ${r.issues}`, `${r.issues} to check`)}</span>` : T(" · 확인 끝", " · all checks passed")}` : T("만드는 중", "in progress")}</span></div>
+        <button class="del" title="${T("지우기", "Delete")}" aria-label="${T("지우기", "Delete")}" onclick="event.preventDefault();delRun('${r.id}')">${icon("x")}</button>
       </a>`).join("")}</div>` : ""}`;
   const drop = $("#drop"), file = $("#file");
   file.onchange = () => file.files[0] && upload(file.files[0]);
   drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
   drop.ondragleave = () => drop.classList.remove("over");
   drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) upload(f); };
+}
+// 지우기는 되돌릴 수 없어서 한 번 더 묻는다(브라우저 확인 창 대신 아래 알림의 단추)
+function delRun(id) {
+  toast(T("이 카드 묶음과 올린 영상을 지울까요? 되돌릴 수 없어요.", "Delete this card set and its video? This can't be undone."), T("지우기", "Delete"), async () => {
+    const r = await fetch(`/api/runs/${id}`, { method: "DELETE" });
+    toast(r.ok ? T("지웠어요.", "Deleted.") : T("지우지 못했어요. 만드는 중이면 끝난 뒤에 지워 주세요.", "Could not delete. If it is still being made, try after it finishes."));
+    home();
+  });
 }
 async function upload(f) {
   if (!f.type.startsWith("video/")) return toast(T("영상 파일만 넣을 수 있어요.", "Only video files can be added."));
@@ -473,6 +493,7 @@ function edit() {
   const y = scrollY;
   $("#main").innerHTML = `
     <div class="toolbar">
+      <input class="titlein" value="${esc(S.data.title || "")}" placeholder="${T("과제 이름 (예: 아이스 라테 만들기)", "Task name (e.g. Iced latte)")}" oninput="S.data.title=this.value;scheduleSave()" aria-label="${T("과제 이름", "Task name")}">
       <h2 style="margin:0">${T(`카드 ${cs.length}장`, `${cs.length} cards`)}</h2>
       <span id="chip">${chipHtml(Object.keys(per).length + global.length)}</span>
       <span class="saved" id="saved">${saveText()}</span>
@@ -545,10 +566,10 @@ function setSave(s) { S.saveState = s; const el = $("#saved"); if (el) el.textCo
 function scheduleSave(ms = 700) { clearTimeout(S.saveTimer); setSave("dirty"); S.saveTimer = setTimeout(saveNow, ms); }
 function saveNow() {
   clearTimeout(S.saveTimer);
-  const cards = JSON.parse(JSON.stringify(S.data.cards));
+  const cards = JSON.parse(JSON.stringify(S.data.cards)), title = S.data.title ?? "";
   S.saving = S.saving.then(async () => {
     setSave("saving");
-    const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards }) });
+    const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards, title }) });
     if (!r.ok) throw new Error(r.status);
     const d = await r.json();
     Object.assign(S.data, { problems: d.problems, warnings: d.warnings, status: d.status });

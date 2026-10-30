@@ -1,6 +1,6 @@
 # 로컬 서버: 영상 올리기 → 파이프라인 → 진행판·편집·인쇄·태블릿 보기
 # 사용: .venv/bin/python app.py  → http://127.0.0.1:8790
-import hashlib, hmac, json, os, re, threading, time, uuid
+import hashlib, hmac, json, os, re, shutil, threading, time, uuid
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
@@ -15,6 +15,13 @@ DATA = Path(os.environ.get("DATA_DIR") or ROOT)  # 배포 때는 영구 저장�
 RUNS = DATA / "runs"
 UPLOADS = DATA / "samples" / "uploads"
 RUNS.mkdir(parents=True, exist_ok=True)
+SEED = ROOT / "seed"  # 새로 배포해도 바로 볼 수 있는 견본 카드 묶음(CC BY 영상). 지워도 서버를 다시 켜면 돌아온다
+for s in sorted(SEED.iterdir()) if SEED.is_dir() else []:
+    if s.is_dir() and not (RUNS / s.name).exists():
+        shutil.copytree(s, RUNS / s.name)
+        p = json.loads((RUNS / s.name / "progress.json").read_text())
+        p["video_path"] = str(RUNS / s.name / "video.mp4")
+        (RUNS / s.name / "progress.json").write_text(json.dumps(p, ensure_ascii=False))
 APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정: 아는 사람만 들어와 크레딧을 쓰게
 app = FastAPI()
 
@@ -101,9 +108,24 @@ def runs():
         if prog:
             data = read(d, "cards.json")
             cs = data["cards"] if data else []
-            out.append({"id": d.name, "video": prog["video"], "done": data is not None, "count": len(cs),
+            out.append({"id": d.name, "video": prog["video"], "title": (data or {}).get("title", ""), "done": data is not None, "count": len(cs),
                         "issues": len(data["problems"]) if data else 0, "thumb": cs[0]["image"] if cs else None})
     return out
+
+
+@app.delete("/api/runs/{run_id}")
+def delete_run(run_id: str):
+    """카드 묶음 지우기: 실행 폴더와, 올린 영상이 업로드 폴더에 있으면 그것도"""
+    d = run_dir(run_id)
+    with RUNNING_LOCK:
+        if run_id in RUNNING:
+            raise HTTPException(409, "아직 만드는 중입니다")
+    video = Path((read(d, "progress.json") or {}).get("video_path") or "")
+    shutil.rmtree(d)
+    if video.is_file() and video.resolve().parent == UPLOADS.resolve():
+        video.unlink()
+    NOW.pop(run_id, None)
+    return {"ok": True}
 
 
 @app.post("/api/upload")
@@ -163,6 +185,8 @@ def _save(d, body):
             if c.get(k) is not None and not (isinstance(c[k], str) and CARD_PATH.fullmatch(c[k])):
                 raise HTTPException(400, f"잘못된 파일 경로입니다: {k}")
     data["cards"] = body["cards"]
+    if isinstance(body.get("title"), str):
+        data["title"] = body["title"].strip()[:60]
     data["problems"], data["warnings"] = check(data["cards"], data.get("duration", len(list((d / "frames").glob("*.jpg")))))
     data["status"] = "ok" if not data["problems"] else "needs_review"
     data["edited_at"] = time.time()

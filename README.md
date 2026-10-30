@@ -120,6 +120,8 @@ Tests (checker, server, Coach decisions; no paid model calls): `.venv/bin/pip in
 ## Credits
 
 - Design patterns (checks built into the pipeline instead of left to the model, code-only verdicts, retry with reasons, content-hash caching, SAM box tokens, progress board) were learned from Meta's hackathon workshop repository `meta-models/legal-agent-workshop`. No code was copied from it.
-- Sample videos used for testing and the draft demo (not included in this repository):
+- Sample videos used for testing and the demo (not included in this repository unless noted):
   - "POV Morning Latte in Costa Rica ASMR" by Cornffy, YouTube `vqv_DMMDqC8`, CC BY. Korean narration was added with a synthetic voice for testing.
   - Starbucks black glazed latte recipe by 베란다스튜디오, YouTube `sjgucMN4Aa8`, CC BY.
+  - "Napkin Folding - Butterfly" by maitp, YouTube `jaHe0SBRLVA`, CC BY. A smaller, silent copy is included in `seed/` as the sample card set that appears on a fresh deployment.
+  - "How to SHOKI - Quick dance tutorial by Afro 101" by AFRO 101, YouTube `DgqYEe7sIQw`, CC BY.

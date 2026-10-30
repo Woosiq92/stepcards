@@ -169,3 +169,21 @@ def test_now_keeps_help_level():
     assert client.post(f"/api/runs/{rid}/now", json={"i": 1, "lv": 9, "by": "glasses"}).json()["lv"] == 4
     assert client.post(f"/api/runs/{rid}/now", json={"i": 0, "by": "glasses"}).json()["lv"] == 0
     assert client.get(f"/api/runs/{rid}/now").json()["lv"] == 0
+
+
+# 견본 카드 묶음은 빈 저장소에도 들어가 있고, 영상 경로가 새 위치로 맞춰진다
+def test_seed_copied():
+    d = A.RUNS / "8e1456e529ca"
+    assert (d / "cards.json").exists()
+    assert json.loads((d / "progress.json").read_text())["video_path"] == str(d / "video.mp4")
+
+
+# 제목은 저장되고 목록에 나온다. 지우면 폴더도 목록에서도 사라진다
+def test_title_and_delete():
+    rid, d = make_run()
+    cards = json.loads((d / "cards.json").read_text())["cards"]
+    assert client.put(f"/api/runs/{rid}/cards", json={"cards": cards, "title": "  라테 만들기 "}).status_code == 200
+    assert next(r for r in client.get("/api/runs").json() if r["id"] == rid)["title"] == "라테 만들기"
+    assert client.delete(f"/api/runs/{rid}").json()["ok"]
+    assert not d.exists() and all(r["id"] != rid for r in client.get("/api/runs").json())
+    assert client.delete(f"/api/runs/{rid}").status_code == 404
