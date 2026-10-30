@@ -29,12 +29,36 @@ for s in sorted(SEED.iterdir()) if SEED.is_dir() else []:
         p = json.loads((RUNS / s.name / "progress.json").read_text())
         p["video_path"] = str(RUNS / s.name / "video.mp4")
         (RUNS / s.name / "progress.json").write_text(json.dumps(p, ensure_ascii=False))
+
+
+def mark_interrupted():
+    """서버가 다시 켜지면 그 전에 돌던 만들기는 사라진다 → '멈춤'으로 적어 '다시 만들기'가 나오게"""
+    for p in RUNS.glob("*/progress.json"):
+        try:
+            prog = json.loads(p.read_text())
+        except (OSError, ValueError):
+            continue
+        ev = prog.get("events", [])
+        if ev and not any(e.get("stage") in ("done", "error") for e in ev):
+            ev.append({"t": round(time.time(), 1), "stage": "error", "msg": "멈췄어요: 서버가 다시 시작돼서 만들던 작업이 끊겼어요"})
+            p.write_text(json.dumps(prog, ensure_ascii=False, indent=1))
+
+
+mark_interrupted()
 APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정: 키를 아는 사람만 크레딧을 쓰고 카드를 바꾸게
 JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 수 있지만 하루 한도가 있다(제출 설명에 적는 키)
 JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "coach": 900, "frame": 60, "retry": 6}  # 하루 횟수. 따라 하기 900번 ≈ 30분
 JUDGE_USE = {"day": "", "n": {}}
 NOW_PATH = re.compile(r"/api/runs/\w+/now$")
 app = FastAPI()
+
+
+def has_key(request):
+    """교사 키나 심사용 키가 있는지(키를 설정하지 않은 로컬은 늘 참)"""
+    if not APP_KEY:
+        return True
+    return any(key and hmac.compare_digest(request.cookies.get(name, "").encode(), key.encode())
+               for name, key in (("sc_key", APP_KEY), ("sc_judge", JUDGE_KEY)))
 
 
 @app.middleware("http")
@@ -114,11 +138,12 @@ def index():
 
 
 @app.get("/api/runs")
-def runs():
-    out = []
+def runs(request: Request):
+    """처음 화면 목록. 키가 없으면 견본만: 교사가 올린 카드 묶음은 주소(추측하기 어려운 id)를 아는 사람만 연다"""
+    out, show_all = [], has_key(request)
     for d in sorted(RUNS.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
         prog = read(d, "progress.json") if d.is_dir() else None
-        if prog:
+        if prog and (show_all or d.name in SEED_INDEX):
             data = read(d, "cards.json")
             cs = data["cards"] if data else []
             seed = SEED_INDEX.get(d.name, {})
@@ -143,21 +168,44 @@ def delete_run(run_id: str):
     return {"ok": True}
 
 
+MAX_UPLOAD_MB, MAX_VIDEO_SEC, MIN_FREE_GB = 500, 600, 2
+
+
+def video_seconds(path):
+    import subprocess
+    r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)], capture_output=True, text=True)
+    try:
+        return float(r.stdout.strip())
+    except ValueError:
+        return 0
+
+
 @app.post("/api/upload")
 async def upload(file: UploadFile, local: bool = Form(False)):
     UPLOADS.mkdir(parents=True, exist_ok=True)
     tmp, h = UPLOADS / f".{uuid.uuid4().hex}.part", hashlib.sha256()
     try:  # 이름이 같은 다른 영상이 옛 영상을 덮지 않게 내용 해시를 이름 앞에 붙인다
+        size = 0
         with tmp.open("wb") as f:
             while b := file.file.read(1 << 20):
+                size += len(b)
+                if size > MAX_UPLOAD_MB << 20:
+                    raise HTTPException(413, f"영상이 너무 큽니다({MAX_UPLOAD_MB}MB 이하)")
                 h.update(b)
                 f.write(b)
+        if shutil.disk_usage(UPLOADS).free < MIN_FREE_GB << 30:
+            raise HTTPException(507, "저장 공간이 부족합니다")
+        secs = video_seconds(tmp)
+        if not 0 < secs <= MAX_VIDEO_SEC:
+            raise HTTPException(400, f"영상 길이는 {MAX_VIDEO_SEC // 60}분 이하여야 합니다" if secs else "영상을 읽지 못했습니다")
         dest = UPLOADS / f"{h.hexdigest()[:12]}_{Path(file.filename).name}"
         if not dest.exists():
             os.replace(tmp, dest)
     finally:
         tmp.unlink(missing_ok=True)
     run = pipeline.Run(dest)
+    if not local and not pipeline.API_KEY:
+        raise HTTPException(503, "Meta API 키가 없어 이 맥에서 만들기만 됩니다")
     if local and not coach.local_ready():
         raise HTTPException(409, "이 맥의 Muse Glimmer 서버가 켜져 있지 않습니다")
     if not any(e.get("stage") == "done" for e in run.events):  # 이미 끝난 실행은 다시 돌리지 않는다
@@ -386,8 +434,8 @@ def qr(run_id: str, request: Request, to: str = "tablet", lang: str = "ko"):
 
 @app.get("/api/local")
 def local_status():
-    """이 맥에 Muse Glimmer 서버가 떠 있는지(따라 하기 선택지에 씀)"""
-    return {"ready": coach.local_ready()}
+    """이 맥에 Muse Glimmer 서버가 떠 있는지(만들기·따라 하기 선택지에 씀)와 Meta API 키가 있는지"""
+    return {"ready": coach.local_ready(), "api": bool(pipeline.API_KEY)}
 
 
 if __name__ == "__main__":

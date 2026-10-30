@@ -493,7 +493,12 @@ async function upload(f) {
   $("#drop").innerHTML = `<div class="big">${T("영상을 올리는 중…", "Uploading…")}</div>`;
   const fd = new FormData(); fd.append("file", f); if (S.makeLocal) fd.append("local", "true");
   const r = await fetch("/api/upload", { method: "POST", body: fd });
-  if (!r.ok) { toast(T("올리지 못했어요. 다시 해 주세요.", "Upload failed. Please try again.")); return home(); }
+  if (!r.ok) {  // 서버가 알려 준 이유(크기·길이·저장 공간·키 없음)를 그대로
+    const why = { 413: T("영상이 너무 커요(500MB 이하).", "The video is too large (max 500 MB)."), 400: T("영상 길이는 10분 이하여야 해요. 영상 파일이 맞는지도 확인해 주세요.", "Videos must be 10 minutes or shorter, and a real video file."),
+                  503: T("Meta API 키가 없어서, '이 맥에서'로만 만들 수 있어요.", "No Meta API key: only 'On this Mac' can make cards."), 507: T("서버 저장 공간이 부족해요. 안 쓰는 카드 묶음을 지워 주세요.", "The server is out of space. Delete card sets you no longer need."),
+                  409: T("이 맥의 Muse Glimmer 서버가 꺼져 있어요.", "The Muse Glimmer server on this Mac is not running.") }[r.status];
+    toast(why || T("올리지 못했어요. 다시 해 주세요.", "Upload failed. Please try again.")); return home();
+  }
   go({ run: (await r.json()).id, view: "making" });
 }
 
@@ -543,6 +548,7 @@ async function making() {
 // 프로그램 오류문 대신 할 일을 쉬운 말로
 function errText(m) {
   if (/401|403|unauthori|api.?key|MODEL_API_KEY/i.test(m)) return T("Meta API 키가 맞지 않아요. 서버의 MODEL_API_KEY를 확인해 주세요.", "The Meta API key was refused. Check MODEL_API_KEY on the server.");
+  if (/다시 시작돼서/.test(m)) return T("서버가 다시 시작돼서 만들던 작업이 끊겼어요. '다시 만들기'를 눌러 주세요.", "The server restarted while making these cards. Press Try again.");
   if (/429|rate/i.test(m)) return T("Meta API 사용량이 잠시 넘쳤어요. 1분쯤 뒤에 다시 해 주세요.", "Too many requests to the Meta API. Try again in a minute.");
   if (/timeout|timed out|connect|network/i.test(m)) return T("Meta API에 연결하지 못했어요. 인터넷을 확인하고 다시 해 주세요.", "Could not reach the Meta API. Check the connection and try again.");
   if (/ffmpeg|ffprobe|invalid data|moov/i.test(m)) return T("영상을 읽지 못했어요. 다른 형식(mp4)으로 다시 넣어 주세요.", "The video could not be read. Try an mp4 file.");
@@ -1063,7 +1069,7 @@ function coachEnd(finished) {
 }
 function coachCard() {
   const cs = S.data.cards, c = cs[S.idx];
-  if (C.shown !== S.idx) { C.shown = S.idx; C.lv = 1; C.since = Date.now(); }
+  if (C.shown !== S.idx) { C.shown = S.idx; C.lv = 1; C.since = Date.now(); C.lastMove = Date.now(); }
   if (C.started && C.help) C.max[S.idx] = Math.max(C.max[S.idx] || 0, C.lv);
   glassesSync(false);
   if (!C.help || C.lv >= 3) speak();
@@ -1098,7 +1104,11 @@ function coachStart() {
   $("#cstart").hidden = true; C.buf = []; C.running = true; pill(T("지켜보는 중", "Watching"));
   C.started = true; C.since = Date.now(); coachCard();
   clearInterval(C.helpTimer);
-  C.helpTimer = setInterval(() => { if (C.help && C.running && C.lv < 4 && Date.now() - C.since > helpWait(S.data.cards[S.idx]) * 1000) helpUp(); }, 1000);
+  C.helpTimer = setInterval(() => {
+    if (C.help && C.running && C.lv < 4 && Date.now() - C.since > helpWait(S.data.cards[S.idx]) * 1000) helpUp();
+    if (C.running && Date.now() - C.lastMove > IDLE_MIN * 60000) coachPause();  // 켜 둔 채 잊어도 비용이 계속 나가지 않게
+  }, 1000);
+  C.lastMove = Date.now();
   navigator.wakeLock?.request("screen").then(l => { C.lock = l; }).catch(() => {});  // 휴대폰 화면이 꺼지지 않게
   const v = $("#cvid"), cv = document.createElement("canvas");
   C.timer = setInterval(() => {  // 1초에 한 장, 최근 4장만 둔다
@@ -1135,6 +1145,16 @@ async function coachLoop() {
     }
     await new Promise(r => setTimeout(r, 1500));
   }
+}
+const IDLE_MIN = 5;
+function coachPause() {  // 카메라와 판단만 멈춘다(카드·안경 맞추기는 그대로). '다시 시작'으로 이어서
+  C.running = false; clearInterval(C.timer); clearInterval(C.helpTimer);
+  C.stream?.getTracks().forEach(t => t.stop()); C.stream = null; C.lock?.release().catch(() => {}); C.lock = null;
+  $(".coachv")?.insertAdjacentHTML("beforeend", `<div class="cstart" id="cpause"><div class="glyph">${icon("glasses")}</div>
+    <div class="t">${T("잠시 멈췄어요", "Paused")}</div>
+    <div class="d">${T(`${IDLE_MIN}분 동안 다음 카드로 넘어가지 않아서 카메라를 껐어요. 카메라가 꺼진 동안은 비용이 들지 않아요.`, `No step change for ${IDLE_MIN} minutes, so the camera is off and nothing is being spent.`)}</div>
+    <button class="navb next" onclick="document.getElementById('cpause').remove();coachCamera()">${T("다시 시작", "Resume")}</button></div>`);
+  pill(T("멈춤", "Paused"));
 }
 function stopCoach() {
   C.running = false; clearInterval(C.timer); clearInterval(C.sync); clearInterval(C.helpTimer); C.started = false;

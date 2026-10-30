@@ -9,8 +9,12 @@ from PIL import Image, ImageDraw
 from check import check
 
 load_dotenv(Path(__file__).parent / ".env")
-client = OpenAI(api_key=os.environ["MODEL_API_KEY"], base_url="https://api.meta.ai/v1", max_retries=2, timeout=300)
-STEP_MODEL, SAM_MODEL, ASR_MODEL = "muse-spark-1.3", "sam-3.1", "muse-voice-transcribe-1.0"
+API_KEY = os.environ.get("MODEL_API_KEY", "")  # 없으면(대회 뒤 키 삭제 등) 보기와 이 맥에서 만들기만 된다
+client = OpenAI(api_key=API_KEY or "missing", base_url="https://api.meta.ai/v1", max_retries=2, timeout=300)
+# 모델이 바뀌면 코드를 고치지 않고 환경 변수로 바꾼다
+STEP_MODEL = os.environ.get("STEP_MODEL", "muse-spark-1.3")
+SAM_MODEL = os.environ.get("SAM_MODEL", "sam-3.1")
+ASR_MODEL = os.environ.get("ASR_MODEL", "muse-voice-transcribe-1.0")
 ASR_PRICE = 0.18 / 3600  # 달러/초
 PRICE_IN, PRICE_OUT = 1.25 / 1e6, 4.25 / 1e6
 MAX_RETRY = 2
@@ -83,7 +87,7 @@ def listen(run):
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(run.video), "-vn", "-ac", "1", "-ar", "24000", "-c:a", "pcm_s16le",
                         "-map_metadata", "-1", "-t", "600", str(wav)], check=True)  # API는 10분까지
         req = {"mode": "ENDPOINTING", "model": ASR_MODEL, "audioEncoding": "WAV", "languageBias": ["Korean", "English"]}
-        r = requests.post("https://api.meta.ai/v1/asr/transcribe", headers={"Authorization": f"Bearer {os.environ['MODEL_API_KEY']}"},
+        r = requests.post("https://api.meta.ai/v1/asr/transcribe", headers={"Authorization": f"Bearer {API_KEY}"},
                           files={"request": (None, json.dumps(req), "application/json"), "audio": ("audio.wav", wav.open("rb"), "audio/wav")},
                           timeout=300)
         r.raise_for_status()
@@ -230,7 +234,7 @@ ILL_PROMPT = ("Redraw this photo as a simple picture-instruction card illustrati
 def illustrate(image, obj=""):
     """카드 사진 → 그림(jpeg 바이트). $0.01/장, 8~9초(runs/exp6)."""
     r = requests.post("https://api.meta.ai/v1/images/edits", timeout=300,
-                      headers={"Authorization": f"Bearer {os.environ['MODEL_API_KEY']}", "Content-Type": "application/json"},
+                      headers={"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"},
                       json={"model": "muse-image-1.0", "n": 1, "output_format": "jpeg", "reasoning_strength": "low",
                             "prompt": ILL_PROMPT.format(obj=f"; the {obj} in the hand must stay clearly visible" if obj else ""),
                             "images": [{"image_url": data_url(image)}],

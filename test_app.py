@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 import app as A
 import pipeline
+REAL_VIDEO_SECONDS = A.video_seconds
 
 client = TestClient(A.app, raise_server_exceptions=False)
 VIDEO = Path(os.environ["DATA_DIR"]) / "test.mp4"
@@ -25,6 +26,8 @@ def no_network(monkeypatch):
         raise AssertionError("네트워크 경로 호출")
     for f in ("main", "find_box", "illustrate"):
         monkeypatch.setattr(pipeline, f, boom)
+    monkeypatch.setattr(A, "video_seconds", lambda p: 10)  # 대부분의 시험은 아무 바이트나 '영상'으로 올린다
+    monkeypatch.setattr(pipeline, "API_KEY", "test")
 
 
 def make_run(cards=None):
@@ -268,3 +271,31 @@ def test_judge_key_daily_limit(monkeypatch):
     assert c.put(f"/api/runs/{rid}/cards", json={"cards": cards}).status_code == 200   # 저장은 세지 않음
     codes = [c.post(f"/api/runs/{rid}/agent", json={"instruction": "x"}).status_code for _ in range(3)]
     assert codes == [200, 200, 429]
+
+
+# 키가 없으면 목록에는 견본만, 올린 카드 묶음은 주소로는 열림
+def test_unlisted_without_key(monkeypatch):
+    rid, d = make_run()
+    monkeypatch.setattr(A, "APP_KEY", "teach-1")
+    c = TestClient(A.app, base_url="https://testserver")
+    ids = [r["id"] for r in c.get("/api/runs").json()]
+    assert rid not in ids and all(i in A.SEED_INDEX for i in ids)
+    assert c.get(f"/api/runs/{rid}/cards").status_code == 200
+    c.cookies.set("sc_key", "teach-1")
+    assert rid in [r["id"] for r in c.get("/api/runs").json()]
+
+
+# 서버가 다시 켜지면 끝나지 않은 만들기는 '멈춤'으로 표시
+def test_mark_interrupted():
+    rid, d = make_run()
+    (d / "progress.json").write_text(json.dumps({"video": "v.mp4", "video_path": "", "events": [{"stage": "start"}, {"stage": "extract"}]}))
+    A.mark_interrupted()
+    assert json.loads((d / "progress.json").read_text())["events"][-1]["stage"] == "error"
+
+
+# 길이가 0(영상 아님)이면 거절, 키가 없으면 API 로 만들기는 503
+def test_upload_checks(monkeypatch):
+    monkeypatch.setattr(A, "video_seconds", REAL_VIDEO_SECONDS)
+    assert client.post("/api/upload", files={"file": ("x.mp4", b"not a video")}).status_code == 400
+    monkeypatch.setattr(pipeline, "API_KEY", "")
+    assert client.post("/api/upload", files={"file": ("v.mp4", VIDEO.read_bytes())}).status_code == 503
