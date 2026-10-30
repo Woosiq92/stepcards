@@ -836,7 +836,7 @@ function use() {
         <p class="muted">${/^(127\.|localhost|\[::1\])/.test(location.hostname) ? T("지금은 이 맥 안에서만 열리는 주소예요. 배포한 주소에서 열면 다른 기기에서도 열려요.", "This address only works on this Mac. Open StepCards from your deployed address to use it on other devices.")
           : T("보기는 키 없이 열려요. 학생 기기에서 카드를 만들거나 고치려면 접속 키가 필요해요.", "Viewing needs no key. Making or editing cards on a learner device needs the access key.")}</p></div>
       <div class="langrow"><span class="muted">${T("카드 글자", "Card language")}</span> ${segHtml()}
-        <span style="flex:1"></span><button class="btn" onclick="shareCards(this)">${icon("share")} ${navigator.canShare ? T("이미지로 보내기", "Send as images") : T("이미지로 저장", "Save as image")}</button></div>
+        <span style="flex:1"></span><button class="btn" onclick="printWhat('record')">${icon("print")} ${T("기록지 인쇄", "Print record sheet")}</button><button class="btn" onclick="shareCards(this)">${icon("share")} ${navigator.canShare ? T("이미지로 보내기", "Send as images") : T("이미지로 저장", "Save as image")}</button></div>
       <h3>${T("인쇄 미리보기", "Print preview")}</h3>
     </div>
     ${sheets}
@@ -946,7 +946,8 @@ function coach() {
   C.sync = setInterval(async () => {
     if (S.view !== "coach") return clearInterval(C.sync);
     const d = await fetch(`/api/runs/${S.run}/now`).then(r => r.json()).catch(() => null);
-    if (d && d.by === "glasses" && d.v > (C.v || 0) && d.i !== S.idx) { C.v = d.v; S.idx = d.i; C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); }
+    if (d && d.by === "glasses" && d.v > (C.v || 0) && d.fin) { C.v = d.v; coachEnd(true); }  // 안경에서 '다 했어요'
+    else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.i !== S.idx) { C.v = d.v; S.idx = d.i; C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); }
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && C.help && d.lv > C.lv) { C.v = d.v; helpUp(); }  // 안경에서 '도움'을 눌렀다
   }, 1000);
   C.local = false;
@@ -1022,7 +1023,7 @@ function coachEnd(finished) {
   if (finished) fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: S.idx, by: "coach", fin: true }) }).catch(() => {});
   if (finished) speak(false, false, T("다 했어요.", "All steps done."));
   $(".coachv").insertAdjacentHTML("beforeend", `<div class="cstart" id="csum"><div class="glyph">${icon("check")}</div><div class="t">${finished ? T("다 했어요", "All steps done") : T("오늘 따라 하기", "Today's run")}</div>
-    ${C.help && rec.length ? `<div class="sumgrid">${by.map((ns, j) => `<div><b>${j ? T(`${lvName(j + 1)}까지`, `Up to ${lvName(j + 1).toLowerCase()}`) : T("글만 보고", "Text only")}</b><span>${ns.length ? ns.map(n => T(`${n}번`, `#${n}`)).join(", ") : "–"}</span></div>`).join("")}</div>
+    ${C.help && rec.length ? `<div class="sumgrid">${by.map((ns, j) => `<div><b>${j ? T(`${lvName(j + 1)}까지`, `Up to ${lvName(j + 1).toLowerCase()}`) : T("글만 보고", "Text only")}</b><span>${ns.length ? T(`카드 ${ns.join(", ")}`, `Cards ${ns.join(", ")}`) : "–"}</span></div>`).join("")}</div>
     <div class="d">${T("이 기록은 저장하지 않아요. 필요하면 지금 적어 두세요.", "This is not saved. Write it down now if you need it.")}</div>` : ""}
     <button class="navb next" onclick="go({run:S.run,view:'use'})">${T("나가기", "Exit")}</button></div>`);
   stopCoach();

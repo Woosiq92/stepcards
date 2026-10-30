@@ -39,7 +39,11 @@ const say = c => lang === "en" ? esc(c.en) : lang === "both" ? `${esc(c.ko)}<sma
 
 function draw(again) {
   const c = cards[cur.i], n = cards.length, had = document.activeElement?.id;
-  if (cur.fin) { document.getElementById("m").innerHTML = `<div class="msg" style="color:#fff;font-size:44px">✓<br>${K ? "All steps done" : "다 했어요"}</div>`; return; }
+  if (cur.fin) {  // 끝 화면에서도 안경만으로 처음부터 다시 할 수 있게
+    document.getElementById("m").innerHTML = `<div class="msg" style="color:#fff;font-size:44px">✓<br>${K ? "All steps done" : "다 했어요"}</div>
+      <div class="bar"><button id="f" onclick="restart()">${K ? "Start over ↺" : "처음으로 ↺"}</button></div>`;
+    document.getElementById("f").focus(); return;
+  }
   document.getElementById("m").innerHTML = `
     <div class="top"><span>${cur.i + 1} / ${n}</span><div class="dots">${cards.map((_, j) => `<i class="${j === cur.i ? "on" : j < cur.i ? "done" : ""}"></i>`).join("")}</div></div>
     ${again ? `<div class="again">${K ? "Start with this card" : "이 카드부터 해요"}</div>` : ""}
@@ -48,7 +52,7 @@ function draw(again) {
     <div class="say">${say(c)}</div>
     <div class="bar"><button id="b" onclick="flip(-1)" ${cur.i ? "" : "disabled"}>${K ? "◀ Back" : "◀ 이전"}</button>
       ${cur.lv && cur.lv < 4 ? `<button id="h" onclick="help()">${K ? "Help" : "도움"}</button>` : ""}
-      <button id="f" onclick="flip(1)" ${cur.i < n - 1 ? "" : "disabled"}>${K ? "Next ▶" : "다음 ▶"}</button></div>`;
+      ${cur.i < n - 1 ? `<button id="f" onclick="flip(1)">${K ? "Next ▶" : "다음 ▶"}</button>` : `<button id="f" onclick="finish()">${K ? "Done ✓" : "다 했어요 ✓"}</button>`}</div>`;
   const keep = document.getElementById(had);
   (keep && !keep.disabled ? keep : [document.getElementById("f"), document.getElementById("b")].find(b => !b.disabled))?.focus();
 }
@@ -63,6 +67,12 @@ document.addEventListener("keydown", e => {
     (f.disabled ? b : f).focus(); e.preventDefault();
   }
 });
+async function finish() { await send({ i: cur.i, by: "glasses", fin: true }); }
+async function restart() { await send({ i: 0, by: "glasses", lv: cur.lv ? 1 : 0 }); }
+async function send(body) {
+  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (r.ok) { cur = await r.json(); draw(false); }
+}
 async function help() {  // 도움 단계 한 칸 올리기(따라 하기 화면이 받아서 그림·소리·움직임을 더 보여 준다)
   const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: cur.i, lv: cur.lv + 1, by: "glasses" }) });
   if (r.ok) { cur = await r.json(); draw(false); }
