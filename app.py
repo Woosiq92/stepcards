@@ -3,7 +3,7 @@
 import hashlib, hmac, io, json, os, re, shutil, threading, time, uuid
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageDraw
 import coach
@@ -28,45 +28,27 @@ for s in sorted(SEED.iterdir()) if SEED.is_dir() else []:
         p = json.loads((RUNS / s.name / "progress.json").read_text())
         p["video_path"] = str(RUNS / s.name / "video.mp4")
         (RUNS / s.name / "progress.json").write_text(json.dumps(p, ensure_ascii=False))
-APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정: 아는 사람만 들어와 크레딧을 쓰게
-VIEW_KEY = os.environ.get("VIEW_KEY", "")  # 학생 기기용 보기 전용 키(태블릿·안경 화면). 없으면 QR에 키를 넣지 않는다
-VIEW_PATHS = re.compile(r"/(|glasses|favicon\.ico)$|/runs/|/api/runs/\w+/(cards|now|glass/\d+\.jpg|clip/\d+\.mp4)$")
+APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정: 키를 아는 사람만 크레딧을 쓰고 카드를 바꾸게
 NOW_PATH = re.compile(r"/api/runs/\w+/now$")
 app = FastAPI()
 
 
 @app.middleware("http")
 async def need_key(request: Request, call_next):
-    if not APP_KEY:
+    """보기(GET)는 누구나. 돈이 들거나 데이터를 바꾸는 요청만 접속 키(쿠키)가 있어야 한다.
+    키는 화면 안 입력 칸에서 POST /login 으로 받는다. 안경·따라 하기의 지금 카드 맞추기(/now)는 키 없이"""
+    if not APP_KEY or request.method in ("GET", "HEAD") or NOW_PATH.match(request.url.path):
         return await call_next(request)
-    k = request.query_params.get("k")
-    if request.url.path == "/login" and request.method == "POST":  # 접속 키 입력 칸
-        k = (await request.form()).get("k", "")
-    for name, key in (("sc_key", APP_KEY), ("sc_view", VIEW_KEY)):
-        if k is not None and key and hmac.compare_digest(k.encode(), key.encode()):  # 주소에 한 번 붙여 오면 쿠키로 바꾸고 주소에서는 지운다
-            q = "&".join(f"{a}={b}" for a, b in request.query_params.multi_items() if a != "k")
-            r = RedirectResponse(("/" if request.url.path == "/login" else request.url.path) + (f"?{q}" if q else ""), 303)
-            r.set_cookie(name, key, max_age=60 * 60 * 24 * 30, httponly=True, secure=True, samesite="lax")
-            return r
+    if request.url.path == "/login" and request.method == "POST":
+        k = str((await request.form()).get("k", ""))
+        if not hmac.compare_digest(k.encode(), APP_KEY.encode()):
+            return JSONResponse({"error": "wrong key"}, 401)
+        r = JSONResponse({"ok": True})
+        r.set_cookie("sc_key", APP_KEY, max_age=60 * 60 * 24 * 30, httponly=True, secure=True, samesite="lax")
+        return r
     if hmac.compare_digest(request.cookies.get("sc_key", "").encode(), APP_KEY.encode()):
         return await call_next(request)
-    if VIEW_KEY and hmac.compare_digest(request.cookies.get("sc_view", "").encode(), VIEW_KEY.encode()):
-        # 학생 기기: 카드 보기·넘기기만. 만들기·고치기·그림·따라 하기 판단(크레딧이 드는 것)은 막는다
-        p, m = request.url.path, request.method
-        if (m == "GET" and VIEW_PATHS.match(p)) or (m == "POST" and NOW_PATH.match(p)):
-            return await call_next(request)
-        return HTMLResponse("view-only key", 403)
-    if request.url.path.startswith(("/api/", "/runs/")):
-        return HTMLResponse("key required", 401)
-    return HTMLResponse(KEY_PAGE, 401)
-
-
-KEY_PAGE = """<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StepCards</title>
-<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#f1f4f7;font-family:-apple-system,'Apple SD Gothic Neo',sans-serif;color:#1c2b33">
-<form method="post" action="/login" style="background:#fff;padding:28px;border-radius:24px;box-shadow:0 4px 12px rgba(28,43,51,.08);display:grid;gap:12px;width:min(340px,90vw)">
-<b style="font-size:20px">StepCards</b><span style="color:#65788a;font-size:14px">접속 키를 넣어 주세요 · Enter the access key</span>
-<input name="k" type="password" autofocus style="padding:12px;border:1px solid #cbd2d9;border-radius:12px;font:inherit">
-<button style="padding:12px;border:0;border-radius:999px;background:#0064e0;color:#fff;font:inherit;font-weight:600">들어가기 · Enter</button></form>"""
+    return JSONResponse({"error": "key required"}, 401)
 CARDS_LOCK = threading.Lock()  # cards.json 읽고-고치고-쓰기가 동시에 겹치지 않게
 RUNNING, RUNNING_LOCK = set(), threading.Lock()  # 파이프라인이 도는 실행 id: 같은 영상을 또 올려도 두 번 돌리지 않게
 CARD_PATH = re.compile(r"cards/[\w.-]+\.(jpg|png)")
@@ -359,13 +341,12 @@ def card_clip(run_id: str, n: int, g: int = 0):
 
 @app.get("/api/runs/{run_id}/qr.svg")
 def qr(run_id: str, request: Request, to: str = "tablet", lang: str = "ko"):
-    """학생 기기로 넘기는 QR: 태블릿 보기나 안경 화면 주소(보기 전용 키가 있으면 함께)"""
+    """학생 기기로 넘기는 QR: 태블릿 보기나 안경 화면 주소(보기는 키 없이 된다)"""
     import segno
     run_dir(run_id)
     base = f"{request.headers.get('x-forwarded-proto', request.url.scheme)}://{request.headers.get('host', request.url.netloc)}"
-    k = f"k={VIEW_KEY}&" if VIEW_KEY else ""
     lang = lang if lang in ("ko", "en", "both") else "ko"
-    url = f"{base}/glasses?{k}run={run_id}&lang={lang}" if to == "glasses" else f"{base}/?{k}ui={lang if lang != 'both' else 'ko'}#run={run_id}&view=tablet"
+    url = f"{base}/glasses?run={run_id}&lang={lang}" if to == "glasses" else f"{base}/?ui={lang if lang != 'both' else 'ko'}#run={run_id}&view=tablet"
     buf = io.BytesIO()
     segno.make(url, error="m").save(buf, kind="svg", scale=6, border=2, dark="#1c2b33")
     return Response(buf.getvalue(), media_type="image/svg+xml", headers={"Cache-Control": "no-store"})

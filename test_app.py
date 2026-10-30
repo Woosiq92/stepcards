@@ -124,9 +124,8 @@ def test_clip_and_glass_cache_ok():
 # 5. 접속 키에 한글이 와도 500 이 아니라 401
 def test_key_non_ascii(monkeypatch):
     monkeypatch.setattr(A, "APP_KEY", "secret")
-    assert client.get("/", params={"k": "한글키"}).status_code == 401
     assert client.post("/login", data={"k": "한글키"}).status_code == 401
-    assert client.get("/", params={"k": "secret"}, follow_redirects=False).status_code == 303
+    assert client.post("/login", data={"k": "secret"}).status_code == 200
 
 
 # 6. 같은 영상을 도는 중에 또 올려도 파이프라인은 하나만
@@ -189,23 +188,20 @@ def test_title_and_delete():
     assert client.delete(f"/api/runs/{rid}").status_code == 404
 
 
-# 보기 전용 키: 카드 보기·넘기기만 되고, 만들기·고치기·QR은 막힌다. QR 주소에는 보기 키만 들어간다
-def test_view_key(monkeypatch):
+# 보기(GET)와 지금 카드 맞추기는 키 없이, 돈이 들거나 카드를 바꾸는 요청은 키가 있어야
+def test_view_open_actions_need_key(monkeypatch):
     rid, d = make_run()
-    monkeypatch.setattr(A, "APP_KEY", "teach-1"); monkeypatch.setattr(A, "VIEW_KEY", "look-2")
+    monkeypatch.setattr(A, "APP_KEY", "teach-1")
     c = TestClient(A.app, base_url="https://testserver")
-    r = c.get(f"/glasses?run={rid}&k=look-2", follow_redirects=False)
-    assert r.status_code == 303 and "sc_view" in r.headers["set-cookie"]
-    c.cookies.set("sc_view", "look-2")
-    assert c.get(f"/api/runs/{rid}/cards").status_code == 200
+    for u in ("/", f"/glasses?run={rid}", "/api/runs", f"/api/runs/{rid}/cards", f"/api/runs/{rid}/qr.svg?to=glasses"):
+        assert c.get(u).status_code == 200, u
     assert c.post(f"/api/runs/{rid}/now", json={"i": 1}).status_code == 200
-    assert c.get("/api/runs").status_code == 403
-    assert c.put(f"/api/runs/{rid}/cards", json={"cards": []}).status_code == 403
-    assert c.post(f"/api/runs/{rid}/coach", json={}).status_code == 403
-    assert c.get(f"/api/runs/{rid}/qr.svg").status_code == 403
-    t = TestClient(A.app, base_url="https://testserver"); t.cookies.set("sc_key", "teach-1")
-    svg = t.get(f"/api/runs/{rid}/qr.svg?to=glasses")
-    assert svg.status_code == 200 and svg.text.startswith("<?xml") or "<svg" in svg.text
+    for m, u in (("put", f"/api/runs/{rid}/cards"), ("post", f"/api/runs/{rid}/coach"), ("post", f"/api/runs/{rid}/agent"),
+                 ("post", "/api/upload"), ("delete", f"/api/runs/{rid}"), ("post", f"/api/runs/{rid}/cards/1/illustrate")):
+        assert getattr(c, m)(u).status_code == 401, u
+    assert c.post("/login", data={"k": "teach-1"}).status_code == 200 and "sc_key" in c.cookies
+    cards = json.loads((d / "cards.json").read_text())["cards"]
+    assert c.put(f"/api/runs/{rid}/cards", json={"cards": cards}).status_code == 200
 
 
 # 멈춘 실행 다시 만들기: 영상이 있으면 한 번만 시작, 없으면 404

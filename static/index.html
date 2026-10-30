@@ -78,6 +78,9 @@
   @media (max-width:560px) { .uses { grid-template-columns:1fr; } }
   .past { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
   .pastcard { background:var(--paper); border-radius:var(--r); overflow:hidden; color:inherit; font-weight:400; box-shadow:var(--sh-1); transition:box-shadow .15s, transform .15s; }
+  .keyask { position:fixed; inset:0; z-index:50; background:rgba(11,16,21,.55); display:grid; place-items:center; padding:16px; }
+  .keyask form { background:var(--paper); color:var(--ink); border-radius:var(--r-l); padding:24px; width:min(380px,100%); display:grid; gap:10px; box-shadow:var(--sh-3); }
+  .keyask input { font:inherit; padding:12px; border:1px solid var(--line2); border-radius:12px; } .keyask input:focus { outline:none; border-color:var(--accent); box-shadow:var(--focus); }
   .pastcard { position:relative; }
   .ask { display:flex; align-items:center; gap:10px; background:var(--paper); border-radius:999px; padding:6px 6px 6px 14px; box-shadow:var(--sh-1); margin:0 0 10px; }
   .ask .ci { color:var(--accent); display:grid; } .ask input { flex:1; min-width:0; border:none; font:inherit; font-size:15px; background:transparent; color:var(--ink); } .ask input:focus { outline:none; }
@@ -279,6 +282,34 @@
 
 <script>
 const $ = (s, el = document) => el.querySelector(s);
+// 보기는 누구나. 돈이 들거나 카드를 바꾸는 요청이 401(접속 키 필요)이면 키를 한 번 묻고 같은 요청을 다시 보낸다
+const rawFetch = window.fetch.bind(window);
+let keyAsk = null;
+window.fetch = async (u, o = {}) => {
+  const r = await rawFetch(u, o);
+  if (r.status !== 401 || !o.method || o.method === "GET" || String(u) === "/login") return r;
+  return (await askKey()) ? rawFetch(u, o) : r;
+};
+function askKey() {
+  return keyAsk ??= new Promise(done => {
+    const box = document.createElement("div");
+    box.className = "keyask";
+    box.innerHTML = `<form><b>${T("접속 키가 필요해요", "Access key needed")}</b>
+      <span class="muted">${T("보기는 누구나 할 수 있어요. 영상 넣기, 그림 만들기, 따라 하기처럼 비용이 들거나 카드를 바꾸는 일에만 키가 필요해요.", "Anyone can view. Adding videos, drawings, Coach mode and edits need the key, because they cost credits or change cards.")}</span>
+      <input type="password" autocomplete="current-password" aria-label="${T("접속 키", "Access key")}" placeholder="${T("접속 키", "Access key")}">
+      <span class="red" hidden></span>
+      <div><button class="btn primary">${T("확인", "OK")}</button> <button type="button" class="btn">${T("취소", "Cancel")}</button></div></form>`;
+    const end = ok => { box.remove(); keyAsk = null; done(ok); };
+    box.querySelector("button[type=button]").onclick = () => end(false);
+    box.querySelector("form").onsubmit = async e => {
+      e.preventDefault();
+      const r = await rawFetch("/login", { method: "POST", body: new URLSearchParams({ k: box.querySelector("input").value }) });
+      if (r.ok) return end(true);
+      const m = box.querySelector(".red"); m.hidden = false; m.textContent = T("키가 맞지 않아요.", "That key is not right.");
+    };
+    document.body.append(box); box.querySelector("input").focus();
+  });
+}
 // 선 아이콘(24px 격자). 이모지는 기기마다 모양이 달라서 쓰지 않는다
 const IC = { plus:'<path d="M12 5v14M5 12h14"/>', video:'<rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="m16 10 5-3v10l-5-3"/>',
   check:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/>', print:'<path d="M7 9V4h10v5"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v6H7z"/>',
@@ -779,7 +810,7 @@ function use() {
                             ["glasses", T("안경(Ray-Ban Display)", "Glasses (Ray-Ban Display)"), T("Meta AI 앱 → 웹앱 추가에 이 주소", "Add as a Web App in the Meta AI app")]].map(([to, t, d]) =>
         `<div><img src="/api/runs/${S.run}/qr.svg?to=${to}&lang=${lang}" alt="${t} QR" width="132" height="132"><strong>${t}</strong><span class="muted">${d}</span></div>`).join("")}
         <p class="muted">${/^(127\.|localhost|\[::1\])/.test(location.hostname) ? T("지금은 이 맥 안에서만 열리는 주소예요. 배포한 주소에서 열면 다른 기기에서도 열려요.", "This address only works on this Mac. Open StepCards from your deployed address to use it on other devices.")
-          : T("QR에는 보기 전용 열쇠만 들어 있어요. 학생 기기에서는 카드를 만들거나 고칠 수 없어요.", "The QR holds a view-only key: learner devices can't make or edit cards.")}</p></div>
+          : T("보기는 키 없이 열려요. 학생 기기에서 카드를 만들거나 고치려면 접속 키가 필요해요.", "Viewing needs no key. Making or editing cards on a learner device needs the access key.")}</p></div>
       <div class="langrow"><span class="muted">${T("카드 글자", "Card language")}</span> ${segHtml()}
         <span style="flex:1"></span><button class="btn" onclick="shareCards(this)">${icon("share")} ${navigator.canShare ? T("이미지로 보내기", "Send as images") : T("이미지로 저장", "Save as image")}</button></div>
       <h3>${T("인쇄 미리보기", "Print preview")}</h3>
