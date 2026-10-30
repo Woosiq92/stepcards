@@ -67,7 +67,7 @@ def in_hand(frame, card):
 
 
 def check(cards, cur, frames, prev_seen=0, local=False):
-    """cur는 1부터. decision: next(다음 카드), again(뒤 단계가 처음 보임 → 지금 카드 다시 보여 주기),
+    """cur는 1부터. decision: next(다음 카드), finished(마지막 카드를 마침 → 화면에서 두 번 연속일 때 끝 화면), again(뒤 단계가 처음 보임 → 지금 카드 다시 보여 주기),
     jump(뒤 단계가 두 번 연속 보임 → 그 카드로 따라감, target), wait(기다림).
     prev_seen은 바로 앞 판단의 seen(사람이 직접 넘기면 0으로).
     local이면 Glimmer만 쓴다. SAM은 Meta API라 사진이 밖으로 나가므로 확인 없이 Glimmer 판단대로 넘긴다."""
@@ -84,6 +84,8 @@ def check(cards, cur, frames, prev_seen=0, local=False):
         sam = {"next_in_hand": nxt, "current_in_hand": now}
         cost += 0.0025 * (2 * ((nxt is not None) + (now is not None)))  # SAM $2.5/1000장, 손+물건 최소 2번씩
         decision = "next" if (nxt is not False or now is False) else "wait"
+    elif cur == len(cards) and done and seen in (0, cur):
+        decision = "finished"
     elif seen > cur + 1:
         decision, target = ("jump", seen) if prev_seen == seen else ("again", None)
     return {"decision": decision, "target": target, "seen": seen, "current_done": done, "sam": sam,

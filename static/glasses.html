@@ -39,6 +39,7 @@ const say = c => lang === "en" ? esc(c.en) : lang === "both" ? `${esc(c.ko)}<sma
 
 function draw(again) {
   const c = cards[cur.i], n = cards.length, had = document.activeElement?.id;
+  if (cur.fin) { document.getElementById("m").innerHTML = `<div class="msg" style="color:#fff;font-size:44px">✓<br>${K ? "All steps done" : "다 했어요"}</div>`; return; }
   document.getElementById("m").innerHTML = `
     <div class="top"><span>${cur.i + 1} / ${n}</span><div class="dots">${cards.map((_, j) => `<i class="${j === cur.i ? "on" : j < cur.i ? "done" : ""}"></i>`).join("")}</div></div>
     ${again ? `<div class="again">${K ? "Start with this card" : "이 카드부터 해요"}</div>` : ""}

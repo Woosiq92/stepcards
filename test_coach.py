@@ -31,3 +31,10 @@ def test_next_unchanged(monkeypatch):
     assert r["decision"] == "next" and r["sam"] == {"next_in_hand": True, "current_in_hand": True}
     assert run(monkeypatch, 0, 2, done=True)["decision"] == "next"
     assert run(monkeypatch, 0, 2)["decision"] == "wait"
+
+
+def test_last_card_done_finishes(monkeypatch):
+    assert run(monkeypatch, 9, 9, done=True)["decision"] == "finished"
+    assert run(monkeypatch, 0, 9, done=True)["decision"] == "finished"
+    assert run(monkeypatch, 9, 9, done=False)["decision"] == "wait"
+    assert run(monkeypatch, 8, 8, done=True)["decision"] != "finished"

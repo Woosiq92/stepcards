@@ -702,7 +702,7 @@ function coach() {
     <div class="bar">
       <button class="navb" id="cprev" onclick="coachFlip(-1)">${T("◀ 이전", "◀ Back")}</button>
       <div class="mid" id="cmid"></div>
-      <button class="navb next" id="cnext" onclick="coachFlip(1)">${T("다음 ▶", "Next ▶")}</button>
+      <button class="navb next" id="cnext"></button>
     </div>
     <div class="cstart" id="cstart">
       <div class="glyph">${icon("glasses")}</div>
@@ -748,12 +748,12 @@ function setVoice(on) {
   const b = $("#cvoice"); if (b) b.innerHTML = `${icon(on ? "sound" : "mute")}${on ? T("소리 켬", "Sound on") : T("소리 끔", "Sound off")}`;
   if (!on) speechSynthesis.cancel(); else if (C.started) speak(true);
 }
-function speak(force, again) {
+function speak(force, again, only) {
   if (!window.speechSynthesis || !(C.voice || force) || !C.started) return;
-  const c = S.data.cards[S.idx], parts = [];
+  const c = S.data.cards[S.idx], parts = only ? [[only, ui === "en" ? "en-US" : "ko-KR"]] : [];
   if (again) parts.push([T("이 카드부터 해요.", "Start with this card."), ui === "en" ? "en-US" : "ko-KR"]);
-  if (lang !== "en") parts.push([c.ko, "ko-KR"]);
-  if (lang !== "ko") parts.push([c.en, "en-US"]);
+  if (!only && lang !== "en") parts.push([c.ko, "ko-KR"]);
+  if (!only && lang !== "ko") parts.push([c.en, "en-US"]);
   speechSynthesis.cancel();
   for (const [t, l] of parts) { const u = new SpeechSynthesisUtterance(t); u.lang = l; u.rate = 0.9; speechSynthesis.speak(u); }
 }
@@ -766,13 +766,14 @@ function glassesSync(again) {
    카드가 바뀌면 1부터, 10초 동안 넘어가지 않으면 한 칸 올린다. 학생·교사가 '도움'을 눌러도 올라간다.
    카드마다 몇 단계까지 갔는지는 화면에만 보여 주고 저장하지 않는다 */
 C.help = (() => { try { return localStorage.getItem("help") === "on"; } catch { return false; } })();
-const HELP_SEC = 10;
+const HELP_SEC = 10;  // 가장 짧은 기다림
+const helpWait = c => Math.min(60, Math.max(HELP_SEC, 2 * (c.end - c.start)));  // 시범보다 두 배는 기다린다
 const lvName = n => [T("글", "Text"), T("그림", "Picture"), T("소리", "Sound"), T("움직임", "Motion")][n - 1];
 function setHelp(on) {
   C.help = on; try { localStorage.setItem("help", on ? "on" : "off"); } catch {}
   $("#chelpseg")?.querySelectorAll("button").forEach((b, i) => b.classList.toggle("on", i === +on));
   const d = $("#chelpd");
-  if (d) d.innerHTML = on ? T(`처음엔 글만 보여요. ${HELP_SEC}초 동안 넘어가지 않으면 그림 → 소리 → 움직임 순으로 도움이 늘어요.`, `Starts with text only. If the step doesn't move on for ${HELP_SEC} s, help grows: picture → sound → motion.`)
+  if (d) d.innerHTML = on ? T("처음엔 글만 보여요. 시범 영상에서 그 단계가 걸린 시간의 두 배(10~60초) 동안 넘어가지 않으면 그림 → 소리 → 움직임 순으로 도움이 늘어요.", "Starts with text only. If a step takes more than twice as long as in the demonstration (10–60 s), help grows: picture → sound → motion.")
                      : T("카드의 글과 사진을 처음부터 다 보여 줘요.", "Shows the full card from the start.");
 }
 function helpMedia(c) {
@@ -780,14 +781,25 @@ function helpMedia(c) {
   if (C.lv < 2) return `<button class="helpbtn" onclick="helpUp()">${icon("plus")}${T("도움이 필요하면 눌러요", "Tap if you need help")}</button>`;
   return media(c.view === "clip" ? { ...c, view: c.ill ? "ill" : "photo" } : c);
 }
-function helpUp() { if (C.lv < 4) { C.lv++; C.since = Date.now(); coachCard(); } }
+function helpUp() {
+  if (C.lv >= 4) return;
+  C.lv += C.lv === 2 && !C.voice ? 2 : 1;  // 교사가 소리를 꺼 두었으면 소리 단계는 건너뛴다
+  C.since = Date.now(); coachCard();
+}
 function coachExit() {
+  if ($("#csum") || !(C.help && Object.keys(C.max || {}).length)) return go({ run: S.run, view: "use" });
+  coachEnd(false);
+}
+// 끝 화면: 칭찬·점수 없이 '다 했어요'만. 도움 모드였으면 카드마다 몇 단계까지 갔는지(저장 안 함)
+function coachEnd(finished) {
+  if ($("#csum")) return;
   const rec = Object.entries(C.max || {});
-  if (!C.help || !rec.length || $("#csum")) return go({ run: S.run, view: "use" });
   const by = [1, 2, 3, 4].map(l => rec.filter(([, m]) => m === l).map(([i]) => +i + 1));
-  $(".coachv").insertAdjacentHTML("beforeend", `<div class="cstart" id="csum"><div class="t">${T("오늘 따라 하기", "Today's run")}</div>
-    <div class="sumgrid">${by.map((ns, j) => `<div><b>${j ? T(`${lvName(j + 1)}까지`, `Up to ${lvName(j + 1).toLowerCase()}`) : T("글만 보고", "Text only")}</b><span>${ns.length ? ns.map(n => T(`${n}번`, `#${n}`)).join(", ") : "–"}</span></div>`).join("")}</div>
-    <div class="d">${T("이 기록은 저장하지 않아요. 필요하면 지금 적어 두세요.", "This is not saved. Write it down now if you need it.")}</div>
+  if (finished) fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: S.idx, by: "coach", fin: true }) }).catch(() => {});
+  if (finished) speak(false, false, T("다 했어요.", "All steps done."));
+  $(".coachv").insertAdjacentHTML("beforeend", `<div class="cstart" id="csum"><div class="glyph">${icon("check")}</div><div class="t">${finished ? T("다 했어요", "All steps done") : T("오늘 따라 하기", "Today's run")}</div>
+    ${C.help && rec.length ? `<div class="sumgrid">${by.map((ns, j) => `<div><b>${j ? T(`${lvName(j + 1)}까지`, `Up to ${lvName(j + 1).toLowerCase()}`) : T("글만 보고", "Text only")}</b><span>${ns.length ? ns.map(n => T(`${n}번`, `#${n}`)).join(", ") : "–"}</span></div>`).join("")}</div>
+    <div class="d">${T("이 기록은 저장하지 않아요. 필요하면 지금 적어 두세요.", "This is not saved. Write it down now if you need it.")}</div>` : ""}
     <button class="navb next" onclick="go({run:S.run,view:'use'})">${T("나가기", "Exit")}</button></div>`);
   stopCoach();
 }
@@ -803,7 +815,9 @@ function coachCard() {
   $("#ctxt").innerHTML = text(c);
   $("#cmid").innerHTML = `<div class="dots">${cs.map((_, j) => `<i class="${j === S.idx ? "on" : ""}"></i>`).join("")}</div>${S.idx + 1} / ${cs.length}`;
   $("#cprev").disabled = !S.idx;
-  $("#cnext").disabled = S.idx === cs.length - 1;
+  const last = S.idx === cs.length - 1;
+  $("#cnext").innerHTML = last ? T("다 했어요 ✓", "Done ✓") : T("다음 ▶", "Next ▶");
+  $("#cnext").onclick = last ? () => coachEnd(true) : () => coachFlip(1);
 }
 function coachFlip(d) { S.idx = Math.max(0, Math.min(S.data.cards.length - 1, S.idx + d)); C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); }
 function pill(t) { const el = $("#cpill"); if (el) el.textContent = t; }
@@ -822,7 +836,7 @@ function coachStart() {
   $("#cstart").hidden = true; C.buf = []; C.running = true; pill(T("지켜보는 중", "Watching"));
   C.started = true; C.since = Date.now(); coachCard();
   clearInterval(C.helpTimer);
-  C.helpTimer = setInterval(() => { if (C.help && C.running && C.lv < 4 && Date.now() - C.since > HELP_SEC * 1000) helpUp(); }, 1000);
+  C.helpTimer = setInterval(() => { if (C.help && C.running && C.lv < 4 && Date.now() - C.since > helpWait(S.data.cards[S.idx]) * 1000) helpUp(); }, 1000);
   navigator.wakeLock?.request("screen").then(l => { C.lock = l; }).catch(() => {});  // 휴대폰 화면이 꺼지지 않게
   const v = $("#cvid"), cv = document.createElement("canvas");
   C.timer = setInterval(() => {  // 1초에 한 장, 최근 4장만 둔다
@@ -836,13 +850,15 @@ function coachStart() {
 async function coachLoop() {
   while (C.running && S.view === "coach") {
     const cs = S.data.cards, cur = S.idx + 1;
-    if (C.buf.length >= 2 && cur < cs.length) {
+    if (C.buf.length >= 2 && cur <= cs.length) {
       let d = null;  // 네트워크 오류도 '판단 못 함'으로 보고 계속 본다
       try { const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev, local: C.local }) }); if (r.ok) d = await r.json(); } catch { d = null; }
       if (!C.running || S.idx + 1 !== cur) continue;  // 그 사이 사람이 직접 넘겼으면 결과는 버린다
       if (!d) { pill(T("판단하지 못했어요 · 다시 보는 중", "No answer · watching again")); }
       else {
         C.prev = d.seen;
+        C.fin = d.decision === "finished" ? (C.fin || 0) + 1 : 0;
+        if (C.fin >= 2) { coachEnd(true); break; }  // 마지막 단계를 마쳤다는 판단이 두 번 연속
         const to = d.decision === "next" ? cur + 1 : d.decision === "jump" ? d.target : 0;
         if (Number.isInteger(to) && to >= 1 && to <= cs.length) {  // 없는 카드 번호는 무시
           S.idx = to - 1;
@@ -853,7 +869,7 @@ async function coachLoop() {
           pill(T(`지켜보는 중 · ${d.latency}초${C.local ? " · 이 맥" : ""}`, `Watching · ${d.latency} s${C.local ? " · this Mac" : ""}`));
         } else pill(T(`지켜보는 중 · ${d.latency}초${C.local ? " · 이 맥" : ""}`, `Watching · ${d.latency} s${C.local ? " · this Mac" : ""}`));
       }
-    } else if (cur === cs.length) pill(T("마지막 카드예요", "Last card"));
+    }
     await new Promise(r => setTimeout(r, 1500));
   }
 }

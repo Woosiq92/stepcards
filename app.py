@@ -249,7 +249,7 @@ def now_set(run_id: str, body: dict):
     n = len(read(run_dir(run_id), "cards.json")["cards"])
     v = NOW.get(run_id, {}).get("v", 0) + 1
     NOW[run_id] = {"i": max(0, min(n - 1, int(body.get("i", 0)))), "again": bool(body.get("again")), "by": str(body.get("by", ""))[:10], "v": v,
-                   "lv": max(0, min(4, int(body.get("lv") or 0)))}  # 도움 단계(0=끔, 1 글 → 4 움직임)
+                   "lv": max(0, min(4, int(body.get("lv") or 0))), "fin": bool(body.get("fin"))}  # fin = 마지막 단계까지 마침  # 도움 단계(0=끔, 1 글 → 4 움직임)
     return NOW[run_id]
 
 
