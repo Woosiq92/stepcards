@@ -192,7 +192,10 @@ def retry(run_id: str):
 
 @app.get("/api/runs/{run_id}/progress")
 def progress(run_id: str):
-    return read(run_dir(run_id), "progress.json", {"events": []})
+    d = run_dir(run_id)
+    p = read(d, "progress.json", {"events": []})
+    p["title"] = (read(d, "cards.json") or {}).get("title") or SEED_INDEX.get(run_id, {}).get("title", "")  # 진행 화면에 파일 이름 대신
+    return p
 
 
 @app.get("/api/runs/{run_id}/cards")

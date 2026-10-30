@@ -184,7 +184,8 @@
   .glassrow { display:flex; align-items:center; gap:14px; background:var(--paper); border-radius:var(--r); padding:14px 18px; box-shadow:var(--sh-1); margin:-8px 0 20px; }
   .qrrow { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin:-6px 0 20px; }
   .qrrow > div { background:var(--paper); border-radius:var(--r); padding:14px; box-shadow:var(--sh-1); display:flex; flex-direction:column; align-items:center; text-align:center; gap:2px; }
-  .qrrow img { border-radius:8px; margin-bottom:6px; } .qrrow p { grid-column:1/-1; margin:0; }
+  .qrrow img { border-radius:8px; margin-bottom:6px; } .qrrow .btn { margin-top:8px; }
+  @media (max-width:720px) { .qrrow img { display:none; } } .qrrow p { grid-column:1/-1; margin:0; }
   .glassrow .ci { width:40px; height:40px; border-radius:12px; display:grid; place-items:center; background:var(--dark); color:#fff; flex:none; }
   .glassrow > div { flex:1; display:flex; flex-direction:column; } .glassrow a:hover { text-decoration:none; }
   .langrow { flex-wrap:wrap; }
@@ -262,7 +263,7 @@
   [hidden] { display:none !important; }
   @media (max-width:860px) { .hero { grid-template-columns:1fr; } .hero h2 { font-size:32px; } }
   @media (max-width:720px) {
-    header { padding:0 16px; gap:10px; } .logo span:last-child { display:none; } .step { padding:6px 8px; font-size:0; gap:0; } .step .dot { font-size:12px; }
+    header { padding:0 16px; gap:10px; } .logo span:last-child { display:none; } .step { padding:6px 8px; font-size:0; gap:0; } .step .dot { font-size:12px; } .step.on { font-size:13px; gap:6px; padding-right:12px; }
     .choices.three { grid-template-columns:1fr; } .coachv .cam { width:130px; }
     main { padding:20px 16px 48px; } .flow, .choices { grid-template-columns:1fr; }
     .row { grid-template-columns:1fr; } .row .n { position:absolute; top:26px; left:26px; z-index:2; }
@@ -352,7 +353,7 @@ async function route() {
   stopCoach();
   const p = new URLSearchParams(location.hash.slice(1));
   const run = p.get("run");
-  if (run !== S.run) { S.run = run; S.data = null; S.idx = 0; S.open.clear(); S.strip.clear(); }
+  if (run !== S.run) { S.run = run; S.data = null; S.undo = null; S.idx = 0; S.open.clear(); S.strip.clear(); }
   S.view = run ? (p.get("view") || "making") : "home";
   if (run && !S.data) { const r = await fetch(`/api/runs/${run}/cards`); if (r.ok) S.data = await r.json(); else if (r.status === 404 && (await fetch(`/api/runs/${run}/progress`)).status === 404) S.view = "missing"; }
   if (["edit", "use", "tablet", "coach"].includes(S.view) && !S.data) S.view = "making";
@@ -451,7 +452,7 @@ async function home() {
         ${r.thumb ? `<img src="/runs/${r.id}/${r.thumb}" alt="">` : '<div class="ph"></div>'}
         <div class="pt"><strong>${esc(runTitle(r))}</strong>
         <span class="muted">${r.done ? `${T(`카드 ${r.count}장`, `${r.count} cards`)}${r.issues ? ` · <span class="red">${T(`확인할 곳 ${r.issues}`, `${r.issues} to check`)}</span>` : T(" · 확인 끝", " · all checks passed")}` : T("만드는 중", "in progress")}</span></div>
-        <button class="del" title="${T("지우기", "Delete")}" aria-label="${T("지우기", "Delete")}" onclick="event.preventDefault();delRun('${r.id}')">${icon("x")}</button>
+        ${r.use ? "" : `<button class="del" title="${T("지우기", "Delete")}" aria-label="${T("지우기", "Delete")}" onclick="event.preventDefault();delRun('${r.id}')">${icon("x")}</button>`}
       </a>`).join("")}</div>` : ""}`;
   const drop = $("#drop"), file = $("#file");
   file.onchange = () => file.files[0] && upload(file.files[0]);
@@ -499,7 +500,7 @@ async function making() {
     const last = splits.at(-1);
     $("#main").innerHTML = `
       <h2>${done ? T("카드가 다 만들어졌어요", "Your cards are ready") : err ? T("만들다가 멈췄어요", "Stopped with an error") : T("카드를 만들고 있어요", "Making your cards")}</h2>
-      <p class="sub">${esc(p.video || "")}${done || err ? "" : T(" · 몇 분 걸려요. 이 창을 닫아도 계속 만들어져요.", " · This takes a few minutes. It keeps going if you close this window.")}</p>
+      <p class="sub">${esc(p.title || p.video || "")}${done || err ? "" : T(" · 몇 분 걸려요. 이 창을 닫아도 계속 만들어져요.", " · This takes a few minutes. It keeps going if you close this window.")}</p>
       ${err ? `<div class="issue">${esc(errText(err.msg))}</div><p><button class="btn primary" onclick="retryRun()">${T("다시 만들기", "Try again")}</button> <span class="muted">${T("자세한 내용은 아래 '자세한 기록'에 있어요.", "Details are in the log below.")}</span></p>` : ""}
       ${done ? `<p><button class="btn primary big" onclick="openEdit()">${T("카드 확인하러 가기 →", "Check the cards →")}</button></p>` : ""}
       <div class="stages">
@@ -596,6 +597,7 @@ function edit() {
       <span class="saved" id="saved" aria-live="polite">${saveText()}</span>
       <span style="flex:1"></span>
       <button class="btn" onclick="illustrateAll()" title="Muse Image">${icon("draw")} ${T("모든 카드 그림으로", "Make drawings for all")}</button>
+      ${S.undo ? `<button class="btn" onclick="undoLast()">↶ ${T("되돌리기", "Undo")}</button>` : ""}
       <button class="btn primary" onclick="go({run:S.run,view:'use'})">${T("다 됐어요 → 인쇄·태블릿", "Done → Print · Tablet · Coach")}</button>
     </div>
     <form class="ask" onsubmit="askAgent(event)">
@@ -627,7 +629,7 @@ function rowHtml(c, i, iss = []) {
     <div>
       <textarea class="say" rows="1" placeholder="${T("동작 하나를 짧게 써 주세요 (예: 우유를 부으세요.)", "Korean sentence, one action (e.g. 우유를 부으세요.)")}" oninput="typed(${i},'ko',this)">${esc(c.ko)}</textarea>
       <textarea class="say en" rows="1" placeholder="English sentence" oninput="typed(${i},'en',this)">${esc(c.en)}</textarea>
-      <div class="meta">${T("영상", "Video")} ${fmt(c.start)} ~ ${fmt(c.end)} · ${T("손에 든 것", "In hand")}: ${esc(c.object || T("정하지 않음", "not set"))}${c.box && !c.hl_off ? T(" (사진에 주황 테두리)", " (orange outline in photo)") : ""}</div>
+      <div class="meta">${T("영상", "Video")} ${fmt(c.start)} ~ ${fmt(c.end)}</div>
       <div id="iss${i}">${iss.map(x => `<div class="issue">${esc(x)}</div>`).join("")}</div>
       <div class="actions">
         <button class="btn" onclick="move(${i},-1)" ${i ? "" : "disabled"}>${T("↑ 앞으로", "↑ Up")}</button>
@@ -727,7 +729,11 @@ window.addEventListener("beforeunload", e => { if (!["saved", "readonly"].includ
 function changed() { edit(); saveNow(); }
 function typed(i, k, el) { S.data.cards[i][k] = el.value; autosize(el); scheduleSave(); }
 function snapshot() { return JSON.parse(JSON.stringify(S.data.cards)); }
-function undoable(msg, before) { toast(msg, T("되돌리기", "Undo"), () => { S.data.cards = before; changed(); }); }
+function undoable(msg, before) {
+  S.undo = before; if (S.view === "edit") edit();
+  toast(msg, T("되돌리기", "Undo"), undoLast);
+}
+function undoLast() { if (!S.undo) return; S.data.cards = S.undo; S.undo = null; document.querySelector(".toast")?.remove(); changed(); }
 function move(i, d) { const before = snapshot(), cs = S.data.cards; [cs[i], cs[i + d]] = [cs[i + d], cs[i]]; changed(); undoable(T("순서를 바꿨어요.", "Order changed."), before); }
 function del(i) { const before = snapshot(); S.data.cards.splice(i, 1); changed(); undoable(T("카드를 뺐어요.", "Card removed."), before); }
 function merge(i) {
@@ -825,14 +831,15 @@ function use() {
       <div class="choices three">
         <button class="choice" onclick="printWhat('cards')"><span class="ci">${icon("print")}</span><div class="t">${T("종이로 인쇄하기", "Print")}</div><div class="d">${T(`A4 한 장에 카드 6장 · 아래 미리보기 그대로 나와요 (${pages}쪽)`, `Six cards per A4 page, exactly as previewed below (${pages} pages)`)}</div></button>
         <button class="choice" onclick="go({run:S.run,view:'tablet'})"><span class="ci">${icon("tablet")}</span><div class="t">${T("태블릿으로 한 장씩 보기", "Tablet, one card at a time")}</div><div class="d">${T("화면 오른쪽을 누르거나 밀면 다음 카드로 넘어가요", "Tap the right side or swipe for the next card")}</div></button>
-        <button class="choice feat" onclick="go({run:S.run,view:'coach'})"><span class="ci">${icon("glasses")}</span><div class="t">${T("따라 하기", "Coach mode")}</div><div class="d">${T("카메라가 하는 모습을 보고, 다음 카드를 알아서 띄워 줘요", "A camera watches the learner and shows the next card at the right time")}</div></button>
+        <button class="choice" onclick="go({run:S.run,view:'coach'})"><span class="ci">${icon("glasses")}</span><div class="t">${T("따라 하기", "Coach mode")}</div><div class="d">${T("카메라가 하는 모습을 보고, 다음 카드를 알아서 띄워 줘요", "A camera watches the learner and shows the next card at the right time")}</div></button>
       </div>
       <div class="glassrow"><span class="ci">${icon("glasses")}</span><div><strong>${T("안경 화면", "Glasses display")}</strong>
         <span class="muted">${T("Meta Ray-Ban Display용 웹앱이에요. 따라 하기에서 넘어간 카드가 안경에도 같이 떠요.", "A web app for Meta Ray-Ban Display. It shows the same card as Coach mode.")}</span></div>
         <a class="btn" href="/glasses?run=${S.run}&lang=${lang}" target="_blank">${T("안경 화면 열기", "Open glasses view")}</a></div>
       <div class="qrrow">${[["tablet", T("학생 태블릿·휴대폰", "Learner's tablet or phone"), T("카드를 한 장씩 넘겨 봐요", "Flip through the cards")],
                             ["glasses", T("안경(Ray-Ban Display)", "Glasses (Ray-Ban Display)"), T("Meta AI 앱 → 웹앱 추가에 이 주소", "Add as a Web App in the Meta AI app")]].map(([to, t, d]) =>
-        `<div><img src="/api/runs/${S.run}/qr.svg?to=${to}&lang=${lang}" alt="${t} QR" width="132" height="132"><strong>${t}</strong><span class="muted">${d}</span></div>`).join("")}
+        `<div><img src="/api/runs/${S.run}/qr.svg?to=${to}&lang=${lang}" alt="${t} QR" width="132" height="132"><strong>${t}</strong><span class="muted">${d}</span>
+          <button class="btn" onclick="shareLink('${to}')">${icon("share")} ${T("링크 보내기", "Send link")}</button></div>`).join("")}
         <p class="muted">${/^(127\.|localhost|\[::1\])/.test(location.hostname) ? T("지금은 이 맥 안에서만 열리는 주소예요. 배포한 주소에서 열면 다른 기기에서도 열려요.", "This address only works on this Mac. Open StepCards from your deployed address to use it on other devices.")
           : T("보기는 키 없이 열려요. 학생 기기에서 카드를 만들거나 고치려면 접속 키가 필요해요.", "Viewing needs no key. Making or editing cards on a learner device needs the access key.")}</p></div>
       <div class="langrow"><span class="muted">${T("카드 글자", "Card language")}</span> ${segHtml()}
@@ -865,6 +872,11 @@ function cardCanvas(c, n, img) {
   g.textAlign = "left"; g.textBaseline = "alphabetic"; let y = IH + 80;
   for (const [t, size, weight, color] of rows) { g.font = `${weight} ${size}px ${font}`; g.fillStyle = color; g.fillText(t, 60, y + size * 0.9); y += size * 1.3; }
   return cv;
+}
+async function shareLink(to) {  // QR을 찍을 수 없는 같은 기기(휴대폰)에서는 링크로
+  const url = to === "glasses" ? `${location.origin}/glasses?run=${S.run}&lang=${lang}` : `${location.origin}/?ui=${ui}#run=${S.run}&view=tablet`;
+  try { if (navigator.share) return await navigator.share({ url, title: S.data.title || "StepCards" }); } catch (e) { if (e?.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(url); toast(T("링크를 복사했어요.", "Link copied.")); } catch { toast(url); }
 }
 async function shareCards(btn) {
   btn.disabled = true;
@@ -899,7 +911,7 @@ function tablet() {
     <div class="txt" onclick="sayCard(S.data.cards[S.idx])" title="${T("눌러서 듣기", "Tap to hear")}">${text(c)} <span class="hear">${icon("sound")}</span></div>
     <div class="bar">
       <button class="navb" onclick="flip(-1)" ${S.idx ? "" : "disabled"}>${T("◀ 이전", "◀ Back")}</button>
-      <div class="mid"><div class="dots">${cs.map((_, j) => `<i class="${j === S.idx ? "on" : ""}"></i>`).join("")}</div>${S.idx + 1} / ${cs.length}</div>
+      <div class="mid">${dotsHtml(cs.length, S.idx)}${S.idx + 1} / ${cs.length}</div>
       ${last ? `<button class="navb next" onclick="S.idx=0;tablet()">${T("처음으로 ↺", "Start over ↺")}</button>` : `<button class="navb next" onclick="flip(1)">${T("다음 ▶", "Next ▶")}</button>`}
     </div>
   </div>`;
@@ -1038,7 +1050,7 @@ function coachCard() {
   $("#clv").hidden = !C.help;
   $("#clv").innerHTML = `${[1, 2, 3, 4].map(l => `<i class="${l <= C.lv ? "on" : ""}"></i>`).join("")}<span>${T("도움", "Help")}: ${lvName(C.lv)}</span>${C.lv < 4 ? `<button onclick="helpUp()">${T("더 보기", "More")}</button>` : ""}`;
   $("#ctxt").innerHTML = text(c);
-  $("#cmid").innerHTML = `<div class="dots">${cs.map((_, j) => `<i class="${j === S.idx ? "on" : ""}"></i>`).join("")}</div>${S.idx + 1} / ${cs.length}`;
+  $("#cmid").innerHTML = `${dotsHtml(cs.length, S.idx)}${S.idx + 1} / ${cs.length}`;
   $("#cprev").disabled = !S.idx;
   const last = S.idx === cs.length - 1;
   $("#cnext").innerHTML = last ? T("다 했어요 ✓", "Done ✓") : T("다음 ▶", "Next ▶");
@@ -1109,6 +1121,9 @@ function stopCoach() {
   C.stream?.getTracks().forEach(t => t.stop()); C.stream = null;
 }
 
+function dotsHtml(n, idx) {  // 카드가 많으면 점이 넘쳐서 숫자만
+  return n > 15 ? "" : `<div class="dots">${Array.from({ length: n }, (_, j) => `<i class="${j === idx ? "on" : ""}"></i>`).join("")}</div>`;
+}
 function flip(d) { S.idx = Math.max(0, Math.min(S.data.cards.length - 1, S.idx + d)); tablet(); }
 document.addEventListener("keydown", e => {
   if (S.view === "coach") { if (e.key === "ArrowRight") coachFlip(1); if (e.key === "ArrowLeft") coachFlip(-1); if (e.key === "Escape") go({ run: S.run, view: "use" }); return; }
