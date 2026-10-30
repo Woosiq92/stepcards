@@ -89,6 +89,7 @@ Deploy (for example Railway, from this GitHub repository): the `Dockerfile` inst
 |---|---|
 | `MODEL_API_KEY` | Meta Model API key |
 | `APP_KEY` | an access key; without it, anyone with the address can upload videos and spend credits |
+| `VIEW_KEY` | optional view-only key for learner devices: the Use page shows QR codes for the tablet view and the glasses web app that carry only this key (cards can be viewed and flipped, nothing can be made, edited or sent to paid models) |
 | `DATA_DIR` | a persistent volume path (for example `/data`), so card sets survive redeploys |
 
 Open the site once with `?k=<APP_KEY>` (or type the key on the key page); a cookie keeps you in for 30 days. On the glasses, add the web app as `https://<host>/glasses?run=<id>&k=<APP_KEY>`. A phone camera or glasses web app needs HTTPS, which the host provides.

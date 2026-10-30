@@ -31,7 +31,7 @@
 <script>
 // 안경 화면: 따라 하기 화면이 고른 카드를 그대로 보여 준다. 초점 이동(상하좌우)+선택(Enter)만으로 조작
 const run = new URLSearchParams(location.search).get("run");
-const lang = (() => { try { return localStorage.getItem("lang") || "ko"; } catch { return "ko"; } })();
+const lang = new URLSearchParams(location.search).get("lang") || (() => { try { return localStorage.getItem("lang") || "ko"; } catch { return "ko"; } })();  // 안경 브라우저는 교사 설정을 모르니 주소로 받는다
 const K = lang === "en";
 let cards = [], cur = { i: -1, v: -1 };
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));

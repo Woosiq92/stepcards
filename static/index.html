@@ -161,6 +161,9 @@
   .choice.feat { background:var(--dark); color:#fff; } .choice.feat .ci { background:var(--accent); color:#fff; } .choice.feat .d { color:#a9b8c6; }
   .choice .t { font-size:18px; font-weight:700; letter-spacing:-.015em; } .choice .d { color:var(--muted); font-size:14px; }
   .glassrow { display:flex; align-items:center; gap:14px; background:var(--paper); border-radius:var(--r); padding:14px 18px; box-shadow:var(--sh-1); margin:-8px 0 20px; }
+  .qrrow { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin:-6px 0 20px; }
+  .qrrow > div { background:var(--paper); border-radius:var(--r); padding:14px; box-shadow:var(--sh-1); display:flex; flex-direction:column; align-items:center; text-align:center; gap:2px; }
+  .qrrow img { border-radius:8px; margin-bottom:6px; } .qrrow p { grid-column:1/-1; margin:0; }
   .glassrow .ci { width:40px; height:40px; border-radius:12px; display:grid; place-items:center; background:var(--dark); color:#fff; flex:none; }
   .glassrow > div { flex:1; display:flex; flex-direction:column; } .glassrow a:hover { text-decoration:none; }
   .langrow { display:flex; align-items:center; gap:12px; }
@@ -685,7 +688,12 @@ function use() {
       </div>
       <div class="glassrow"><span class="ci">${icon("glasses")}</span><div><strong>${T("안경 화면", "Glasses display")}</strong>
         <span class="muted">${T("Meta Ray-Ban Display용 웹앱이에요. 따라 하기에서 넘어간 카드가 안경에도 같이 떠요.", "A web app for Meta Ray-Ban Display. It shows the same card as Coach mode.")}</span></div>
-        <a class="btn" href="/glasses?run=${S.run}" target="_blank">${T("안경 화면 열기", "Open glasses view")}</a></div>
+        <a class="btn" href="/glasses?run=${S.run}&lang=${lang}" target="_blank">${T("안경 화면 열기", "Open glasses view")}</a></div>
+      <div class="qrrow">${[["tablet", T("학생 태블릿·휴대폰", "Learner's tablet or phone"), T("카드를 한 장씩 넘겨 봐요", "Flip through the cards")],
+                            ["glasses", T("안경(Ray-Ban Display)", "Glasses (Ray-Ban Display)"), T("Meta AI 앱 → 웹앱 추가에 이 주소", "Add as a Web App in the Meta AI app")]].map(([to, t, d]) =>
+        `<div><img src="/api/runs/${S.run}/qr.svg?to=${to}&lang=${lang}" alt="${t} QR" width="132" height="132"><strong>${t}</strong><span class="muted">${d}</span></div>`).join("")}
+        <p class="muted">${/^(127\.|localhost|\[::1\])/.test(location.hostname) ? T("지금은 이 맥 안에서만 열리는 주소예요. 배포한 주소에서 열면 다른 기기에서도 열려요.", "This address only works on this Mac. Open StepCards from your deployed address to use it on other devices.")
+          : T("QR에는 보기 전용 열쇠만 들어 있어요. 학생 기기에서는 카드를 만들거나 고칠 수 없어요.", "The QR holds a view-only key: learner devices can't make or edit cards.")}</p></div>
       <div class="langrow"><span class="muted">${T("카드 글자", "Card language")}</span> ${segHtml()}</div>
       <h3>${T("인쇄 미리보기", "Print preview")}</h3>
     </div>

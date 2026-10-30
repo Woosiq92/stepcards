@@ -1,9 +1,9 @@
 # 로컬 서버: 영상 올리기 → 파이프라인 → 진행판·편집·인쇄·태블릿 보기
 # 사용: .venv/bin/python app.py  → http://127.0.0.1:8790
-import hashlib, hmac, json, os, re, shutil, threading, time, uuid
+import hashlib, hmac, io, json, os, re, shutil, threading, time, uuid
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageDraw
 import coach
@@ -23,6 +23,9 @@ for s in sorted(SEED.iterdir()) if SEED.is_dir() else []:
         p["video_path"] = str(RUNS / s.name / "video.mp4")
         (RUNS / s.name / "progress.json").write_text(json.dumps(p, ensure_ascii=False))
 APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정: 아는 사람만 들어와 크레딧을 쓰게
+VIEW_KEY = os.environ.get("VIEW_KEY", "")  # 학생 기기용 보기 전용 키(태블릿·안경 화면). 없으면 QR에 키를 넣지 않는다
+VIEW_PATHS = re.compile(r"/(|glasses|favicon\.ico)$|/runs/|/api/runs/\w+/(cards|now|glass/\d+\.jpg|clip/\d+\.mp4)$")
+NOW_PATH = re.compile(r"/api/runs/\w+/now$")
 app = FastAPI()
 
 
@@ -33,13 +36,20 @@ async def need_key(request: Request, call_next):
     k = request.query_params.get("k")
     if request.url.path == "/login" and request.method == "POST":  # 접속 키 입력 칸
         k = (await request.form()).get("k", "")
-    if k is not None and hmac.compare_digest(k.encode(), APP_KEY.encode()):  # 주소에 한 번 붙여 오면 쿠키로 바꾸고 주소에서는 지운다
-        q = "&".join(f"{a}={b}" for a, b in request.query_params.multi_items() if a != "k")
-        r = RedirectResponse(("/" if request.url.path == "/login" else request.url.path) + (f"?{q}" if q else ""), 303)
-        r.set_cookie("sc_key", APP_KEY, max_age=60 * 60 * 24 * 30, httponly=True, secure=True, samesite="lax")
-        return r
+    for name, key in (("sc_key", APP_KEY), ("sc_view", VIEW_KEY)):
+        if k is not None and key and hmac.compare_digest(k.encode(), key.encode()):  # 주소에 한 번 붙여 오면 쿠키로 바꾸고 주소에서는 지운다
+            q = "&".join(f"{a}={b}" for a, b in request.query_params.multi_items() if a != "k")
+            r = RedirectResponse(("/" if request.url.path == "/login" else request.url.path) + (f"?{q}" if q else ""), 303)
+            r.set_cookie(name, key, max_age=60 * 60 * 24 * 30, httponly=True, secure=True, samesite="lax")
+            return r
     if hmac.compare_digest(request.cookies.get("sc_key", "").encode(), APP_KEY.encode()):
         return await call_next(request)
+    if VIEW_KEY and hmac.compare_digest(request.cookies.get("sc_view", "").encode(), VIEW_KEY.encode()):
+        # 학생 기기: 카드 보기·넘기기만. 만들기·고치기·그림·따라 하기 판단(크레딧이 드는 것)은 막는다
+        p, m = request.url.path, request.method
+        if (m == "GET" and VIEW_PATHS.match(p)) or (m == "POST" and NOW_PATH.match(p)):
+            return await call_next(request)
+        return HTMLResponse("view-only key", 403)
     if request.url.path.startswith(("/api/", "/runs/")):
         return HTMLResponse("key required", 401)
     return HTMLResponse(KEY_PAGE, 401)
@@ -308,6 +318,20 @@ def card_clip(run_id: str, n: int, g: int = 0):
     if not out.exists():
         atomic(out, lambda tmp: pipeline.clip(read(d, "progress.json")["video_path"], t0, dur, tmp, 352 if g else 640))
     return FileResponse(out, media_type="video/mp4")
+
+
+@app.get("/api/runs/{run_id}/qr.svg")
+def qr(run_id: str, request: Request, to: str = "tablet", lang: str = "ko"):
+    """학생 기기로 넘기는 QR: 태블릿 보기나 안경 화면 주소(보기 전용 키가 있으면 함께)"""
+    import segno
+    run_dir(run_id)
+    base = f"{request.headers.get('x-forwarded-proto', request.url.scheme)}://{request.headers.get('host', request.url.netloc)}"
+    k = f"k={VIEW_KEY}&" if VIEW_KEY else ""
+    lang = lang if lang in ("ko", "en", "both") else "ko"
+    url = f"{base}/glasses?{k}run={run_id}&lang={lang}" if to == "glasses" else f"{base}/?{k}ui={lang if lang != 'both' else 'ko'}#run={run_id}&view=tablet"
+    buf = io.BytesIO()
+    segno.make(url, error="m").save(buf, kind="svg", scale=6, border=2, dark="#1c2b33")
+    return Response(buf.getvalue(), media_type="image/svg+xml", headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/local")

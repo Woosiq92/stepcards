@@ -187,3 +187,22 @@ def test_title_and_delete():
     assert client.delete(f"/api/runs/{rid}").json()["ok"]
     assert not d.exists() and all(r["id"] != rid for r in client.get("/api/runs").json())
     assert client.delete(f"/api/runs/{rid}").status_code == 404
+
+
+# 보기 전용 키: 카드 보기·넘기기만 되고, 만들기·고치기·QR은 막힌다. QR 주소에는 보기 키만 들어간다
+def test_view_key(monkeypatch):
+    rid, d = make_run()
+    monkeypatch.setattr(A, "APP_KEY", "teach-1"); monkeypatch.setattr(A, "VIEW_KEY", "look-2")
+    c = TestClient(A.app, base_url="https://testserver")
+    r = c.get(f"/glasses?run={rid}&k=look-2", follow_redirects=False)
+    assert r.status_code == 303 and "sc_view" in r.headers["set-cookie"]
+    c.cookies.set("sc_view", "look-2")
+    assert c.get(f"/api/runs/{rid}/cards").status_code == 200
+    assert c.post(f"/api/runs/{rid}/now", json={"i": 1}).status_code == 200
+    assert c.get("/api/runs").status_code == 403
+    assert c.put(f"/api/runs/{rid}/cards", json={"cards": []}).status_code == 403
+    assert c.post(f"/api/runs/{rid}/coach", json={}).status_code == 403
+    assert c.get(f"/api/runs/{rid}/qr.svg").status_code == 403
+    t = TestClient(A.app, base_url="https://testserver"); t.cookies.set("sc_key", "teach-1")
+    svg = t.get(f"/api/runs/{rid}/qr.svg?to=glasses")
+    assert svg.status_code == 200 and svg.text.startswith("<?xml") or "<svg" in svg.text
