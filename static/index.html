@@ -79,6 +79,11 @@
   .past { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
   .pastcard { background:var(--paper); border-radius:var(--r); overflow:hidden; color:inherit; font-weight:400; box-shadow:var(--sh-1); transition:box-shadow .15s, transform .15s; }
   .pastcard { position:relative; }
+  .ask { display:flex; align-items:center; gap:10px; background:var(--paper); border-radius:999px; padding:6px 6px 6px 14px; box-shadow:var(--sh-1); margin:0 0 10px; }
+  .ask .ci { color:var(--accent); display:grid; } .ask input { flex:1; min-width:0; border:none; font:inherit; font-size:15px; background:transparent; color:var(--ink); } .ask input:focus { outline:none; }
+  .askbox { background:var(--paper); border-radius:var(--r); padding:14px 18px; box-shadow:var(--sh-1); margin:0 0 12px; display:grid; gap:8px; }
+  .askrow { display:flex; gap:10px; align-items:flex-start; } .askrow .n { width:26px; height:26px; font-size:12px; flex:none; } .askrow s { color:var(--muted); }
+  .askbtns { display:flex; gap:8px; }
   .jump { display:flex; gap:6px; overflow-x:auto; padding:2px 0 10px; scrollbar-width:none; }
   .jump button { flex:none; min-width:34px; height:34px; border-radius:99px; border:1px solid var(--line2); background:var(--paper); font-weight:700; font-size:13px; color:var(--ink2); }
   .jump button.bad { border-color:var(--bad); color:var(--bad); background:var(--bad-soft); }
@@ -539,6 +544,12 @@ function edit() {
       <button class="btn" onclick="illustrateAll()" title="Muse Image">${icon("draw")} ${T("모든 카드 그림으로", "Make drawings for all")}</button>
       <button class="btn primary" onclick="go({run:S.run,view:'use'})">${T("다 됐어요 → 인쇄·태블릿", "Done → Print · Tablet · Coach")}</button>
     </div>
+    <form class="ask" onsubmit="askAgent(event)">
+      <span class="ci">${icon("draw")}</span>
+      <input id="askin" maxlength="300" placeholder="${T("Muse Spark에게 부탁하기 (예: 글을 잘 못 읽는 학생용으로 더 쉽게)", "Ask Muse Spark (e.g. simpler words for a learner who reads little)")}" aria-label="${T("Muse Spark에게 부탁하기", "Ask Muse Spark")}">
+      <button class="btn primary">${T("부탁하기", "Ask")}</button>
+    </form>
+    <div id="askres"></div>
     <nav class="jump" id="jump" aria-label="${T("카드로 바로 가기", "Jump to card")}">${jumpHtml(per)}</nav>
     <p class="hint">${T("문장을 누르면 바로 고쳐져요. 사진이 마음에 안 들면 '다른 장면 고르기'를 누르세요.", "Click a sentence to edit it. If a photo is not right, use 'Choose another frame'.")}</p>
     <div id="global">${global.map(g => `<div class="issue">${esc(g)}</div>`).join("")}</div>
@@ -616,6 +627,29 @@ function saveNow() {
     if (S.view === "edit") updateIssues();
   }).catch(() => setSave("error"));
   return S.saving;
+}
+// 교사 부탁 → 고칠 안(바뀌는 문장만) → '적용'을 눌러야 바뀐다(되돌리기 가능)
+async function askAgent(e) {
+  e.preventDefault();
+  const q = $("#askin").value.trim(), box = $("#askres");
+  if (!q) return;
+  await saveNow();
+  box.innerHTML = `<div class="askbox muted">${T("Muse Spark가 고치고, 검사기로 확인하는 중…", "Muse Spark is revising and running the checker…")}</div>`;
+  let d = null;
+  try { const r = await fetch(`/api/runs/${S.run}/agent`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ instruction: q }) }); if (r.ok) d = await r.json(); } catch {}
+  if (!d) { box.innerHTML = ""; return toast(T("답을 받지 못했어요. 다시 해 주세요.", "No answer. Please try again.")); }
+  S.ask = d;
+  box.innerHTML = `<div class="askbox"><b>${esc(d.note || T("고칠 안", "Proposed changes"))}</b>
+    <span class="muted">${T(`바뀌는 카드 ${d.changes.length}장 · 검사 ${d.checks}번 · $${d.cost}`, `${d.changes.length} cards change · checker run ${d.checks}× · $${d.cost}`)}</span>
+    ${d.changes.map(c => `<div class="askrow"><span class="n">${S.data.cards.findIndex(x => x.n === c.n) + 1}</span><div><s>${esc(c.ko_before)}</s><br><b>${esc(c.ko)}</b><span class="muted"> · ${esc(c.en)}</span></div></div>`).join("")}
+    ${d.problems.length ? `<div class="issue">${T("적용하면 검사에 걸리는 곳이 있어요:", "Applying this leaves issues:")} ${esc(d.problems.map(m => problemText(m, true)).join(" / "))}</div>` : ""}
+    <div class="askbtns">${d.changes.length ? `<button class="btn primary" onclick="applyAgent()">${T("적용", "Apply")}</button>` : ""}<button class="btn" onclick="$('#askres').innerHTML=''">${T("닫기", "Close")}</button></div></div>`;
+}
+function applyAgent() {
+  const before = snapshot(), by = Object.fromEntries(S.ask.changes.map(c => [c.n, c]));
+  S.data.cards.forEach(c => { if (by[c.n]) { c.ko = by[c.n].ko; c.en = by[c.n].en; } });
+  $("#askres").innerHTML = ""; changed();
+  undoable(T(`카드 ${S.ask.changes.length}장의 문장을 바꿨어요.`, `Changed ${S.ask.changes.length} cards.`), before);
 }
 function jumpHtml(per) {
   return S.data.cards.map((_, i) => `<button class="${per[i]?.length ? "bad" : ""}" onclick="document.getElementById('row${i}').scrollIntoView({behavior:'smooth',block:'center'})">${i + 1}</button>`).join("");

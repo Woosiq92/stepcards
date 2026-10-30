@@ -31,7 +31,7 @@ Tested so far: latte making (café training, two videos including a creator's re
    - **Muse Spark** splits the video into one-action steps: start, end, best moment, a plain Korean sentence, an English sentence, the object in hand and how it looks.
    - **A code checker** (no model) tests every step: times inside the video, no overlaps, the chosen moment inside the step, sentence length, one action per sentence, Korean polite ending, two common Korean spelling mistakes. If a rule fails, the reasons go back to Muse Spark and it tries again (up to twice). Whatever still fails is shown to the teacher.
    - **SAM 3.1** finds the object in the worker's hand (by name, then by appearance) and outlines it. If the object does not touch a hand in the chosen frame, other moments in the step are tried.
-3. **Check & edit**: show each card as a photo, a drawing (Muse Image) or motion (a silent loop of up to 4 s around the chosen moment, cut from the video — useful for dance and other movements a still cannot show); edit sentences in place (autosave, re-checked on every save), move, merge, remove or add cards, choose another frame from a filmstrip, fix times and object names. Problems appear on the card in plain words.
+3. **Check & edit**: ask Muse Spark in plain words ("simpler words for a learner who reads little"). It works as an agent: it proposes new sentences, calls the code checker as a tool, fixes what fails, and answers; the code then judges the final proposal again. The teacher sees each change (old → new) and applies or closes it, with Undo. Then show each card as a photo, a drawing (Muse Image) or motion (a silent loop of up to 4 s around the chosen moment, cut from the video — useful for dance and other movements a still cannot show); edit sentences in place (autosave, re-checked on every save), move, merge, remove or add cards, choose another frame from a filmstrip, fix times and object names. Problems appear on the card in plain words.
 4. **Use**: send the cards as images through the phone's share sheet (messengers, text) or save them as one image, print six cards per A4 page (plus a task-analysis record sheet for the teacher), flip through on a tablet, or start **Coach mode**.
 5. **Coach mode**: a camera watches the learner. Muse Spark looks at the last two frames and says which step is happening; SAM 3.1 confirms the object in hand before the next card appears. If a later step shows up, the current card is shown again first; if it shows up twice in a row, the cards follow the learner. No praise, no scores, nothing stored — camera frames are never saved. Optional "help only when needed" (a prompt hierarchy, as in special-education practice): each card starts as text only; if the step takes more than twice as long as in the demonstration (10–60 s), or the learner presses Help (also on the glasses), it adds the picture, then reads it aloud (skipped if the teacher turned sound off), then plays the motion clip. On the last card, when the model sees the step finished twice in a row (or someone presses Done), a plain "All steps done" screen appears, with how far help went on each card; this is shown once and not saved. Back and Next always work by hand.
 
@@ -44,6 +44,7 @@ The interface is available in Korean and English (switch at the top right). Card
 | Model | Used for |
 |---|---|
 | `muse-spark-1.3` | splitting into steps and writing sentences; Coach mode step recognition (`reasoning.effort = minimal`) |
+| `muse-spark-1.3` (agent) | teacher-request agent: rewrites sentences, calling the code checker (`check_cards` tool) until it passes |
 | `sam-3.1` | outlining the object in hand; confirming the object before Coach mode moves on |
 | `muse-voice-transcribe-1.0` | transcribing what the demonstrator says (`/v1/asr/transcribe`, endpointing mode) |
 
@@ -105,6 +106,7 @@ Tests (checker, server, Coach decisions; no paid model calls): `.venv/bin/pip in
 | `pipeline.py` | frames → speech → steps (with check and retry) → photos and outlines |
 | `check.py` | the code-only rule checker |
 | `coach.py` | Coach mode decision (Muse Spark + SAM 3.1) |
+| `agent.py` | teacher-request agent (Muse Spark with the checker as a tool) |
 | `app.py` | local web server (FastAPI) |
 | `static/index.html` | the whole interface, one file |
 | `coach_sim.py`, `coach_bench*.py` | Coach mode replay test and latency measurements |

@@ -175,6 +175,18 @@ def start(run_id, video):
     return True
 
 
+@app.post("/api/runs/{run_id}/agent")
+def teacher_agent(run_id: str, body: dict):
+    """교사 부탁 → Muse Spark가 검사기를 도구로 써 가며 문장 고칠 안을 만든다. 저장은 하지 않는다(교사가 적용)."""
+    import agent
+    d = run_dir(run_id)
+    data = read(d, "cards.json")
+    instruction = str(body.get("instruction", "")).strip()[:300]
+    if not data or not instruction:
+        raise HTTPException(400, "부탁할 내용이 없습니다")
+    return agent.run(data["cards"], data.get("duration", len(list((d / "frames").glob("*.jpg")))), instruction)
+
+
 @app.post("/api/runs/{run_id}/retry")
 def retry(run_id: str):
     """멈춘 실행을 같은 영상으로 다시 돌린다(영상을 다시 올리지 않아도 되게)"""
