@@ -172,6 +172,7 @@
   .qrrow img { border-radius:8px; margin-bottom:6px; } .qrrow p { grid-column:1/-1; margin:0; }
   .glassrow .ci { width:40px; height:40px; border-radius:12px; display:grid; place-items:center; background:var(--dark); color:#fff; flex:none; }
   .glassrow > div { flex:1; display:flex; flex-direction:column; } .glassrow a:hover { text-decoration:none; }
+  .langrow { flex-wrap:wrap; }
   .langrow { display:flex; align-items:center; gap:12px; }
   .seg { display:inline-flex; gap:2px; padding:3px; border-radius:999px; background:var(--bg); }
   .seg button { border:none; background:none; padding:6px 14px; font-size:13px; font-weight:600; color:var(--muted); border-radius:999px; transition:background .15s, color .15s; }
@@ -278,6 +279,7 @@ const IC = { plus:'<path d="M12 5v14M5 12h14"/>', video:'<rect x="3" y="6" width
   check:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/>', print:'<path d="M7 9V4h10v5"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v6H7z"/>',
   tablet:'<rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M11 18h2"/>', glasses:'<rect x="2.5" y="9.5" width="8" height="6.5" rx="3"/><rect x="13.5" y="9.5" width="8" height="6.5" rx="3"/><path d="M10.5 12c1-.9 2-.9 3 0M2.5 11 1.8 8.5M21.5 11l.7-2.5"/>',
   draw:'<path d="M12 3 13.6 8.4 19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6z"/><path d="M19 16v4M17 18h4"/>', x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  share:'<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',
   sound:'<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.5 4.5 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/>', mute:'<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>' };
 const icon = n => `<svg class="ico" viewBox="0 0 24 24">${IC[n]}</svg>`;
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -744,7 +746,8 @@ function use() {
         `<div><img src="/api/runs/${S.run}/qr.svg?to=${to}&lang=${lang}" alt="${t} QR" width="132" height="132"><strong>${t}</strong><span class="muted">${d}</span></div>`).join("")}
         <p class="muted">${/^(127\.|localhost|\[::1\])/.test(location.hostname) ? T("지금은 이 맥 안에서만 열리는 주소예요. 배포한 주소에서 열면 다른 기기에서도 열려요.", "This address only works on this Mac. Open StepCards from your deployed address to use it on other devices.")
           : T("QR에는 보기 전용 열쇠만 들어 있어요. 학생 기기에서는 카드를 만들거나 고칠 수 없어요.", "The QR holds a view-only key: learner devices can't make or edit cards.")}</p></div>
-      <div class="langrow"><span class="muted">${T("카드 글자", "Card language")}</span> ${segHtml()}</div>
+      <div class="langrow"><span class="muted">${T("카드 글자", "Card language")}</span> ${segHtml()}
+        <span style="flex:1"></span><button class="btn" onclick="shareCards(this)">${icon("share")} ${navigator.canShare ? T("이미지로 보내기", "Send as images") : T("이미지로 저장", "Save as image")}</button></div>
       <h3>${T("인쇄 미리보기", "Print preview")}</h3>
     </div>
     ${sheets}
@@ -752,6 +755,48 @@ function use() {
       <p class="muted">${T("카드마다 한 줄. 날짜 칸에 그날 학생이 받은 도움 단계를 적어요. 따라 하기 끝 화면의 요약을 옮겨 적기 좋아요.", "One row per card. Write the help level the learner needed that day; copy it from the Coach end screen.")}</p>
       <button class="btn" onclick="printWhat('record')">${icon("print")} ${T("기록지 인쇄", "Print record sheet")}</button></div>
     ${record}`;
+}
+/* 카드를 이미지로: 휴대폰은 공유창(메신저·문자 등)으로 카드마다 한 장씩, 그 밖에는 모든 카드를 한 장에 모아 내려받기 */
+function cardCanvas(c, n, img) {
+  const W = 1080, IH = 608, cv = document.createElement("canvas"), g = cv.getContext("2d");
+  const font = "-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif";
+  const lines = [[lang === "en" ? c.en : c.ko, 64, 700, "#1c2b33"], ...(lang === "both" ? [[c.en, 40, 400, "#65788a"]] : [])];
+  const wrap = (t, size, weight) => {  // 띄어쓰기 단위로 줄바꿈(한국어 낱말이 끊기지 않게)
+    g.font = `${weight} ${size}px ${font}`; const out = [];
+    for (const w of String(t || "").split(" ")) { const l = out.at(-1); if (l !== undefined && g.measureText(l + " " + w).width < W - 120) out[out.length - 1] = l + " " + w; else out.push(w); }
+    return out;
+  };
+  const rows = lines.flatMap(([t, size, weight, color]) => wrap(t, size, weight).map(x => [x, size, weight, color]));
+  cv.width = W; cv.height = IH + 80 + rows.reduce((h, [, size]) => h + size * 1.3, 0) + 50;
+  g.fillStyle = "#fff"; g.fillRect(0, 0, W, cv.height);
+  const r = Math.max(W / img.naturalWidth, IH / img.naturalHeight);  // 16:9 칸을 가득(가운데 기준)
+  g.drawImage(img, (W - img.naturalWidth * r) / 2, (IH - img.naturalHeight * r) / 2, img.naturalWidth * r, img.naturalHeight * r);
+  g.fillStyle = "#1c2b33"; g.beginPath(); g.arc(70, 70, 42, 0, 7); g.fill();
+  g.fillStyle = "#fff"; g.font = `700 40px ${font}`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(n, 70, 72);
+  g.textAlign = "left"; g.textBaseline = "alphabetic"; let y = IH + 80;
+  for (const [t, size, weight, color] of rows) { g.font = `${weight} ${size}px ${font}`; g.fillStyle = color; g.fillText(t, 60, y + size * 0.9); y += size * 1.3; }
+  return cv;
+}
+async function shareCards(btn) {
+  btn.disabled = true;
+  try {
+    const cs = S.data.cards, name = (S.data.title || "StepCards").replace(/[\\/:*?"<>|]/g, "");
+    const imgs = await Promise.all(cs.map(c => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = imgSrc(c); })));
+    const cvs = cs.map((c, i) => cardCanvas(c, i + 1, imgs[i]));
+    const blob = cv => new Promise(r => cv.toBlob(r, "image/jpeg", 0.88));
+    const files = await Promise.all(cvs.map(async (cv, i) => new File([await blob(cv)], `${name}_${pad(i + 1)}.jpg`, { type: "image/jpeg" })));
+    if (navigator.canShare?.({ files })) {
+      try { return await navigator.share({ files, title: name }); }
+      catch (e) { if (e?.name === "AbortError") return; }  // 공유창이 안 열리면(권한 등) 아래 내려받기로
+    }
+    const cols = 3, w = cvs[0].width, h = Math.max(...cvs.map(cv => cv.height)), gap = 40, all = document.createElement("canvas");
+    all.width = cols * w + (cols + 1) * gap; all.height = Math.ceil(cvs.length / cols) * (h + gap) + gap;
+    const g = all.getContext("2d"); g.fillStyle = "#f1f4f7"; g.fillRect(0, 0, all.width, all.height);
+    cvs.forEach((cv, i) => g.drawImage(cv, gap + (i % cols) * (w + gap), gap + Math.floor(i / cols) * (h + gap)));
+    const a = document.createElement("a"); a.href = URL.createObjectURL(await blob(all)); a.download = `${name}.jpg`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  } catch (e) { if (e?.name !== "AbortError") toast(T("이미지를 만들지 못했어요.", "Could not make the images.")); }
+  finally { btn.disabled = false; }
 }
 function printWhat(w) { document.body.dataset.print = w; window.print(); }
 addEventListener("afterprint", () => { delete document.body.dataset.print; });  // 그냥 Ctrl+P 는 카드 인쇄
