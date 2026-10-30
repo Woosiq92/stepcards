@@ -1,0 +1,545 @@
+{
+ "duration": 406,
+ "status": "ok",
+ "problems": [],
+ "warnings": [
+  "9·10단계 사이 86~116초가 비어 있습니다.",
+  "14·15단계 사이 141~157초가 비어 있습니다.",
+  "18·19단계 사이 216~247초가 비어 있습니다.",
+  "22·23단계 사이 285~306초가 비어 있습니다.",
+  "23·24단계 사이 311~373초가 비어 있습니다."
+ ],
+ "cards": [
+  {
+   "start": 15,
+   "end": 22,
+   "rep": 18,
+   "ko": "바지락을 씻으세요.",
+   "en": "Wash the clams.",
+   "object": "golden bowl",
+   "look": "round metallic yellow container",
+   "n": 1,
+   "image": "cards/01.jpg",
+   "frame_t": 18,
+   "box": [
+    425,
+    52,
+    930,
+    582
+   ],
+   "box_prompt": "golden bowl",
+   "box_touches_hand": true
+  },
+  {
+   "start": 23,
+   "end": 27,
+   "rep": 25,
+   "ko": "바지락을 헹구세요.",
+   "en": "Rinse the clams.",
+   "object": "golden bowl",
+   "look": "round metallic yellow container",
+   "n": 2,
+   "image": "cards/02.jpg",
+   "frame_t": 25,
+   "box": [
+    216,
+    64,
+    747,
+    596
+   ],
+   "box_prompt": "golden bowl",
+   "box_touches_hand": true
+  },
+  {
+   "start": 31,
+   "end": 36,
+   "rep": 34,
+   "ko": "바지락을 담으세요.",
+   "en": "Place the clams on a plate.",
+   "object": "small clams",
+   "look": "small gray-brown oval shells",
+   "n": 3,
+   "image": "cards/03.jpg",
+   "frame_t": 35,
+   "box": [
+    720,
+    428,
+    814,
+    511
+   ],
+   "box_prompt": "small clams",
+   "box_touches_hand": true
+  },
+  {
+   "start": 38,
+   "end": 40,
+   "rep": 39,
+   "ko": "대파를 써세요.",
+   "en": "Slice the green onion.",
+   "object": "kitchen knife",
+   "look": "thin silver blade with red handle",
+   "n": 4,
+   "image": "cards/04.jpg",
+   "frame_t": 39,
+   "box": [
+    467,
+    322,
+    586,
+    436
+   ],
+   "box_prompt": "knife",
+   "box_touches_hand": true
+  },
+  {
+   "start": 41,
+   "end": 46,
+   "rep": 44,
+   "ko": "양파 1/4개를 써세요.",
+   "en": "Slice 1/4 onion.",
+   "object": "kitchen knife",
+   "look": "thin silver blade with red handle",
+   "n": 5,
+   "image": "cards/05.jpg",
+   "frame_t": 44,
+   "box": [
+    494,
+    250,
+    578,
+    413
+   ],
+   "box_prompt": "knife",
+   "box_touches_hand": true
+  },
+  {
+   "start": 47,
+   "end": 52,
+   "rep": 50,
+   "ko": "애호박을 얇게 써세요.",
+   "en": "Thinly slice the zucchini.",
+   "object": "kitchen knife",
+   "look": "thin silver blade with red handle",
+   "n": 6,
+   "image": "cards/06.jpg",
+   "frame_t": 50,
+   "box": [
+    526,
+    265,
+    608,
+    411
+   ],
+   "box_prompt": "knife",
+   "box_touches_hand": true
+  },
+  {
+   "start": 53,
+   "end": 61,
+   "rep": 58,
+   "ko": "땡초 1개를 써세요.",
+   "en": "Chop 1 green chili.",
+   "object": "kitchen knife",
+   "look": "thin silver blade with red handle",
+   "n": 7,
+   "image": "cards/07.jpg",
+   "frame_t": 58,
+   "box": [
+    537,
+    297,
+    642,
+    406
+   ],
+   "box_prompt": "knife",
+   "box_touches_hand": true
+  },
+  {
+   "start": 62,
+   "end": 71,
+   "rep": 67,
+   "ko": "홍초를 써세요.",
+   "en": "Chop the red chili.",
+   "object": "kitchen knife",
+   "look": "thin silver blade with red handle",
+   "n": 8,
+   "image": "cards/08.jpg",
+   "frame_t": 67,
+   "box": [
+    791,
+    212,
+    814,
+    427
+   ],
+   "box_prompt": "knife",
+   "box_touches_hand": true
+  },
+  {
+   "start": 79,
+   "end": 86,
+   "rep": 82,
+   "ko": "순두부를 자르세요.",
+   "en": "Cut the soft tofu.",
+   "object": "tofu tube",
+   "look": "white soft cylinder in clear plastic",
+   "n": 9,
+   "image": "cards/09.jpg",
+   "frame_t": 82,
+   "box": [
+    295,
+    303,
+    798,
+    472
+   ],
+   "box_prompt": "tofu tube",
+   "box_touches_hand": true
+  },
+  {
+   "start": 116,
+   "end": 121,
+   "rep": 119,
+   "ko": "약한 불을 켜세요.",
+   "en": "Turn on low heat.",
+   "object": "portable gas stove",
+   "look": "black rectangular box with dial",
+   "n": 10,
+   "image": "cards/10.jpg",
+   "frame_t": 119,
+   "box": [
+    112,
+    223,
+    618,
+    680
+   ],
+   "box_prompt": "portable gas stove",
+   "box_touches_hand": true
+  },
+  {
+   "start": 124,
+   "end": 129,
+   "rep": 126,
+   "ko": "참기름을 넣으세요.",
+   "en": "Add sesame oil.",
+   "object": "yellow spoon",
+   "look": "pale yellow plastic utensil",
+   "n": 11,
+   "image": "cards/11.jpg",
+   "frame_t": 126,
+   "box": [
+    231,
+    221,
+    552,
+    382
+   ],
+   "box_prompt": "yellow spoon",
+   "box_touches_hand": true
+  },
+  {
+   "start": 131,
+   "end": 132,
+   "rep": 132,
+   "ko": "마늘 반 스푼을 넣으세요.",
+   "en": "Add half a spoon of garlic.",
+   "object": "yellow spoon",
+   "look": "pale yellow plastic utensil",
+   "n": 12,
+   "image": "cards/12.jpg",
+   "frame_t": 132,
+   "box": [
+    316,
+    295,
+    399,
+    556
+   ],
+   "box_prompt": "yellow spoon",
+   "box_touches_hand": true
+  },
+  {
+   "start": 133,
+   "end": 135,
+   "rep": 134,
+   "ko": "고춧가루 반 스푼을 넣으세요.",
+   "en": "Add half a spoon of chili powder.",
+   "object": "yellow spoon",
+   "look": "pale yellow plastic utensil",
+   "n": 13,
+   "image": "cards/13.jpg",
+   "frame_t": 134,
+   "box": [
+    201,
+    279,
+    388,
+    531
+   ],
+   "box_prompt": "yellow spoon",
+   "box_touches_hand": true
+  },
+  {
+   "start": 136,
+   "end": 141,
+   "rep": 138,
+   "ko": "살살 볶으세요.",
+   "en": "Stir-fry gently.",
+   "object": "yellow spoon",
+   "look": "pale yellow plastic utensil",
+   "n": 14,
+   "image": "cards/14.jpg",
+   "frame_t": 138,
+   "box": [
+    212,
+    338,
+    363,
+    669
+   ],
+   "box_prompt": "yellow spoon",
+   "box_touches_hand": true
+  },
+  {
+   "start": 157,
+   "end": 159,
+   "rep": 158,
+   "ko": "파 한 줌을 넣으세요.",
+   "en": "Add a handful of green onion.",
+   "object": "sliced green onions",
+   "look": "thin pale green long strips",
+   "n": 15,
+   "image": "cards/15.jpg",
+   "frame_t": 158,
+   "box": null,
+   "box_prompt": null,
+   "box_touches_hand": false
+  },
+  {
+   "start": 173,
+   "end": 177,
+   "rep": 175,
+   "ko": "순두부를 넣으세요.",
+   "en": "Add the soft tofu.",
+   "object": "tofu tube",
+   "look": "white soft cylinder in clear plastic",
+   "n": 16,
+   "image": "cards/16.jpg",
+   "frame_t": 174,
+   "box": [
+    261,
+    219,
+    621,
+    407
+   ],
+   "box_prompt": "white soft cylinder in clear plastic",
+   "box_touches_hand": true
+  },
+  {
+   "start": 192,
+   "end": 196,
+   "rep": 194,
+   "ko": "순두부를 가르세요.",
+   "en": "Split the soft tofu.",
+   "object": "yellow spoon",
+   "look": "pale yellow plastic utensil",
+   "n": 17,
+   "image": "cards/17.jpg",
+   "frame_t": 194,
+   "box": [
+    400,
+    260,
+    697,
+    528
+   ],
+   "box_prompt": "yellow spoon",
+   "box_touches_hand": true
+  },
+  {
+   "start": 206,
+   "end": 216,
+   "rep": 212,
+   "ko": "쌀뜨물을 반쯤 부으세요.",
+   "en": "Pour rice water to half cover.",
+   "object": "plastic bottle",
+   "look": "translucent container with black cap",
+   "n": 18,
+   "image": "cards/18.jpg",
+   "frame_t": 212,
+   "box": [
+    0,
+    198,
+    226,
+    630
+   ],
+   "box_prompt": "translucent container with black cap",
+   "box_touches_hand": true
+  },
+  {
+   "start": 247,
+   "end": 249,
+   "rep": 248,
+   "ko": "굴소스 반 스푼을 넣으세요.",
+   "en": "Add half a spoon of oyster sauce.",
+   "object": "yellow spoon",
+   "look": "pale yellow plastic utensil",
+   "n": 19,
+   "image": "cards/19.jpg",
+   "frame_t": 248,
+   "box": [
+    504,
+    149,
+    1005,
+    716
+   ],
+   "box_prompt": "yellow spoon",
+   "box_touches_hand": false
+  },
+  {
+   "start": 263,
+   "end": 265,
+   "rep": 264,
+   "ko": "다시다 반 스푼을 넣으세요.",
+   "en": "Add half a spoon of dasida.",
+   "object": "small metal cup",
+   "look": "round silver container",
+   "n": 20,
+   "image": "cards/20.jpg",
+   "frame_t": 264,
+   "box": [
+    0,
+    139,
+    168,
+    494
+   ],
+   "box_prompt": "small metal cup",
+   "box_touches_hand": false
+  },
+  {
+   "start": 273,
+   "end": 276,
+   "rep": 274,
+   "ko": "바지락을 넣으세요.",
+   "en": "Add the clams.",
+   "object": "small clams",
+   "look": "small gray-brown oval shells",
+   "n": 21,
+   "image": "cards/21.jpg",
+   "frame_t": 274,
+   "box": [
+    430,
+    137,
+    464,
+    175
+   ],
+   "box_prompt": "small clams",
+   "box_touches_hand": false
+  },
+  {
+   "start": 279,
+   "end": 285,
+   "rep": 282,
+   "ko": "바지락이 벌어지게 끓이세요.",
+   "en": "Boil until clams open.",
+   "object": "yellow spoon",
+   "look": "pale yellow plastic utensil",
+   "n": 22,
+   "image": "cards/22.jpg",
+   "frame_t": 280,
+   "box": [
+    296,
+    88,
+    461,
+    717
+   ],
+   "box_prompt": "yellow spoon",
+   "box_touches_hand": true
+  },
+  {
+   "start": 306,
+   "end": 311,
+   "rep": 308,
+   "ko": "애호박을 넣으세요.",
+   "en": "Add the zucchini.",
+   "object": "zucchini slices",
+   "look": "pale green half-moon pieces",
+   "n": 23,
+   "image": "cards/23.jpg",
+   "frame_t": 308,
+   "box": [
+    1098,
+    33,
+    1186,
+    106
+   ],
+   "box_prompt": "slices",
+   "box_touches_hand": true
+  },
+  {
+   "start": 373,
+   "end": 375,
+   "rep": 374,
+   "ko": "땡초를 넣으세요.",
+   "en": "Add the green chili.",
+   "object": "chopped green chili",
+   "look": "small dark green pieces",
+   "n": 24,
+   "image": "cards/24.jpg",
+   "frame_t": 374,
+   "box": null,
+   "box_prompt": null,
+   "box_touches_hand": false
+  },
+  {
+   "start": 376,
+   "end": 378,
+   "rep": 377,
+   "ko": "홍초를 넣으세요.",
+   "en": "Add the red chili.",
+   "object": "chopped red chili",
+   "look": "small bright red pieces",
+   "n": 25,
+   "image": "cards/25.jpg",
+   "frame_t": 377,
+   "box": [
+    392,
+    320,
+    486,
+    367
+   ],
+   "box_prompt": "small bright red pieces",
+   "box_touches_hand": true
+  },
+  {
+   "start": 379,
+   "end": 382,
+   "rep": 380,
+   "ko": "양파를 넣으세요.",
+   "en": "Add the onion.",
+   "object": "sliced onion",
+   "look": "thin white curved strips",
+   "n": 26,
+   "image": "cards/26.jpg",
+   "frame_t": 380,
+   "box": [
+    1183,
+    0,
+    1274,
+    139
+   ],
+   "box_prompt": "sliced onion",
+   "box_touches_hand": false
+  },
+  {
+   "start": 385,
+   "end": 387,
+   "rep": 386,
+   "ko": "파를 넣으세요.",
+   "en": "Add the green onion.",
+   "object": "sliced green onions",
+   "look": "thin pale green long strips",
+   "n": 27,
+   "image": "cards/27.jpg",
+   "frame_t": 386,
+   "box": [
+    578,
+    180,
+    645,
+    245
+   ],
+   "box_prompt": "onions",
+   "box_touches_hand": true
+  }
+ ],
+ "title": "바지락 순두부찌개 · 엄마 레시피 (견본)"
+}

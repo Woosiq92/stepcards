@@ -1,0 +1,156 @@
+{
+ "video": "assembly_bedside.mp4",
+ "video_path": "",
+ "events": [
+  {
+   "t": 1793357038.6,
+   "stage": "start",
+   "msg": "assembly_bedside.mp4 → fa37916f40e3"
+  },
+  {
+   "t": 1793357040.5,
+   "stage": "extract",
+   "msg": "영상 140초, 사진 141장"
+  },
+  {
+   "t": 1793357052.8,
+   "stage": "listen",
+   "msg": "영상에 말소리가 없음",
+   "n": 0,
+   "cost": 0.007
+  },
+  {
+   "t": 1793357078.0,
+   "stage": "split",
+   "msg": "1번째 시도: 단계 17개, 문제 0개 (25초, $0.077)",
+   "n": 17,
+   "problems": [],
+   "warnings": [],
+   "cost": 0.0773
+  },
+  {
+   "t": 1793357087.6,
+   "stage": "highlight",
+   "msg": "1단계 'support block': 상자 찾음(support block, 손과 안 겹침)",
+   "i": 1,
+   "total": 17
+  },
+  {
+   "t": 1793357095.4,
+   "stage": "highlight",
+   "msg": "2단계 'wooden dowel': 상자 찾음(small light cylindrical wooden rod, 손과 안 겹침, 사진 56→54초)",
+   "i": 2,
+   "total": 17
+  },
+  {
+   "t": 1793357109.9,
+   "stage": "highlight",
+   "msg": "3단계 'drawer slide': 못 찾음",
+   "i": 3,
+   "total": 17
+  },
+  {
+   "t": 1793357121.6,
+   "stage": "highlight",
+   "msg": "4단계 'cam bolt': 상자 찾음(cam bolt, 손과 안 겹침, 사진 75→73초)",
+   "i": 4,
+   "total": 17
+  },
+  {
+   "t": 1793357132.2,
+   "stage": "highlight",
+   "msg": "5단계 'table leg': 상자 찾음(leg, 손과 안 겹침, 사진 81→79초)",
+   "i": 5,
+   "total": 17
+  },
+  {
+   "t": 1793357141.4,
+   "stage": "highlight",
+   "msg": "6단계 'metal bolt': 상자 찾음(short cylindrical silver threaded pin, 손과 안 겹침, 사진 87→85초)",
+   "i": 6,
+   "total": 17
+  },
+  {
+   "t": 1793357152.4,
+   "stage": "highlight",
+   "msg": "7단계 'cam lock': 못 찾음",
+   "i": 7,
+   "total": 17
+  },
+  {
+   "t": 1793357160.4,
+   "stage": "highlight",
+   "msg": "8단계 'cabinet frame': 상자 찾음(square light wooden box structure, 손과 안 겹침)",
+   "i": 8,
+   "total": 17
+  },
+  {
+   "t": 1793357163.1,
+   "stage": "highlight",
+   "msg": "9단계 'top panel': 못 찾음",
+   "i": 9,
+   "total": 17
+  },
+  {
+   "t": 1793357169.9,
+   "stage": "highlight",
+   "msg": "10단계 'hammer and nail': 상자 찾음(long handled tool with metal head, 손과 안 겹침)",
+   "i": 10,
+   "total": 17
+  },
+  {
+   "t": 1793357171.5,
+   "stage": "highlight",
+   "msg": "11단계 'drawer panel': 상자 찾음(drawer panel, 손과 안 겹침)",
+   "i": 11,
+   "total": 17
+  },
+  {
+   "t": 1793357174.8,
+   "stage": "highlight",
+   "msg": "12단계 'screw': 상자 찾음(screw, 손과 안 겹침)",
+   "i": 12,
+   "total": 17
+  },
+  {
+   "t": 1793357181.1,
+   "stage": "highlight",
+   "msg": "13단계 'drawer bottom': 못 찾음",
+   "i": 13,
+   "total": 17
+  },
+  {
+   "t": 1793357188.1,
+   "stage": "highlight",
+   "msg": "14단계 'drawer front': 상자 찾음(drawer front, 손과 안 겹침, 사진 116→117초)",
+   "i": 14,
+   "total": 17
+  },
+  {
+   "t": 1793357199.0,
+   "stage": "highlight",
+   "msg": "15단계 'leather pull': 못 찾음",
+   "i": 15,
+   "total": 17
+  },
+  {
+   "t": 1793357202.0,
+   "stage": "highlight",
+   "msg": "16단계 'drawer slide': 상자 찾음(drawer slide, 손과 안 겹침)",
+   "i": 16,
+   "total": 17
+  },
+  {
+   "t": 1793357209.1,
+   "stage": "highlight",
+   "msg": "17단계 'drawer box': 상자 찾음(drawer box, 손과 안 겹침)",
+   "i": 17,
+   "total": 17
+  },
+  {
+   "t": 1793357209.1,
+   "stage": "done",
+   "msg": "완료: runs/fa37916f40e3"
+  }
+ ]
+}

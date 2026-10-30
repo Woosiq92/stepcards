@@ -125,5 +125,8 @@ Tests (checker, server, Coach decisions; no paid model calls): `.venv/bin/pip in
 - Sample videos used for testing and the demo (not included in this repository unless noted):
   - "POV Morning Latte in Costa Rica ASMR" by Cornffy, YouTube `vqv_DMMDqC8`, CC BY. Korean narration was added with a synthetic voice for testing.
   - Starbucks black glazed latte recipe by 베란다스튜디오, YouTube `sjgucMN4Aa8`, CC BY.
-  - "Napkin Folding - Butterfly" by maitp, YouTube `jaHe0SBRLVA`, CC BY. A smaller, silent copy is included in `seed/` as the sample card set that appears on a fresh deployment.
+  - "Napkin Folding - Butterfly" by maitp, YouTube `jaHe0SBRLVA`, CC BY. 
   - "How to SHOKI - Quick dance tutorial by Afro 101" by AFRO 101, YouTube `DgqYEe7sIQw`, CC BY.
+  - "30년 장사한 엄마의 첫 레시피, 10분 바지락 순두부찌개" by 장사만30년미화씨, YouTube `GStjzzIi4ew`, CC BY.
+  - "Barcelona 2 drawer bedside Assembly Instructions" by INSIDE HOUSE, YouTube `RIJc1qKefGg`, CC BY.
+  - Sample card sets in `seed/` (shown on a fresh deployment, one per use case) include small silent copies of the CC BY videos above.

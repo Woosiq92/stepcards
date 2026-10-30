@@ -1,0 +1,253 @@
+{
+ "video": "family_sundubu.mp4",
+ "video_path": "",
+ "events": [
+  {
+   "t": 1793356762.1,
+   "stage": "start",
+   "msg": "family_sundubu.mp4 → 06d0c8e9935c"
+  },
+  {
+   "t": 1793356781.5,
+   "stage": "extract",
+   "msg": "영상 406초, 사진 406장"
+  },
+  {
+   "t": 1793356842.8,
+   "stage": "listen",
+   "msg": "말 18구간 받아씀",
+   "n": 18,
+   "cost": 0.0203
+  },
+  {
+   "t": 1793356879.7,
+   "stage": "split",
+   "msg": "1번째 시도: 단계 27개, 문제 5개 (37초, $0.191)",
+   "n": 27,
+   "problems": [
+    "4단계: 맞춤법이 틀렸습니다('썰으' → '써'): 대파를 썰으세요.",
+    "5단계: 맞춤법이 틀렸습니다('썰으' → '써'): 양파 1/4개를 썰으세요.",
+    "6단계: 맞춤법이 틀렸습니다('썰으' → '써'): 애호박을 얇게 썰으세요.",
+    "7단계: 맞춤법이 틀렸습니다('썰으' → '써'): 땡초 1개를 썰으세요.",
+    "8단계: 맞춤법이 틀렸습니다('썰으' → '써'): 홍초를 썰으세요."
+   ],
+   "warnings": [
+    "9·10단계 사이 86~116초가 비어 있습니다.",
+    "14·15단계 사이 141~157초가 비어 있습니다.",
+    "18·19단계 사이 216~247초가 비어 있습니다.",
+    "22·23단계 사이 285~306초가 비어 있습니다.",
+    "23·24단계 사이 311~373초가 비어 있습니다."
+   ],
+   "cost": 0.1914
+  },
+  {
+   "t": 1793356899.7,
+   "stage": "split",
+   "msg": "2번째 시도: 단계 27개, 문제 0개 (20초, $0.174)",
+   "n": 27,
+   "problems": [],
+   "warnings": [
+    "9·10단계 사이 86~116초가 비어 있습니다.",
+    "14·15단계 사이 141~157초가 비어 있습니다.",
+    "18·19단계 사이 216~247초가 비어 있습니다.",
+    "22·23단계 사이 285~306초가 비어 있습니다.",
+    "23·24단계 사이 311~373초가 비어 있습니다."
+   ],
+   "cost": 0.1742
+  },
+  {
+   "t": 1793356903.8,
+   "stage": "highlight",
+   "msg": "1단계 'golden bowl': 상자 찾음(golden bowl, 손과 겹침)",
+   "i": 1,
+   "total": 27
+  },
+  {
+   "t": 1793356906.7,
+   "stage": "highlight",
+   "msg": "2단계 'golden bowl': 상자 찾음(golden bowl, 손과 겹침)",
+   "i": 2,
+   "total": 27
+  },
+  {
+   "t": 1793356913.2,
+   "stage": "highlight",
+   "msg": "3단계 'small clams': 상자 찾음(small clams, 손과 겹침, 사진 34→35초)",
+   "i": 3,
+   "total": 27
+  },
+  {
+   "t": 1793356916.0,
+   "stage": "highlight",
+   "msg": "4단계 'kitchen knife': 상자 찾음(knife, 손과 겹침)",
+   "i": 4,
+   "total": 27
+  },
+  {
+   "t": 1793356920.1,
+   "stage": "highlight",
+   "msg": "5단계 'kitchen knife': 상자 찾음(knife, 손과 겹침)",
+   "i": 5,
+   "total": 27
+  },
+  {
+   "t": 1793356923.1,
+   "stage": "highlight",
+   "msg": "6단계 'kitchen knife': 상자 찾음(knife, 손과 겹침)",
+   "i": 6,
+   "total": 27
+  },
+  {
+   "t": 1793356926.3,
+   "stage": "highlight",
+   "msg": "7단계 'kitchen knife': 상자 찾음(knife, 손과 겹침)",
+   "i": 7,
+   "total": 27
+  },
+  {
+   "t": 1793356931.8,
+   "stage": "highlight",
+   "msg": "8단계 'kitchen knife': 상자 찾음(knife, 손과 겹침)",
+   "i": 8,
+   "total": 27
+  },
+  {
+   "t": 1793356933.9,
+   "stage": "highlight",
+   "msg": "9단계 'tofu tube': 상자 찾음(tofu tube, 손과 겹침)",
+   "i": 9,
+   "total": 27
+  },
+  {
+   "t": 1793356936.0,
+   "stage": "highlight",
+   "msg": "10단계 'portable gas stove': 상자 찾음(portable gas stove, 손과 겹침)",
+   "i": 10,
+   "total": 27
+  },
+  {
+   "t": 1793356937.8,
+   "stage": "highlight",
+   "msg": "11단계 'yellow spoon': 상자 찾음(yellow spoon, 손과 겹침)",
+   "i": 11,
+   "total": 27
+  },
+  {
+   "t": 1793356939.5,
+   "stage": "highlight",
+   "msg": "12단계 'yellow spoon': 상자 찾음(yellow spoon, 손과 겹침)",
+   "i": 12,
+   "total": 27
+  },
+  {
+   "t": 1793356942.5,
+   "stage": "highlight",
+   "msg": "13단계 'yellow spoon': 상자 찾음(yellow spoon, 손과 겹침)",
+   "i": 13,
+   "total": 27
+  },
+  {
+   "t": 1793356945.1,
+   "stage": "highlight",
+   "msg": "14단계 'yellow spoon': 상자 찾음(yellow spoon, 손과 겹침)",
+   "i": 14,
+   "total": 27
+  },
+  {
+   "t": 1793356949.4,
+   "stage": "highlight",
+   "msg": "15단계 'sliced green onions': 못 찾음",
+   "i": 15,
+   "total": 27
+  },
+  {
+   "t": 1793356954.1,
+   "stage": "highlight",
+   "msg": "16단계 'tofu tube': 상자 찾음(white soft cylinder in clear plastic, 손과 겹침, 사진 175→174초)",
+   "i": 16,
+   "total": 27
+  },
+  {
+   "t": 1793356956.1,
+   "stage": "highlight",
+   "msg": "17단계 'yellow spoon': 상자 찾음(yellow spoon, 손과 겹침)",
+   "i": 17,
+   "total": 27
+  },
+  {
+   "t": 1793356959.0,
+   "stage": "highlight",
+   "msg": "18단계 'plastic bottle': 상자 찾음(translucent container with black cap, 손과 겹침)",
+   "i": 18,
+   "total": 27
+  },
+  {
+   "t": 1793356960.6,
+   "stage": "highlight",
+   "msg": "19단계 'yellow spoon': 상자 찾음(yellow spoon, 손과 안 겹침)",
+   "i": 19,
+   "total": 27
+  },
+  {
+   "t": 1793356962.7,
+   "stage": "highlight",
+   "msg": "20단계 'small metal cup': 상자 찾음(small metal cup, 손과 안 겹침)",
+   "i": 20,
+   "total": 27
+  },
+  {
+   "t": 1793356968.7,
+   "stage": "highlight",
+   "msg": "21단계 'small clams': 상자 찾음(small clams, 손과 안 겹침)",
+   "i": 21,
+   "total": 27
+  },
+  {
+   "t": 1793356973.3,
+   "stage": "highlight",
+   "msg": "22단계 'yellow spoon': 상자 찾음(yellow spoon, 손과 겹침, 사진 282→280초)",
+   "i": 22,
+   "total": 27
+  },
+  {
+   "t": 1793356976.6,
+   "stage": "highlight",
+   "msg": "23단계 'zucchini slices': 상자 찾음(slices, 손과 겹침)",
+   "i": 23,
+   "total": 27
+  },
+  {
+   "t": 1793356980.2,
+   "stage": "highlight",
+   "msg": "24단계 'chopped green chili': 못 찾음",
+   "i": 24,
+   "total": 27
+  },
+  {
+   "t": 1793356982.4,
+   "stage": "highlight",
+   "msg": "25단계 'chopped red chili': 상자 찾음(small bright red pieces, 손과 겹침)",
+   "i": 25,
+   "total": 27
+  },
+  {
+   "t": 1793356986.1,
+   "stage": "highlight",
+   "msg": "26단계 'sliced onion': 상자 찾음(sliced onion, 손과 안 겹침)",
+   "i": 26,
+   "total": 27
+  },
+  {
+   "t": 1793356991.0,
+   "stage": "highlight",
+   "msg": "27단계 'sliced green onions': 상자 찾음(onions, 손과 겹침)",
+   "i": 27,
+   "total": 27
+  },
+  {
+   "t": 1793356991.0,
+   "stage": "done",
+   "msg": "완료: runs/06d0c8e9935c"
+  }
+ ]
+}
