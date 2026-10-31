@@ -35,6 +35,8 @@
   .logo .mark { width:32px; height:32px; border-radius:9px; background:var(--accent); display:grid; place-items:center; }
   .logo .mark svg { width:20px; height:20px; }
   .steps { display:flex; align-items:center; gap:2px; margin:0 auto; background:var(--bg); padding:4px; border-radius:999px; }
+  #uiseg .short, .step .short { display:none; } #uiseg .long, #uiseg .short { pointer-events:none; }
+  @media (max-width:720px) { #uiseg .short, .step .short { display:inline; } .step .long { display:none; } }
   .step { display:flex; align-items:center; gap:8px; padding:7px 14px 7px 8px; border-radius:999px; border:none; background:none; color:var(--muted); font-size:14px; font-weight:600; transition:background .15s, color .15s; }
   .step .dot { width:22px; height:22px; border-radius:50%; display:grid; place-items:center; background:var(--line); color:var(--ink2); font-size:12px; font-weight:700; }
   .step:hover:not(:disabled):not(.on) { color:var(--ink); }
@@ -319,7 +321,7 @@
   .cstart .linkbtn { color:#7fb6ff; }
   [hidden] { display:none !important; }
   @media (max-width:720px) {
-    header { padding:0 16px; gap:10px; } .logo span:last-child { display:none; } .step { padding:6px 8px; font-size:0; gap:0; } .step .dot { font-size:12px; } .step.on { font-size:13px; gap:6px; padding-right:12px; }
+    header { padding:0 16px; gap:10px; } .logo span:last-child { display:none; } .step { padding:6px 8px; font-size:0; gap:0; } .step .dot { font-size:12px; } .step.on { font-size:13px; gap:6px; padding-right:12px; white-space:nowrap; } .steps { flex-shrink:0; } #uiseg .long { display:none; } #uiseg button { padding:6px 10px; }
     .choices.three { grid-template-columns:1fr; } .coachv .cam { width:130px; }
     main { padding:20px 16px 48px; } .choices { grid-template-columns:1fr; }
     .row { grid-template-columns:1fr; } .row .n { position:absolute; top:26px; left:26px; z-index:2; }
@@ -419,7 +421,7 @@ async function route() {
   document.body.classList.toggle("tabmode", S.view === "tablet" || S.view === "coach");
   document.body.classList.toggle("homepage", S.view === "home");  // 첫 화면은 흰 바탕(이야기형)
   document.documentElement.lang = ui;
-  $("#uiseg").innerHTML = [["ko", "한국어"], ["en", "English"]].map(([v, l]) => `<button class="${ui === v ? "on" : ""}" onclick="setUi('${v}')">${l}</button>`).join("");
+  $("#uiseg").innerHTML = [["ko", "한국어", "한"], ["en", "English", "EN"]].map(([v, l, short]) => `<button class="${ui === v ? "on" : ""}" onclick="setUi('${v}')" aria-label="${l}"><span class="long">${l}</span><span class="short">${short}</span></button>`).join("");  // 휴대폰에서는 짧게
   header();
   ({ home, making, edit, use, tablet, coach, missing, admin })[S.view]();
 }
@@ -427,12 +429,12 @@ async function route() {
 /* 위쪽 1·2·3 단계 표시 */
 function header() {
   const done = !!S.data, cur = ["tablet", "coach"].includes(S.view) ? "use" : S.view === "home" ? "making" : S.view;
-  const items = [["making", T("영상 넣기", "Add video")], ["edit", T("카드 확인·고치기", "Check & edit")], ["use", T("인쇄·태블릿", "Print · Tablet · Coach")]];
-  $("#steps").innerHTML = items.map(([v, l], i) => {
+  const items = [["making", T("영상 넣기", "Add video"), T("영상", "Video")], ["edit", T("카드 확인·고치기", "Check & edit"), T("고치기", "Edit")], ["use", T("인쇄·태블릿", "Print · Tablet · Coach"), T("쓰기", "Use")]];  // 세 번째는 휴대폰용 짧은 이름
+  $("#steps").innerHTML = items.map(([v, l, short], i) => {
     const ok = (v === "making" && done) || (v === "edit" && done && cur === "use" && !(S.data.problems || []).length);
     const off = !S.run || (v !== "making" && !done);
     return `${i ? '<span class="arrow">›</span>' : ""}<button class="step ${cur === v ? "on" : ""} ${ok ? "done" : ""}" ${off && cur !== v ? "disabled" : ""}
-      onclick="${S.run ? `go({run:S.run,view:'${v}'})` : ""}"><span class="dot">${ok ? "✓" : i + 1}</span>${l}</button>`;
+      onclick="${S.run ? `go({run:S.run,view:'${v}'})` : ""}"><span class="dot">${ok ? "✓" : i + 1}</span><span class="long">${l}</span><span class="short">${short}</span></button>`;
   }).join("");
 }
 
