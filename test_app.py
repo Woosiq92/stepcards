@@ -384,3 +384,16 @@ def test_coach_log_and_report(capsys):
     coach_report.main()
     out = capsys.readouterr().out
     assert "자동으로 맞게 들어간 카드: 1 / 1" in out and "끝까지 다 함" in out and "2번 done" in out
+
+
+# 막힌 카드 돌려보내기: 기록에서 자주 막힌 카드만 고른다(한 번 막힌 건 빼고), 키가 있어야 본다
+def test_stuck_cards():
+    rows = [{"kind": "coach", "n": 1, "lv": 1}, {"kind": "coach", "n": 1, "lv": 2},
+            {"kind": "coach", "n": 2, "lv": 3}, {"kind": "coach", "n": 2, "lv": 4}, {"kind": "coach", "n": 2, "lv": 1},
+            {"kind": "coach", "n": 3, "lv": 4},
+            {"kind": "verify", "n": 4, "result": "different"}, {"kind": "verify", "n": 4, "result": "not_yet"}, {"kind": "verify", "n": 4, "result": "done"}]
+    out = A.stuck_cards(rows)
+    assert [s["n"] for s in out] == [2, 4] and out[0]["high"] == 2 and out[1]["miss"] == 2
+    rid, d = make_run()
+    (d / "records.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    assert [s["n"] for s in client.get(f"/api/runs/{rid}/stuck").json()] == [2, 4]

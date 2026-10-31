@@ -713,6 +713,30 @@ def get_log(run_id: str, request: Request):
     return [json.loads(x) for x in f.read_text().splitlines() if x.strip()] if f.exists() else []
 
 
+def stuck_cards(rows):
+    """기록에서 따라 하는 사람들이 자주 막힌 카드: 소리·움직임 도움까지 간 비율이 절반 이상(2번 이상 따라 했을 때)이거나, 확인에서 '달라요·아직'이 2번 이상"""
+    by = {}
+    for r in rows:
+        s = by.setdefault(r.get("n"), {"n": r.get("n"), "tries": 0, "high": 0, "checks": 0, "miss": 0})
+        if r.get("kind") == "coach":
+            s["tries"] += 1
+            s["high"] += int(r.get("lv", 0)) >= 3
+        elif r.get("kind") == "verify":
+            s["checks"] += 1
+            s["miss"] += r.get("result") in ("different", "not_yet")
+    out = [s for s in by.values() if (s["tries"] >= 2 and s["high"] * 2 >= s["tries"]) or s["miss"] >= 2]
+    return sorted(out, key=lambda s: (s["high"] + s["miss"], s["tries"]), reverse=True)
+
+
+@app.get("/api/runs/{run_id}/stuck")
+def get_stuck(run_id: str, request: Request):
+    """고치기 화면: 자주 막힌 카드(기록이 있는 사람만 — 기록은 키가 있어야 본다)"""
+    if not has_key(request):
+        raise HTTPException(401, "key required")
+    f = run_dir(run_id) / "records.jsonl"
+    return stuck_cards([json.loads(x) for x in f.read_text().splitlines() if x.strip()] if f.exists() else [])
+
+
 @app.get("/api/runs/{run_id}/records")
 def get_records(run_id: str, request: Request):
     """학습 기록은 키가 있는 사람만(보기 공개와 달리)"""

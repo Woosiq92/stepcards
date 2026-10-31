@@ -157,6 +157,10 @@
   .vpair { display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; } .vpair figure { margin:0; } .vpair img { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:12px; background:var(--line); }
   .vpair figcaption { font-size:13px; color:var(--muted); margin-top:4px; } .vhint { font-size:22px; font-weight:700; } .vbtns { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
   .recgrp th { text-align:left; background:var(--accent-soft); font-size:13px; }
+  .stuckbox { background:var(--paper); border:1px solid var(--warn); border-radius:var(--r); padding:12px 14px; margin:0 0 12px; display:grid; gap:10px; }
+  .stuckrow { display:flex; gap:10px; align-items:center; flex-wrap:wrap; } .stuckrow > div { flex:1; min-width:180px; }
+  .stuckrow .n { width:26px; height:26px; border-radius:50%; background:var(--warn-soft); color:var(--warn); display:grid; place-items:center; font-weight:700; font-size:13px; flex:none; }
+  .stuckbtns { display:flex; gap:6px; }
   .simwarn { background:var(--warn-soft); color:var(--warn); border-radius:10px; padding:8px 12px; font-size:13px; font-weight:600; }
   .voicerow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; } .voicerow .btn { padding:4px 12px; font-size:13px; }
   .afterimg { width:96px; aspect-ratio:16/9; object-fit:cover; border-radius:6px; vertical-align:middle; } .more input.wide { flex:1; min-width:200px; }
@@ -429,7 +433,7 @@ async function route() {
   if (recState?.state === "recording") recState.stop();  // 녹음 중에 나가면 마이크를 끈다(녹음은 저장)
   const p = new URLSearchParams(location.hash.slice(1));
   const run = p.get("run"), was = `${S.run}|${S.view}`;
-  if (run !== S.run) { S.run = run; S.data = null; S.undo = null; S.framesOk = false; S.idx = 0; S.open.clear(); S.strip.clear(); }
+  if (run !== S.run) { S.run = run; S.data = null; S.undo = null; S.framesOk = false; S.idx = 0; S.open.clear(); S.strip.clear(); S.stuck = undefined; }
   S.view = run ? (VIEWS.includes(p.get("view")) ? p.get("view") : "making") : p.get("view") === "admin" ? "admin" : "home";  // 모르는 화면 이름이면 기본 화면
   if (run && !S.data) {
     const r = await fetch(`/api/runs/${run}/cards`), data = r.ok ? await r.json() : null;
@@ -822,6 +826,7 @@ function edit() {
       ${S.undo ? `<button class="btn" onclick="undoLast()">↶ ${T("되돌리기", "Undo")}</button>` : ""}
       <button class="btn primary" onclick="go({run:S.run,view:'use'})">${T("다 됐어요 → 따라 하며 확인", "Done → Follow & check")}</button>
     </div>
+    <div id="stuck">${stuckHtml()}</div>
     <form class="ask" onsubmit="askAgent(event)">
       <span class="ci">${icon("draw")}</span>
       <input id="askin" maxlength="300" placeholder="${T("Muse Spark에게 부탁하기 (예: 글을 잘 못 읽는 학생용으로 더 쉽게)", "Ask Muse Spark (e.g. simpler words for a learner who reads little)")}" aria-label="${T("Muse Spark에게 부탁하기", "Ask Muse Spark")}">
@@ -929,6 +934,37 @@ function saveNow() {
     if (S.view === "edit") updateIssues();
   }).catch(() => setSave("error"));
   return S.saving;
+}
+/* 막힌 카드 돌려보내기: 따라 한 사람들이 자주 막힌 카드를 만든 사람에게 보여 주고, 고칠 안을 Muse Spark 에게 받는다.
+   근거는 기록(켜 둔 기기만, 서버가 모음)과 이 기기에서 방금 끝낸 따라 하기(소리·움직임까지 간 카드) */
+function stuckHtml() {
+  if (S.stuck === undefined) { S.stuck = null; loadStuck(); }
+  const list = S.stuck || [], pos = n => S.data.cards.findIndex(c => c.n === n);
+  const rows = list.filter(x => pos(x.n) >= 0);
+  if (!rows.length) return "";
+  return `<div class="stuckbox"><b>${icon("plus")} ${T("따라 한 사람들이 자주 막힌 카드", "Cards people often got stuck on")}</b>
+    ${rows.map(x => { const i = pos(x.n), c = S.data.cards[i], why = [
+        x.tries ? T(`${x.tries}번 중 ${x.high}번 소리·움직임 도움까지`, `needed sound or motion help ${x.high} of ${x.tries} times`) : "",
+        x.miss ? T(`확인에서 '달라요·아직' ${x.miss}번`, `Check said different / not yet ${x.miss} times`) : "",
+        x.local ? T("방금 이 기기의 따라 하기", "just now on this device") : ""].filter(Boolean).join(" · ");
+      return `<div class="stuckrow"><span class="n">${i + 1}</span><div><span>${esc(text(c))}</span><br><span class="muted">${why}</span></div>
+        <span class="stuckbtns"><button class="btn" onclick="document.getElementById('row${i}').scrollIntoView({behavior:'smooth',block:'center'})">${T("카드 보기", "Show card")}</button>
+        <button class="btn primary" onclick="fixStuck(${c.n})">${T("고칠 안 받기", "Get a fix")}</button></span></div>`; }).join("")}</div>`;
+}
+async function loadStuck() {
+  let list = [];
+  try { const r = await fetch(`/api/runs/${S.run}/stuck`); if (r.ok) list = await r.json(); } catch {}
+  try { for (const x of JSON.parse(sessionStorage.getItem("stuck:" + S.run) || "[]")) if (!list.some(y => y.n === x.n)) list.push({ n: x.n, local: true, tries: 0, high: 0, miss: 0 }); } catch {}
+  S.stuck = list;
+  const b = $("#stuck"); if (b && S.view === "edit") b.innerHTML = stuckHtml();
+}
+function fixStuck(n) {  // 그 카드 하나만 콕 집어 부탁한다. 결과는 늘 그렇듯 '적용'을 눌러야 바뀐다
+  const i = S.data.cards.findIndex(c => c.n === n), x = (S.stuck || []).find(y => y.n === n) || {};
+  const why = x.miss ? T("결과가 기준과 자주 달랐어요", "the result often differed from the reference") : T("그림·소리·움직임 도움이 자주 필요했어요", "they often needed picture, sound or motion help");
+  $("#askin").value = T(`${i + 1}번 카드에서 따라 하는 사람들이 자주 막혀요(${why}). 이 카드 문장만 더 따라 하기 쉽게 고쳐 주세요: 손에 든 물건과 방향을 정확히, 한 번에 한 동작. 두 동작이 섞여 있으면 메모에 알려 주세요.`,
+    `People following these cards often get stuck on card ${i + 1} (${why}). Rewrite only this card so it is easier to follow: name the exact object and direction, one action at a time. If it holds two actions, say so in the note.`);
+  if (x.miss && !S.data.cards[i].check) { S.open.add(n); toast(T("확인에서 자주 달랐어요. 카드의 '완료 기준 문장'도 써 주면 정확해져요.", "Checks often differed. Writing a 'done when' sentence on this card also helps.")); }
+  $("#askin").closest("form").requestSubmit();
 }
 // 교사 부탁 → 고칠 안(바뀌는 문장만) → '적용'을 눌러야 바뀐다(되돌리기 가능)
 async function askAgent(e) {
@@ -1406,9 +1442,15 @@ function coachEnd(finished) {
   $(".coachv").insertAdjacentHTML("beforeend", `<div class="cstart" id="csum"><div class="glyph">${icon("check")}</div><div class="t">${finished ? T("다 했어요", "All steps done") : T("오늘 따라 하기", "Today's run")}</div>
     ${C.help && rec.length ? `<div class="sumgrid">${by.map((ns, j) => `<div><b>${j ? T(`${lvName(j + 1)}까지`, `Up to ${lvName(j + 1).toLowerCase()}`) : T("글만 보고", "Text only")}</b><span>${ns.length ? T(`카드 ${ns.join(", ")}`, `Cards ${ns.join(", ")}`) : "–"}</span></div>`).join("")}</div>
     <div class="d">${S.rec ? T("기록에 남겼어요. 3번 화면의 '기록 보기'에서 볼 수 있어요.", "Saved to records. See 'View records' on the Follow & check page.") : T("이 기록은 저장하지 않아요. 필요하면 지금 적어 두세요.", "This is not saved. Write it down now if you need it.")}</div>` : ""}
+    ${by[2].length + by[3].length ? `<button class="navb" onclick="sendStuck()">${T("막힌 카드 고치러 가기", "Fix the cards that were hard")}</button>` : ""}
     <button class="navb next" onclick="go({run:S.run,view:'use'})">${T("나가기", "Exit")}</button></div>`);
   stopCoach(true);
   if (finished && C.voice && window.speechSynthesis) speechSynthesis.speak(utter(T("다 했어요.", "All steps done."), ui === "en" ? "en-US" : "ko-KR"));  // 멈춘 뒤에 읽어야 끊기지 않는다
+}
+function sendStuck() {  // 끝 화면 → 고치기: 이 기기에서 소리·움직임까지 간 카드(기록을 끄고 있어도 이 기기 안에서만 넘긴다)
+  const ns = Object.entries(C.max || {}).filter(([, lv]) => lv >= 3).map(([i]) => ({ n: S.data.cards[+i].n }));
+  try { sessionStorage.setItem("stuck:" + S.run, JSON.stringify(ns)); } catch {}
+  S.stuck = undefined; go({ run: S.run, view: "edit" });
 }
 function coachCard(quiet) {
   const cs = S.data.cards, c = cs[S.idx];
