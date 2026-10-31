@@ -142,6 +142,12 @@
   .fh-qr { display:flex; align-items:center; gap:12px; } .fh-qr img { border-radius:8px; } .fh-rec { display:flex; align-items:center; gap:6px; font-weight:600; } .fh-rec input { width:18px; height:18px; accent-color:var(--accent); }
   #records { width:100%; }
   .others { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:14px 0; border-top:1px solid var(--line); } .others .btn { padding:6px 12px; font-size:13px; }
+  .xbox { border:1px solid var(--line); border-radius:14px; padding:14px; margin:6px 0 14px; } .xbox p { margin:10px 0; }
+  .xask { display:flex; flex-wrap:wrap; gap:8px; align-items:center; } .xask input { padding:7px 10px; border-radius:8px; border:1px solid var(--line); min-width:200px; font:inherit; }
+  .xtab { width:100%; border-collapse:collapse; font-size:14px; } .xtab td, .xtab th { padding:6px; border-top:1px solid var(--line); text-align:left; vertical-align:top; word-break:keep-all; }
+  .xtab input { width:100%; padding:5px 8px; border-radius:6px; border:1px solid var(--line); font:inherit; } .xtab tr.warn td:first-child { color:#d4572a; font-weight:700; }
+  .xw { color:#d4572a; font-size:12px; margin-top:3px; } .xbtns { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  @media (max-width:640px) { .xtab th:nth-child(2), .xtab td:nth-child(2) { display:none; } }
   .others .langrow { margin-left:auto; display:inline-flex; align-items:center; gap:8px; }
   @media (max-width:860px) { .followhero, .fh-side { grid-template-columns:1fr; } .followhero { padding:16px; border-radius:22px; } }
   .vrow { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; padding:2px 0 4px; }
@@ -479,7 +485,10 @@ function media(c, attrs = "") {
   return c.view === "clip" ? `<video src="/api/runs/${S.run}/clip/${c.n}.mp4?t=${c.frame_t ?? c.rep}" poster="${imgSrc(c)}" autoplay muted loop playsinline ${attrs}></video>`
                            : `<img src="${imgSrc(c)}" alt="${esc(c.ko)}" ${attrs}>`;  // 사진 설명 = 카드 문장(화면 낭독기)
 }
+const xOn = () => lang === "x" && S.data?.extra?.ok;  // 한 언어 더: 만든 사람이 확인한 뒤에만 보인다
+const main = c => (lang === "en" || (lang === "x" && ui === "en")) ? c.en : c.ko;
 function text(c) {
+  if (lang === "x") return `${esc(main(c))}${xOn() && c.x ? `<span class="en">${esc(c.x)}</span>` : ""}`;
   if (lang === "en") return esc(c.en);
   if (lang === "both") return `${esc(c.ko)}<span class="en">${esc(c.en)}</span>`;
   return esc(c.ko);
@@ -562,7 +571,7 @@ async function verifyNow(glassesReq) {
   }
   const look = { done: ["ok", T("됐어요", "Done"), "check"], not_yet: ["wait", T("아직이에요", "Not yet"), "camera"], different: ["diff", T("달라요", "Different"), "camera"], unclear: ["wait", T("잘 안 보여요", "Can't see well"), "camera"] }[d.result];
   const hint = ui === "en" ? d.hint_en : d.hint_ko, last = idx === S.data.cards.length - 1;
-  box.innerHTML = `<div class="vcard ${look[0]}"><span class="vwhich">${T(`${idx + 1}번 카드`, `Card ${idx + 1}`)} · ${esc(lang === "en" ? c.en : c.ko)}</span><div class="vhead">${icon(look[2])} ${look[1]}</div>
+  box.innerHTML = `<div class="vcard ${look[0]}"><span class="vwhich">${T(`${idx + 1}번 카드`, `Card ${idx + 1}`)} · ${esc(main(c))}</span><div class="vhead">${icon(look[2])} ${look[1]}</div>
     ${d.result === "unclear" ? "" : `<div class="vpair"><figure><img src="/api/runs/${S.run}/cards/${c.n}/after.jpg?t=${doneT(c)}" alt=""><figcaption>${T("이렇게 되면 돼요", "Should look like")}</figcaption></figure>
       <figure><img src="${photo}" alt=""><figcaption>${T("지금", "Now")}</figcaption></figure></div>`}
     ${hint ? `<div class="vhint">${esc(hint)}</div>` : ""}
@@ -1145,7 +1154,8 @@ async function addCard(i) {
 
 /* ③ 인쇄·태블릿 */
 function segHtml() {
-  return `<span class="seg">${[["ko", "한국어"], ["en", "English"], ["both", T("둘 다", "Both")]].map(([v, l]) =>
+  const x = S.data?.extra?.ok ? [["x", `${ui === "en" ? "English" : "한국어"} + ${S.data.extra.name}`]] : [];
+  return `<span class="seg">${[["ko", "한국어"], ["en", "English"], ["both", T("둘 다", "Both")], ...x].map(([v, l]) =>
     `<button class="${lang === v ? "on" : ""}" onclick="setLang('${v}')">${l}</button>`).join("")}</span>`;
 }
 function use() {
@@ -1170,7 +1180,7 @@ function use() {
         <div class="fh-media"><img src="${imgSrc(first)}" alt="">
           <span class="fh-pov">${icon("glasses")} ${T("안경 시점", "Glasses view")}</span>
           <span class="fh-check">${icon("check")} ${T("됐어요", "Done")}</span>
-          <span class="fh-card">${esc(lang === "en" ? first.en : first.ko)}</span></div>
+          <span class="fh-card">${esc(main(first))}</span></div>
         <div class="fh-copy">
           ${title ? `<span class="kicker">${title}</span>` : ""}
           <h2>${T("안경을 쓰고 따라 하면, 잘 하고 있는지 바로 알려 줘요", "Follow along with glasses on, and know right away you're doing it right")}</h2>
@@ -1180,14 +1190,14 @@ function use() {
             <li>${T("단계마다 시범과 맞춰 보고, 다르면 고칠 점을 한 줄로", "Each step is matched to the demonstration; if it's off, one line says what to fix")}</li>
           </ol>
           <div class="fh-btns"><button class="pill big" onclick="go({run:S.run,view:'coach'})">${icon("camera")} ${T("따라 하며 확인 시작", "Start following & checking")}</button>
-            <a class="btn" href="/glasses?run=${S.run}&lang=${lang}&s=${pairCode}" target="_blank">${icon("glasses")} ${T("안경 화면", "Glasses view")}</a></div>
+            <a class="btn" href="/glasses?run=${S.run}&lang=${lang}&m=${ui}&s=${pairCode}" target="_blank">${icon("glasses")} ${T("안경 화면", "Glasses view")}</a></div>
           <p class="muted fh-note">${T("셀카 카메라가 아니라, 하는 사람의 눈높이(안경, 또는 이마 앞 휴대폰 뒤 카메라)에서 손이 보이게 찍어요.", "Not the selfie camera: film from the doer's eye level (glasses, or a phone's back camera held at the forehead) with the hands in view.")}</p>
         </div>
       </section>
       <div class="fh-side">
         <div class="fh-box"><strong>${icon("glasses")} ${T("Ray-Ban Display에 띄우기", "Show on Ray-Ban Display")}</strong>
           <span class="muted">${T("Meta AI 앱 → 웹앱 추가에 아래 주소를 넣거나 QR을 찍어요. 따라 하기의 카드와 확인 결과가 렌즈에 떠요.", "Add this address as a Web App in the Meta AI app, or scan the QR. Coach cards and check results appear on the lens.")}</span>
-          <div class="fh-qr"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&s=${pairCode}" alt="QR" width="112" height="112"><button class="btn" onclick="shareLink('glasses')">${icon("share")} ${T("링크 보내기", "Send link")}</button></div></div>
+          <div class="fh-qr"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&m=${ui}&s=${pairCode}" alt="QR" width="112" height="112"><button class="btn" onclick="shareLink('glasses')">${icon("share")} ${T("링크 보내기", "Send link")}</button></div></div>
         <div class="fh-box"><strong>${icon("check")} ${T("확인 결과 기록", "Check records")}</strong>
           <label class="fh-rec"><input type="checkbox" ${S.rec ? "checked" : ""} onchange="setRec(this.checked)"> ${T("이 기기에서 기록 남기기", "Keep records on this device")}</label>
           <span class="muted">${T("이름 없이 날짜·카드·확인 결과·도움 단계만. 사진은 남지 않아요.", "No names: date, card, check result and help level. No photos.")}</span>
@@ -1201,11 +1211,58 @@ function use() {
         <button class="btn" onclick="shareLink('tablet')">${icon("share")} ${T("학생 기기로 링크", "Link for a learner device")}</button>
         <button class="btn" onclick="shareCards(this)">${icon("share")} ${navigator.canShare ? T("이미지로 보내기", "Send as images") : T("이미지로 저장", "Save as image")}</button>
         <a class="btn" href="/api/runs/${S.run}/export.zip" download>${icon("share")} ${T("백업(.zip)", "Backup (.zip)")}</a>
+        <button class="btn" onclick="openX()">${icon("plus")} ${T("다른 언어 추가", "Add a language")}</button>
         <span class="langrow"><span class="muted">${T("카드 글자", "Card language")}</span> ${segHtml()}</span>
       </div>
+      <div id="xbox">${S.data.extra ? xboxHtml() : ""}</div>
     </div>
     <div class="printonly">${sheets}${record}</div>`;
   liveBoard(); S.livePoll = setInterval(liveBoard, 3000);
+}
+/* 한 언어 더(보호자·동료의 언어): Muse Spark 가 옮기고, 원문을 안 본 두 번째 호출이 되옮긴다.
+   만든 사람은 그 언어를 못 읽어도 되옮긴 문장으로 뜻을 확인하고 '확인했어요'를 눌러야 학습자 화면에 나온다 */
+const X_LANGS = ["Tiếng Việt", "中文", "English", "Русский", "ภาษาไทย", "Oʻzbekcha", "Монгол", "Filipino", "日本語", "Español", "नेपाली", "বাংলা"];
+function openX() { if (!S.data.extra) { $("#xbox").innerHTML = xboxHtml(); $("#xlang")?.focus(); } $("#xbox").scrollIntoView({ behavior: "smooth", block: "nearest" }); }
+function xboxHtml() {
+  const e = S.data.extra, prob = S.xprob || [];
+  const ask = `<div class="xask"><input id="xlang" list="xlangs" placeholder="${T("언어 (예: Tiếng Việt)", "Language (e.g. Tiếng Việt)")}" value="${esc(e?.lang || "")}">
+    <datalist id="xlangs">${X_LANGS.map(l => `<option value="${l}">`).join("")}</datalist>
+    <button class="btn" id="xgo" onclick="runX()">${e ? T("다시 옮기기", "Translate again") : T("옮기기", "Translate")}</button>
+    <span class="muted">${T("Meta Muse Spark 가 옮겨요. 숫자가 빠졌는지는 코드가 봐요.", "Meta Muse Spark translates; code checks that numbers are kept.")}</span></div>`;
+  if (!e) return `<div class="xbox">${ask}</div>`;
+  const back = c => c.xb ? esc(c.xb[ui === "en" ? "en" : "ko"] || "") : `<i>${T("직접 고침", "Edited by hand")}</i>`;
+  return `<div class="xbox">${ask}
+    <p>${e.ok ? `${icon("check")} ${T(`확인했어요. 카드 글자에서 '${ui === "en" ? "English" : "한국어"} + ${esc(e.name)}'를 고르면 인쇄·태블릿·안경에 같이 나와요.`, `Checked. Pick '${ui === "en" ? "English" : "한국어"} + ${esc(e.name)}' under Card language to show it in print, tablet and glasses.`)}`
+      : T("아직 학습자 화면에는 안 나와요. 되옮긴 문장으로 뜻이 맞는지 보고 확인해 주세요. 그 언어를 읽는 분이 한 번 봐 주면 더 좋아요.", "Not shown to learners yet. Check the meaning through the back-translation, then confirm. Better still, ask someone who reads the language to look once.")}</p>
+    <table class="xtab"><thead><tr><th>#</th><th>${T("카드", "Card")}</th><th>${esc(e.name)}</th><th>${T("되옮김(뜻 확인용)", "Back-translation (to check meaning)")}</th></tr></thead>
+    <tbody>${S.data.cards.map((c, i) => { const p = prob.find(x => x.n === c.n), stale = c.x && c.xsrc !== undefined && c.xsrc !== c.ko;
+      return `<tr class="${p || stale || !c.x ? "warn" : ""}"><td>${i + 1}</td><td>${esc(main(c))}</td>
+      <td><input value="${esc(c.x || "")}" onchange="editX(${i}, this.value)"></td>
+      <td>${back(c)}${p ? `<div class="xw">${p.what === "number" ? T(`숫자 ${p.detail.join(", ")}가 없어요`, `Missing number ${p.detail.join(", ")}`) : T("번역이 없어요", "No translation")}</div>` : stale ? `<div class="xw">${T("카드 문장이 바뀌었어요. 다시 옮기세요", "Card text changed. Translate again")}</div>` : !c.x ? `<div class="xw">${T("번역이 없어요", "No translation")}</div>` : ""}</td></tr>`; }).join("")}</tbody></table>
+    <div class="xbtns">${e.ok ? "" : `<button class="pill" onclick="saveX(true)">${icon("check")} ${T("확인했어요", "I've checked it")}</button>`}
+      <button class="btn" onclick="saveX(null)">${T("이 언어 빼기", "Remove this language")}</button></div></div>`;
+}
+async function runX() {
+  const l = $("#xlang").value.trim(); if (!l) return $("#xlang").focus();
+  const b = $("#xgo"); b.disabled = true; b.textContent = T("옮기는 중…", "Translating…");
+  const r = await fetch(`/api/runs/${S.run}/translate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lang: l }) });
+  if (!r.ok) { b.disabled = false; b.textContent = T("옮기기", "Translate"); return toast(r.status === 401 ? T("옮기려면 접속 키가 필요해요.", "An access key is needed to translate.") : r.status === 403 ? T("다른 사람의 카드 묶음이에요.", "This is another teacher's card set.") : T("옮기지 못했어요. 다시 해 주세요.", "Could not translate. Please try again.")); }
+  const d = await r.json();
+  S.data.cards = d.cards; S.data.extra = d.extra; S.xprob = d.translate.problems;
+  $("#xbox").innerHTML = xboxHtml(); toast(T(`옮겼어요 · $${d.translate.cost}`, `Translated · $${d.translate.cost}`));
+}
+function editX(i, v) {  // 직접 고친 번역은 되옮김이 없어진다(옛 되옮김을 믿지 않게). 다시 확인 필요
+  const c = S.data.cards[i]; c.x = v.trim(); c.xb = null; c.xsrc = c.ko; S.data.extra.ok = false;
+  S.xprob = (S.xprob || []).filter(x => x.n !== c.n); saveX(false);
+}
+async function saveX(ok) {
+  const extra = ok === null ? null : { ...S.data.extra, ok: !!ok };
+  if (ok === null) S.data.cards.forEach(c => { delete c.x; delete c.xb; delete c.xsrc; });
+  const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards: S.data.cards, title: S.data.title ?? "", extra }) });
+  if (!r.ok) return toast(r.status === 403 ? T("다른 사람의 카드 묶음이에요.", "This is another teacher's card set.") : T("저장하지 못했어요.", "Could not save."));
+  const d = await r.json(); S.data.extra = d.extra;
+  if (!d.extra && lang === "x") setLang(ui);
+  if (ok !== false) use();  // 확인·빼기는 카드 글자 고르기 칸도 바뀐다
 }
 /* 만든 사람의 현황판: 이 카드 묶음을 지금 따라 하는 화면들(짝 코드별 카드·도움 단계). '도와줘요'가 온 화면이 맨 위.
    카드 번호와 도움 단계만 보이고 사진·이름은 없다. 키가 없거나 아무도 안 하면 숨는다 */
@@ -1231,7 +1288,7 @@ function beep() {
 function cardCanvas(c, n, img) {
   const W = 1080, IH = 608, cv = document.createElement("canvas"), g = cv.getContext("2d");
   const font = "-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif";
-  const lines = [[lang === "en" ? c.en : c.ko, 64, 700, "#1c2b33"], ...(lang === "both" ? [[c.en, 40, 400, "#65788a"]] : [])];
+  const lines = [[main(c), 64, 700, "#1c2b33"], ...(lang === "both" ? [[c.en, 40, 400, "#65788a"]] : xOn() && c.x ? [[c.x, 40, 400, "#65788a"]] : [])];
   const wrap = (t, size, weight) => {  // 띄어쓰기 단위로 줄바꿈(한국어 낱말이 끊기지 않게)
     g.font = `${weight} ${size}px ${font}`; const out = [];
     for (const w of String(t || "").split(" ")) { const l = out.at(-1); if (l !== undefined && g.measureText(l + " " + w).width < W - 120) out[out.length - 1] = l + " " + w; else out.push(w); }
@@ -1249,7 +1306,7 @@ function cardCanvas(c, n, img) {
   return cv;
 }
 async function shareLink(to) {  // QR을 찍을 수 없는 같은 기기(휴대폰)에서는 링크로
-  const url = to === "glasses" ? `${location.origin}/glasses?run=${S.run}&lang=${lang}&s=${pairCode}` : `${location.origin}/?ui=${ui}#run=${S.run}&view=tablet`;
+  const url = to === "glasses" ? `${location.origin}/glasses?run=${S.run}&lang=${lang}&m=${ui}&s=${pairCode}` : `${location.origin}/?ui=${ui}#run=${S.run}&view=tablet`;
   try { if (navigator.share) return await navigator.share({ url, title: S.data.title || "StepCards" }); } catch (e) { if (e?.name === "AbortError") return; }
   try { await navigator.clipboard.writeText(url); toast(T("링크를 복사했어요.", "Link copied.")); } catch { toast(url); }
 }
@@ -1396,7 +1453,7 @@ function stopVoice() { window.speechSynthesis?.cancel(); curAudio?.pause(); curA
 function playVoice(c, afterSpeech) {
   const a = new Audio(`/api/runs/${S.run}/voice/${c.n}?v=${c.voiceV || 0}`);
   curAudio = a;
-  const fallback = () => { if (curAudio === a) { curAudio = null; speechSynthesis.speak(utter(lang === "en" ? c.en : c.ko, lang === "en" ? "en-US" : "ko-KR")); } };
+  const fallback = () => { if (curAudio === a) { curAudio = null; speechSynthesis.speak(utter(main(c), main(c) === c.en ? "en-US" : "ko-KR")); } };
   a.onerror = fallback;
   const go = () => a.play().catch(fallback);
   if (afterSpeech) { const wait = setInterval(() => { if (curAudio !== a) return clearInterval(wait); if (!speechSynthesis.speaking) { clearInterval(wait); go(); } }, 150); } else go();

@@ -53,7 +53,7 @@ mark_interrupted()
 
 APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정: 키를 아는 사람만 크레딧을 쓰고 카드를 바꾸게
 JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 수 있지만 하루 한도가 있다(제출 설명에 적는 키)
-JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "coach": 900, "frame": 60, "retry": 6, "verify": 300}  # 하루 횟수. 따라 하기 900번 ≈ 30분
+JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "translate": 10, "coach": 900, "frame": 60, "retry": 6, "verify": 300}  # 하루 횟수. 따라 하기 900번 ≈ 30분
 JUDGE_USE = {"day": "", "n": {}}
 TEACHERS = dict(x.strip().split(":", 1) for x in os.environ.get("TEACHER_KEYS", "").split(",") if ":" in x)  # 교사별 키 "이름:키,이름:키"
 NOW_PATH = re.compile(r"/api/runs/\w+/(now|call)$")  # 안경은 키(쿠키)가 없다: 지금 카드 맞추기와 '도와줘요'는 키 없이
@@ -307,6 +307,29 @@ def teacher_agent(run_id: str, body: dict):
                      "en" if body.get("lang") == "en" else "ko")  # 메모는 교사 화면 언어로
 
 
+@app.post("/api/runs/{run_id}/translate")
+def translate_cards(run_id: str, body: dict):
+    """카드 문장을 한 언어 더(보호자·동료의 언어). 돈이 든 결과라 바로 저장하되 '확인 전'으로: 만든 사람이 되옮긴 문장을 보고 확인해야 보인다"""
+    import translate
+    d = run_dir(run_id)
+    language = str(body.get("lang", "")).strip()[:40]
+    if not language or not read(d, "cards.json"):
+        raise HTTPException(400, "옮길 언어가 없습니다")
+    t = translate.run(read(d, "cards.json")["cards"], language)
+    if not t["cards"]:
+        raise HTTPException(502, "번역 결과가 비었습니다. 다시 해 보세요")
+    with CARDS_LOCK:
+        data = read(d, "cards.json")
+        by = {c["n"]: c for c in t["cards"]}
+        for c in data["cards"]:
+            c.pop("x", None); c.pop("xb", None); c.pop("xsrc", None)
+            if c["n"] in by:
+                c.update(x=by[c["n"]]["x"], xb=by[c["n"]].get("xb"), xsrc=c.get("ko", ""))
+        data["extra"] = {"lang": language, "name": t["name"], "ok": False}
+        (d / "cards.json").write_text(json.dumps(data, ensure_ascii=False, indent=1))
+    return {**data, "translate": {"problems": t["problems"], "cost": t["cost"]}}
+
+
 @app.post("/api/runs/{run_id}/retry")
 def retry(run_id: str):
     """멈춘 실행을 같은 영상으로 다시 돌린다(영상을 다시 올리지 않아도 되게)"""
@@ -361,6 +384,11 @@ def _save(d, body):
     data["cards"] = body["cards"]
     if isinstance(body.get("title"), str):
         data["title"] = body["title"].strip()[:60]
+    if "extra" in body:  # 한 언어 더: 끄기(None) 또는 확인 표시만 받는다. 번역 글은 카드의 x
+        e = body["extra"]
+        data["extra"] = {"lang": str(e.get("lang", ""))[:40], "name": str(e.get("name", ""))[:40], "ok": e.get("ok") is True} if isinstance(e, dict) else None
+    if data.get("extra") and any(c.get("xsrc", c.get("ko")) != c.get("ko") or not c.get("x") for c in data["cards"]):
+        data["extra"]["ok"] = False  # 카드 문장이 바뀌거나 번역 없는 카드가 생기면 다시 확인
     data["problems"], data["warnings"] = check(data["cards"], data.get("duration", len(list((d / "frames").glob("*.jpg")))))
     data["status"] = "ok" if not data["problems"] else "needs_review"
     data["edited_at"] = time.time()
@@ -541,13 +569,14 @@ def card_clip(run_id: str, n: int, g: int = 0):
 
 
 @app.get("/api/runs/{run_id}/qr.svg")
-def qr(run_id: str, request: Request, to: str = "tablet", lang: str = "ko", s: str = ""):
+def qr(run_id: str, request: Request, to: str = "tablet", lang: str = "ko", s: str = "", m: str = "ko"):
     """학생 기기로 넘기는 QR: 태블릿 보기나 안경 화면 주소(보기는 키 없이 된다)"""
     import segno
     run_dir(run_id)
     base = f"{request.headers.get('x-forwarded-proto', request.url.scheme)}://{request.headers.get('host', request.url.netloc)}"
-    lang = lang if lang in ("ko", "en", "both") else "ko"
-    url = f"{base}/glasses?run={run_id}&lang={lang}" + (f"&s={re.sub(r'[^a-z0-9]', '', s.lower())[:8]}" if s else "") if to == "glasses" else f"{base}/?ui={lang if lang != 'both' else 'ko'}#run={run_id}&view=tablet"
+    lang = lang if lang in ("ko", "en", "both", "x") else "ko"
+    m = "en" if m == "en" else "ko"  # lang=x(한 언어 더)일 때 위 줄 언어
+    url = f"{base}/glasses?run={run_id}&lang={lang}" + ("&m=en" if lang == "x" and m == "en" else "") + (f"&s={re.sub(r'[^a-z0-9]', '', s.lower())[:8]}" if s else "") if to == "glasses" else f"{base}/?ui={lang if lang in ('ko', 'en') else m}#run={run_id}&view=tablet"
     buf = io.BytesIO()
     segno.make(url, error="m").save(buf, kind="svg", scale=6, border=2, dark="#1c2b33")
     return Response(buf.getvalue(), media_type="image/svg+xml", headers={"Cache-Control": "no-store"})
