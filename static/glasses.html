@@ -37,7 +37,7 @@ const pair = new URLSearchParams(location.search).get("s") || "";  // 따라 하
 const lang = new URLSearchParams(location.search).get("lang") || (() => { try { return localStorage.getItem("lang") || "en"; } catch { return "en"; } })();  // 안경 브라우저는 교사 설정을 모르니 주소로 받는다
 const K = lang === "en";
 document.documentElement.lang = K ? "en" : "ko";
-let cards = [], cur = { i: -1, v: -1 };
+let cards = [], cur = { i: -1, v: -1 }, arch = false;  // arch: 보관된 묶음(영상이 없어 움직임·확인이 없다)
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const say = c => lang === "en" ? esc(c.en) : lang === "both" ? `${esc(c.ko)}<small>${esc(c.en)}</small>` : esc(c.ko);
 
@@ -53,12 +53,12 @@ function draw(again) {
   document.getElementById("m").innerHTML = `
     <div class="top"><span>${cur.i + 1} / ${n}</span>${n > 12 ? "" : `<div class="dots">${cards.map((_, j) => `<i class="${j === cur.i ? "on" : j < cur.i ? "done" : ""}"></i>`).join("")}</div>`}</div>
     ${again ? `<div class="again">${K ? "Start with this card" : "이 카드부터 해요"}</div>` : ""}
-    <div class="pic">${cur.lv === 1 ? `<div class="msg">${K ? "Need help? Press Help" : "도움이 필요하면 '도움'을 눌러요"}</div>` : (cur.lv === 4 || (!cur.lv && c.view === "clip")) ? `<video src="/api/runs/${run}/clip/${c.n}.mp4?g=1&t=${c.frame_t ?? c.rep}" autoplay muted loop playsinline></video>`
+    <div class="pic">${cur.lv === 1 ? `<div class="msg">${K ? "Need help? Press Help" : "도움이 필요하면 '도움'을 눌러요"}</div>` : (cur.lv === 4 || (!cur.lv && c.view === "clip")) && !arch ? `<video src="/api/runs/${run}/clip/${c.n}.mp4?g=1&t=${c.frame_t ?? c.rep}" autoplay muted loop playsinline></video>`
       : `<img src="/api/runs/${run}/glass/${cur.i}.jpg?v=${cards[cur.i].v || 0}" alt="${esc(c.ko)}">`}</div>
     <div class="say">${say(c)}</div>
     <div class="bar"><button id="b" onclick="act(() => flip(-1))" ${cur.i ? "" : "disabled"}>${K ? "◀ Previous" : "◀ 이전"}</button>
-      ${cur.lv && cur.lv < 4 ? `<button id="h" onclick="act(help)">${K ? "Help" : "도움"}</button>` : ""}
-      <button id="v" onclick="act(check)">${K ? "Check" : "확인"}</button>
+      ${cur.lv && cur.lv < (arch ? 3 : 4) ? `<button id="h" onclick="act(help)">${K ? "Help" : "도움"}</button>` : ""}
+      ${arch ? "" : `<button id="v" onclick="act(check)">${K ? "Check" : "확인"}</button>`}
       ${cur.i < n - 1 ? `<button id="f" onclick="act(() => flip(1))">${K ? "Next ▶" : "다음 ▶"}</button>` : `<button id="f" onclick="act(finish)">${K ? "Done ✓" : "다 했어요 ✓"}</button>`}</div>`;
   if (shown !== `${cur.i}|${cur.fin}`) { shown = `${cur.i}|${cur.fin}`; lockUntil = Date.now() + 600; }
   const keep = document.getElementById(had);
@@ -131,7 +131,7 @@ async function poll() {
       overlay(head, [word, K ? d.vres.en : d.vres.ko].filter(Boolean).join(" · "), 5000);
     }
     if (d.v !== cur.v) {  // 교사가 사진·그림·움직임을 바꿨을 수 있다(처음 한 번은 이미 받았다)
-      if (cur.v !== -1) cards = (await (await fetch(`/api/runs/${run}/cards`)).json()).cards;
+      if (cur.v !== -1) { const x = await (await fetch(`/api/runs/${run}/cards`)).json(); cards = x.cards; arch = x.stage === "archived"; }
       if (!cards.length) { document.getElementById("m").innerHTML = `<div class="msg" id="msg">${K ? "No card set" : "카드 묶음이 없어요"}</div>`; cur = d; }
       else {  // 카드가 지워졌으면 마지막 카드로. 그리다 실패하면 cur를 되돌려 다음 확인 때 다시 그린다
         const was = cur; cur = { ...d, i: Math.max(0, Math.min(cards.length - 1, d.i | 0)) };
@@ -144,7 +144,7 @@ async function poll() {
 (async () => {
   const r = run && await fetch(`/api/runs/${run}/cards`);
   if (!r || !r.ok) { document.getElementById("msg").textContent = K ? "No card set" : "카드 묶음이 없어요"; return; }
-  cards = (await r.json()).cards;
+  const x = await r.json(); cards = x.cards; arch = x.stage === "archived";
   poll();
 })();
 </script>
