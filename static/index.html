@@ -559,30 +559,30 @@ async function home() {
       ${has(L) ? `<video class="mbg" src="/api/runs/${L}/clip/9.mp4" poster="/runs/${L}/cards/09.jpg" autoplay muted loop playsinline aria-hidden="true"></video>` : ""}
       <div class="mshade"></div>
       <div class="mcopy">
-        <h2>${T("영상 하나로, 처음 하는 일도 혼자 해내게", "One video, and a first-time task becomes something they can do on their own")}</h2>
-        <p>${T("시범 영상이 검증된 카드가 되고, 카메라가 따라가며 막힌 만큼만 도와요.", "A demonstration becomes checked step cards, and the camera follows along with just enough help.")}</p>
+        <h2>${T("한 번 보여 주면, 다음부턴 혼자서", "Show it once. Then they've got it.")}</h2>
+        <p>${T("시범 영상 하나가 따라 하기 카드가 되고, 막히는 순간에만 손을 내밀어요.", "One demonstration turns into follow-along cards that step in only when someone gets stuck.")}</p>
         <div class="mbtns"><a class="pill" href="#" onclick="event.preventDefault();document.getElementById('start').scrollIntoView({behavior:'smooth'})">${T("영상 넣기", "Add a video")}</a>${ex[0] ? `<a class="pill ghost" href="#run=${ex[0].id}&view=use">${T("예시 보기", "See an example")}</a>` : ""}</div>
       </div>
       ${has(L) ? `<button class="mpause" onclick="const v=this.parentElement.querySelector('video');v.paused?v.play():v.pause();this.innerHTML=v.paused?'▶':'❚❚'" aria-label="${T("영상 멈추기", "Pause video")}">❚❚</button>` : ""}
     </section>
 
     ${has(N) ? `<section class="mstory full dark">
-      <h2>${T("막힌 만큼만 도와줍니다", "Help only as much as needed")}</h2>
-      <p>${T("처음엔 글만. 멈추면 그림, 소리, 움직임 순으로 한 칸씩. 특수교육에서 도움을 줄여 가는 방식 그대로예요.", "Text first. If the learner stops: a picture, then sound, then motion — the way special-education teachers fade prompts.")}</p>
+      <h2>${T("막힐 때만, 딱 그만큼", "Help when stuck. Just enough.")}</h2>
+      <p>${T("처음엔 글만 보여요. 손이 멈추면 그림, 그다음엔 소리, 그래도 어려우면 움직이는 장면까지.", "Words first. If the hands stop, a picture. Then a voice. Then the move itself.")}</p>
       <div class="mframe"><video src="/api/runs/${N}/clip/3.mp4" autoplay muted loop playsinline></video>
         <div class="ladder">${[T("글", "Text"), T("그림", "Picture"), T("소리", "Sound"), T("움직임", "Motion")].map((t, i) => `<span style="--i:${i}">${t}</span>`).join("")}</div></div>
-      <a class="pill" href="#run=${N}&view=coach">${T("따라 하기 열어 보기", "Open Coach mode")}</a>
+      <a class="pill" href="#run=${N}&view=coach">${T("따라 해 보기", "Try it")}</a>
     </section>
     <section class="mstory full">
-      <h2>${T("해냈는지 확인합니다", "And checks that it's done")}</h2>
-      <p>${T("버튼 한 번, 또는 따라 하는 동안 계속. 그 단계가 끝난 모습과 비교해 됐어요 · 아직 · 달라요를 알려 줘요.", "One tap, or continuously while following. Compared with how the step should look: done · not yet · different.")}</p>
+      <h2>${T("됐는지는 카메라가 봐 줘요", "The camera tells you it's done")}</h2>
+      <p>${T("다 했다 싶을 때 한 번 찍으면 시범의 마지막 장면과 맞춰 봐요. 다르면 무엇을 고치면 되는지 한 줄로 알려 줘요.", "Snap one photo when it feels done. It's matched against the end of the demonstration, and if something's off, one line says what to fix.")}</p>
       <div class="mpair"><figure><img src="/api/runs/${N}/cards/1/after.jpg" alt=""><figcaption>${T("이렇게 되면 돼요", "Should look like")}</figcaption></figure>
         <figure><img src="/runs/${N}/cards/01.jpg" alt=""><figcaption>${T("지금", "Now")}</figcaption><b class="okbadge">${icon("check")} ${T("됐어요", "Done")}</b></figure></div>
     </section>` : ""}
 
     <section class="mstart" id="start">
-      <h2 class="center">${T("영상 하나로 시작하세요", "Start with one video")}</h2>
-      <p class="center sub">${T("손으로 하는 일을 한 번 보여 주는 1~10분 영상이면 돼요. 동작마다 카드가 나오고, 코드가 모든 카드를 검사해요.", "A 1–10 minute video of someone doing the task once. You get one card per action, each checked by code.")}</p>
+      <h2 class="center">${T("찍어 둔 영상 하나면 돼요", "All it takes is one video")}</h2>
+      <p class="center sub">${T("손이 잘 보이는 1~10분짜리면 충분해요. 동작마다 카드 한 장, 문장은 짧고 쉽게 나와요.", "One to ten minutes, hands in view. One card per action, in short, plain words.")}</p>
       <label class="drop" id="drop">
         <input type="file" accept="video/*" id="file" hidden>
         <div class="plus">${icon("plus")}</div>
@@ -593,21 +593,21 @@ async function home() {
           <button class="on" onclick="makeWhere(false)">${T("Meta API", "Meta API")}</button><button onclick="makeWhere(true)">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button></span>
         <span class="muted" id="mkwhered" hidden></span>
       </label>
-      <div class="trust center">${[T("칭찬·점수 없음", "No praise or scores"), T("사진 저장 안 함", "No photos stored"), T("사람을 알아보지 않음", "No face or voice ID"), T("마지막 결정은 교사", "Teacher has the last word")].map(t => `<span>${icon("check")}${t}</span>`).join("")}</div>
+      <div class="trust center">${[T("칭찬도 점수도 없어요", "No praise, no scores"), T("사진은 남지 않아요", "No photos kept"), T("얼굴을 알아보지 않아요", "No face or voice ID"), T("마지막은 선생님이 정해요", "The teacher decides")].map(t => `<span>${icon("check")}${t}</span>`).join("")}</div>
     </section>
 
-    <h2 class="center sect">${T("어디서든 같은 방식으로", "The same structure, wherever it's needed")}</h2>
+    <h2 class="center sect">${T("가게에서도, 부엌에서도, 교실에서도", "In the café, the kitchen, the classroom")}</h2>
     <div class="news">${[
       ["special", T("특수교육 직무 훈련", "Special-education job training")], ["staff", T("신입 직원 교육", "New staff training")], ["family", T("가족 손기술 남기기", "Family know-how")],
       ["creator", T("크리에이터 따라 하기", "Follow-along for creators")], ["assembly", T("조립·설치 안내", "Assembly and setup")],
     ].map(([u, t]) => { const r = runs.find(x => x.use === u && x.done); return r ? `<a class="newscard" href="#run=${r.id}&view=use">
         <img src="/runs/${r.id}/${r.thumb}" alt=""><span class="kicker">${t}</span><strong>${name(r)}</strong><span class="seemore">${icon("arrow")}<b>${T("예시 보기", "See example")}</b></span></a>` : ""; }).join("")}</div>
 
-    <h2 class="center sect">${T("판단은 필요한 곳에서", "Decisions run where they should")}</h2>
+    <h2 class="center sect">${T("어디서 돌릴지는 고를 수 있어요", "Choose where it runs")}</h2>
     <div class="where">${[
-      [T("Meta API", "Meta API"), "Muse Spark · SAM 3.1 · Muse Image · Voice", T("가장 정확해요. 카드 만들기, 결과 확인, 에이전트.", "Most accurate: making cards, result checks, the agent.")],
-      [T("이 기기", "This device"), "MediaPipe · 4 MB", T("휴대폰 브라우저 안. 한 장 약 22ms, 비용 0, 영상이 기기 밖으로 안 나가요.", "In the phone's browser: about 22 ms per frame, no cost, video stays on the device.")],
-      [T("학교 컴퓨터", "School computer"), T("Muse Glimmer 30B · 공개 가중치", "Muse Glimmer 30B · open weights"), T("학생 영상이 학교 밖으로 나가지 않아요.", "Student video never leaves the school.")],
+      [T("Meta API", "Meta API"), "Muse Spark · SAM 3.1 · Muse Image · Voice", T("가장 정확해요. 카드를 만들고, 됐는지 확인해요.", "The most accurate. Makes the cards and checks the result.")],
+      [T("이 기기", "This device"), "MediaPipe · 4 MB", T("휴대폰 안에서 바로 판단해요. 비용이 들지 않고, 영상은 휴대폰에만 남아요.", "Decides right on the phone. Free, and the video never leaves it.")],
+      [T("학교 컴퓨터", "School computer"), T("Muse Glimmer 30B · 공개 가중치", "Muse Glimmer 30B · open weights"), T("공개 모델을 학교 컴퓨터에서 돌려요. 학생 영상이 학교 밖으로 나가지 않아요.", "An open model on the school's own computer. Student video stays in school.")],
     ].map(([t, m, d]) => `<div><strong>${t}</strong><span class="m">${m}</span><span class="muted">${d}</span></div>`).join("")}</div>
 `;
     })()}
