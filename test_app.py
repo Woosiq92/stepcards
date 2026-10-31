@@ -366,3 +366,21 @@ def test_after_preview_time():
     rid, d = make_run()
     assert client.get(f"/api/runs/{rid}/cards/1/after.jpg?t=2").status_code == 200
     assert (d / "cards" / "01_after_2.jpg").exists()
+
+
+# 시험 기록(log=1): 사진·이름 없이 허용한 칸만 남고, coach_report 가 숫자로 정리한다
+def test_coach_log_and_report(capsys):
+    import coach_report
+    rid, d = make_run()
+    ev = [{"kind": "start", "cur": 1, "n": 2}, {"kind": "decision", "cur": 1, "decision": "next", "ms": 2100, "photo": "x"},
+          {"kind": "card", "cur": 1, "to": 2, "by": "auto"}, {"kind": "verify", "n": 2, "result": "done", "ms": 2700},
+          {"kind": "end", "cur": 2, "finished": True}]
+    for e in ev:
+        assert client.post(f"/api/runs/{rid}/log", json={"s": "ab12", **e}).status_code == 200
+    rows = [json.loads(x) for x in (d / "coach_log.jsonl").read_text().splitlines()]
+    assert "photo" not in rows[1] and rows[2]["by"] == "auto"
+    import sys
+    sys.argv = ["coach_report.py", rid]
+    coach_report.main()
+    out = capsys.readouterr().out
+    assert "자동으로 맞게 들어간 카드: 1 / 1" in out and "끝까지 다 함" in out and "2번 done" in out

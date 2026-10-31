@@ -127,6 +127,7 @@ Tests (checker, server, Coach decisions; no paid model calls): `.venv/bin/pip in
 | `coach.py` | Coach mode decision (Muse Spark + SAM 3.1) |
 | `agent.py` | teacher-request agent (Muse Spark with the checker as a tool) |
 | `verify.py`, `verify_eval.py` | Check: compare one photo with a card's completion reference; accuracy measurement |
+| `coach_report.py` | Test runs: open Coach with `?log=1` to log decisions, card changes, checks and help levels (no photos, no names); this script turns one run into numbers (cards advanced automatically and kept, median decision time, check results) |
 | `storage.py` | storage lifecycle, quotas, teacher-data backup |
 | `app.py` | local web server (FastAPI) |
 | `static/index.html` | the whole interface, one file |

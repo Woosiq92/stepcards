@@ -124,7 +124,7 @@ async def need_key(request: Request, call_next):
     if not role:
         return JSONResponse({"error": "key required"}, 401)
     m = RUN_PATH.match(path)
-    use_only = path.endswith(("/coach", "/verify", "/records"))  # 따라 하기·확인하기·기록은 누구 카드 묶음이든(고치기가 아님)
+    use_only = path.endswith(("/coach", "/verify", "/records", "/log"))  # 따라 하기·확인하기·기록은 누구 카드 묶음이든(고치기가 아님)
     if m and role.startswith("teacher:") and not use_only and owner_of(m.group(1)) != role:
         return JSONResponse({"error": "another teacher's card set"}, 403)
     if role == "judge":
@@ -687,6 +687,30 @@ def post_records(run_id: str, body: dict):
     for r in (body.get("rows") or [])[:200]:
         add_record(d, {"kind": "coach", "n": int(r.get("n", 0)), "lv": int(r.get("lv", 0)), "s": str(body.get("s", ""))[:8]})
     return {"ok": True}
+
+
+LOG_KEYS = ("cur", "to", "by", "decision", "target", "ms", "n", "result", "lv", "finished")
+
+
+@app.post("/api/runs/{run_id}/log")
+def post_log(run_id: str, body: dict):
+    """시험 기록(주소에 log=1 일 때만 화면이 보냄): 따라 하기 판단·카드 넘김·확인 결과·도움 단계. 사진·이름 없음. coach_report.py 가 읽는다"""
+    f = run_dir(run_id) / "coach_log.jsonl"
+    if f.exists() and f.stat().st_size > 2_000_000:
+        raise HTTPException(413, "log full")
+    row = {"t": round(time.time(), 2), "s": str(body.get("s", ""))[:8], "kind": str(body.get("kind", ""))[:12]}
+    row.update({k: body[k] for k in LOG_KEYS if isinstance(body.get(k), (int, float, str, bool))})
+    with f.open("a") as fh:
+        fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return {"ok": True}
+
+
+@app.get("/api/runs/{run_id}/log")
+def get_log(run_id: str, request: Request):
+    if not has_key(request):
+        raise HTTPException(401, "key required")
+    f = run_dir(run_id) / "coach_log.jsonl"
+    return [json.loads(x) for x in f.read_text().splitlines() if x.strip()] if f.exists() else []
 
 
 @app.get("/api/runs/{run_id}/records")
