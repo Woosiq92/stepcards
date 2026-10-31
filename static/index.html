@@ -68,6 +68,8 @@
   /* 첫 화면: 큰 영상 한 장면과 한 문장씩 이어지는 이야기형(넓은 여백, 굵기 500의 큰 제목, 파란 알약 단추) */
   body.homepage { background:#fff; } body.homepage .drop { border-color:var(--line2); }
   .full { width:100vw; margin-left:calc(50% - 50vw); }
+  html, body { overflow-x:clip; }  /* 100vw 가 세로 스크롤바 폭만큼 넘쳐 옆으로 밀리지 않게(clip 은 sticky 를 깨지 않는다) */
+  .tablewrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
   .center { text-align:center; margin-left:auto; margin-right:auto; }
   h2.sect { font-size:40px; font-weight:500; letter-spacing:-.02em; margin:88px auto 28px; max-width:760px; }
   .pill { display:inline-flex; align-items:center; gap:6px; background:var(--accent); color:#fff; border-radius:100px; padding:12px 22px; font-size:16px; font-weight:700; }
@@ -424,6 +426,7 @@ async function route() {
   clearInterval(S.poll);
   stopCoach();
   if ($("#vbox")) closeVerify();  // 확인하기 카메라가 켜진 채 다른 화면으로 가지 않게
+  if (recState?.state === "recording") recState.stop();  // 녹음 중에 나가면 마이크를 끈다(녹음은 저장)
   const p = new URLSearchParams(location.hash.slice(1));
   const run = p.get("run"), was = `${S.run}|${S.view}`;
   if (run !== S.run) { S.run = run; S.data = null; S.undo = null; S.framesOk = false; S.idx = 0; S.open.clear(); S.strip.clear(); }
@@ -493,10 +496,10 @@ async function admin() {
       `${mb(used)} of ${mb(d.total)} used (${Math.round(used / d.total * 100)}%) · compact after ${d.policy.compact_days} d · archive after ${d.policy.archive_days} d · delete ${d.policy.retain_days ? "after " + d.policy.retain_days + " d" : "off"} · per teacher ${d.policy.max_sets} sets, ${d.policy.quota_mb} MB`)}</p>
     <div class="adminrow">${Object.entries(d.owners).map(([o, v]) => `<span class="chip ok">${esc(o)} · ${v.sets} · ${mb(v.bytes)}</span>`).join("")}
       <a class="btn" href="/api/admin/backup.zip">${icon("share")} ${T("교사 자료 백업 받기", "Download teacher backup")}</a></div>
-    <table class="admintable"><thead><tr><th>${T("카드 묶음", "Card set")}</th><th>${T("주인", "Owner")}</th><th>${T("단계", "Stage")}</th><th>${T("마지막 사용", "Last used")}</th><th>${T("영상", "Video")}</th><th>${T("사진·소리", "Frames·audio")}</th><th>${T("카드", "Cards")}</th><th>${T("합계", "Total")}</th><th></th></tr></thead>
+    <div class="tablewrap"><table class="admintable"><thead><tr><th>${T("카드 묶음", "Card set")}</th><th>${T("주인", "Owner")}</th><th>${T("단계", "Stage")}</th><th>${T("마지막 사용", "Last used")}</th><th>${T("영상", "Video")}</th><th>${T("사진·소리", "Frames·audio")}</th><th>${T("카드", "Cards")}</th><th>${T("합계", "Total")}</th><th></th></tr></thead>
     <tbody>${d.runs.sort((a, b) => b.size.total - a.size.total).map(x => `<tr><td><a href="#run=${x.id}&view=edit">${esc(x.title)}</a></td><td>${esc(x.owner)}</td><td>${stageName(x.stage)}</td>
       <td>${x.last_used ? new Date(x.last_used * 1000).toLocaleDateString() : "–"}</td><td>${mb(x.size.video)}</td><td>${mb(x.size.frames + x.size.audio)}</td><td>${mb(x.size.cards)}</td><td><b>${mb(x.size.total)}</b></td>
-      <td>${x.owner === "seed" ? "" : `${x.stage === "done" ? `<button class="btn" onclick="adminDo('${x.id}','compact')">${T("정리", "Compact")}</button>` : ""}${["done", "compact"].includes(x.stage) ? `<button class="btn" onclick="adminDo('${x.id}','archive')">${T("보관", "Archive")}</button>` : ""}<a class="btn" href="/api/runs/${x.id}/export.zip">.zip</a><button class="btn" onclick="delRun('${x.id}')">${T("지우기", "Delete")}</button>`}</td></tr>`).join("")}</tbody></table>`;
+      <td>${x.owner === "seed" ? "" : `${x.stage === "done" ? `<button class="btn" onclick="adminDo('${x.id}','compact')">${T("정리", "Compact")}</button>` : ""}${["done", "compact"].includes(x.stage) ? `<button class="btn" onclick="adminDo('${x.id}','archive')">${T("보관", "Archive")}</button>` : ""}<a class="btn" href="/api/runs/${x.id}/export.zip">.zip</a><button class="btn" onclick="delRun('${x.id}')">${T("지우기", "Delete")}</button>`}</td></tr>`).join("")}</tbody></table></div>`;
 }
 async function adminDo(id, action) {
   toast(T("처리하는 중…", "Working…"));
@@ -549,7 +552,7 @@ async function verifyNow(glassesReq) {
   const look = { done: ["ok", T("됐어요", "Done"), "check"], not_yet: ["wait", T("아직이에요", "Not yet"), "camera"], different: ["diff", T("달라요", "Different"), "camera"], unclear: ["wait", T("잘 안 보여요", "Can't see well"), "camera"] }[d.result];
   const hint = ui === "en" ? d.hint_en : d.hint_ko, last = idx === S.data.cards.length - 1;
   box.innerHTML = `<div class="vcard ${look[0]}"><span class="vwhich">${T(`${idx + 1}번 카드`, `Card ${idx + 1}`)} · ${esc(lang === "en" ? c.en : c.ko)}</span><div class="vhead">${icon(look[2])} ${look[1]}</div>
-    ${d.result === "unclear" ? "" : `<div class="vpair"><figure><img src="/api/runs/${S.run}/cards/${c.n}/after.jpg?t=${c.done_t ?? c.done_auto ?? c.end}" alt=""><figcaption>${T("이렇게 되면 돼요", "Should look like")}</figcaption></figure>
+    ${d.result === "unclear" ? "" : `<div class="vpair"><figure><img src="/api/runs/${S.run}/cards/${c.n}/after.jpg?t=${doneT(c)}" alt=""><figcaption>${T("이렇게 되면 돼요", "Should look like")}</figcaption></figure>
       <figure><img src="${photo}" alt=""><figcaption>${T("지금", "Now")}</figcaption></figure></div>`}
     ${hint ? `<div class="vhint">${esc(hint)}</div>` : ""}
     <div class="vbtns">${d.result === "done" && !last ? `<button class="btn primary" onclick="closeVerify();goCard(${idx + 1})">${T("다음 카드로", "Next card")} ▶</button>` : ""}
@@ -679,11 +682,13 @@ async function upload(f) {
   if (dur > 600) return toast(T(`영상이 ${Math.round(dur / 60)}분이에요. 10분 안으로 잘라서 넣어 주세요(1~5분이 가장 좋아요).`, `This video is ${Math.round(dur / 60)} min. Please trim it to under 10 minutes (1–5 is best).`));
   $("#drop").innerHTML = `<div class="big">${T("영상을 올리는 중…", "Uploading…")}</div>`;
   const fd = new FormData(); fd.append("file", f); if (S.makeLocal) fd.append("local", "true");
-  const r = await fetch("/api/upload", { method: "POST", body: fd });
+  const r = await fetch("/api/upload", { method: "POST", body: fd }).catch(() => null);
+  if (!r) { toast(T("연결이 끊겨서 올리지 못했어요. 인터넷을 확인하고 다시 넣어 주세요.", "The connection dropped during upload. Check the internet and add the video again.")); return home(); }
   if (!r.ok) {  // 서버가 알려 준 이유(크기·길이·저장 공간·키 없음)를 그대로
     const why = { 413: T("영상이 너무 커요(500MB 이하).", "The video is too large (max 500 MB)."), 400: T("영상 길이는 10분 이하여야 해요. 영상 파일이 맞는지도 확인해 주세요.", "Videos must be 10 minutes or shorter, and a real video file."),
                   503: T("Meta API 키가 없어서, '이 맥에서'로만 만들 수 있어요.", "No Meta API key: only 'On this Mac' can make cards."), 507: T("서버 저장 공간이 부족해요. 안 쓰는 카드 묶음을 지워 주세요.", "The server is out of space. Delete card sets you no longer need."),
-                  409: T("이 맥의 Muse Glimmer 서버가 꺼져 있어요.", "The Muse Glimmer server on this Mac is not running.") }[r.status];
+                  409: T("이 맥의 Muse Glimmer 서버가 꺼져 있어요.", "The Muse Glimmer server on this Mac is not running."),
+                  401: T("영상을 넣으려면 접속 키가 필요해요.", "An access key is needed to add videos."), 403: T("저장 한도를 넘었어요. 안 쓰는 카드 묶음을 지워 주세요.", "You've reached your storage limit. Delete card sets you no longer need.") }[r.status];
     toast(why || T("올리지 못했어요. 다시 해 주세요.", "Upload failed. Please try again.")); return home();
   }
   go({ run: (await r.json()).id, view: "making" });
@@ -692,6 +697,7 @@ async function upload(f) {
 /* ① 만드는 중 */
 async function making() {
   const draw = async () => {
+    if (S.view !== "making") return clearInterval(S.poll);  // 그사이 다른 화면으로 갔다
     const wasOpen = $("details.log")?.open;
     const p = await (await fetch(`/api/runs/${S.run}/progress`)).json();
     const ev = p.events || [];
@@ -730,7 +736,7 @@ async function making() {
     if (done || err) clearInterval(S.poll);
   };
   await draw();
-  S.poll = setInterval(draw, 1200);
+  if (S.view === "making") S.poll = setInterval(draw, 1200);
 }
 // 프로그램 오류문 대신 할 일을 쉬운 말로
 function errText(m) {
@@ -743,8 +749,9 @@ function errText(m) {
 }
 async function retryRun() {
   const r = await fetch(`/api/runs/${S.run}/retry`, { method: "POST" });
-  if (!r.ok) return toast(T("다시 시작하지 못했어요. 영상을 처음 화면에서 다시 넣어 주세요.", "Could not restart. Add the video again from the start page."));
-  setTimeout(making, 1500);  // 새 실행이 옛 '멈춤' 기록을 지울 때까지 잠깐 기다린다
+  if (r.status === 401) return toast(T("다시 만들려면 접속 키가 필요해요.", "An access key is needed to try again."));
+  if (!r.ok && r.status !== 409) return toast(T("다시 시작하지 못했어요. 영상을 처음 화면에서 다시 넣어 주세요.", "Could not restart. Add the video again from the start page."));
+  setTimeout(() => S.view === "making" && making(), 1500);  // 409: 이미 다시 만드는 중  // 새 실행이 옛 '멈춤' 기록을 지울 때까지 잠깐 기다린다
 }
 async function openEdit() {
   S.data = await (await fetch(`/api/runs/${S.run}/cards`)).json();
@@ -861,8 +868,8 @@ function rowHtml(c, i, iss = []) {
           ${c.voice === "auto" ? `<label><input type="checkbox" ${c.voice_ok ? "checked" : ""} onchange="S.data.cards[${i}].voice_ok=this.checked;changed()"> ${T("이 카드에 쓰기", "Use for this card")}</label>` : ""}
           <button class="btn" id="rec${c.n}" onclick="recordVoice(${i})">● ${T("녹음", "Record")}</button>
           ${c.voice === "rec" ? `<button class="btn" onclick="deleteVoice(${i})">${T("녹음 지우기", "Delete recording")}</button>` : ""}</div>
-        <label>${T("완료 기준 사진", "Done photo")} <img class="afterimg" src="/api/runs/${S.run}/cards/${c.n}/after.jpg?t=${c.done_t ?? c.done_auto}" alt="" loading="lazy"> ${T("영상", "at")}
-          <input type="number" min="0" value="${c.done_t ?? c.done_auto ?? c.end}" onchange="setCheck(${i},'done_t',this.value)">${T("초", "s")}</label>
+        <label>${T("완료 기준 사진", "Done photo")} <img class="afterimg" src="/api/runs/${S.run}/cards/${c.n}/after.jpg?t=${doneT(c)}" alt="" loading="lazy"> ${T("영상", "at")}
+          <input type="number" min="0" value="${doneT(c)}" onchange="setCheck(${i},'done_t',this.value)">${T("초", "s")}</label>
         <div class="simwarn" id="sim${c.n}" hidden>${T("시작과 끝 장면이 비슷해 보여요(예: 뒤집기). 아래 '완료 기준 문장'을 써 주면 확인이 정확해져요.", "The start and end look alike (e.g. turning over). Write a 'done when' sentence below so checks are reliable.")}</div>
         <label>${T("완료 기준 문장(선택)", "Done when (optional)")} <input type="text" class="wide" maxlength="80" value="${esc(c.check || "")}" placeholder="${T("예: 냅킨이 반으로 접혀 직사각형이에요", "e.g. the napkin is folded in half into a rectangle")}" onchange="setCheck(${i},'check',this.value)"></label>
         <label>${T("손에 든 것(영어로)", "Object in hand (English)")} <input type="text" value="${esc(c.object)}" placeholder="${T("예: glass cup", "e.g. glass cup")}" onchange="setObject(${i},this.value)">
@@ -885,7 +892,7 @@ function between(i, gaps) {
   const last = i === S.data.cards.length - 1, g = gaps[i];
   return `<div class="between ${g ? "gap" : ""}" id="gap${i}">
     ${g ? `<span class="note">${T(`영상 ${fmt(g[0])}~${fmt(g[1])}, ${g[1] - g[0]}초에는 카드가 없어요`, `No card for ${fmt(g[0])}–${fmt(g[1])} (${g[1] - g[0]} s)`)}</span>` : ""}
-    <button class="btn" onclick="addCard(${i})">${T("+ 여기에 카드 넣기", "+ Add a card here")}</button>
+    ${S.data.stage === "archived" ? "" : `<button class="btn" onclick="addCard(${i})">${T("+ 여기에 카드 넣기", "+ Add a card here")}</button>`}
     ${last ? "" : `<button class="btn" onclick="merge(${i})">${T("위아래 카드 하나로 합치기", "Merge these two cards")}</button>`}
   </div>`;
 }
@@ -898,7 +905,7 @@ async function toggle(which, n) {
     S.busy.set(n, T("장면을 준비하는 중…", "Preparing frames…")); edit();
     S.framesOk = (await fetch(`/api/runs/${S.run}/frames`, { method: "POST" })).ok; S.busy.delete(n);
   }
-  edit();
+  if (S.view === "edit") edit();
 }
 
 /* 고친 내용은 저절로 저장하고, 저장할 때마다 서버가 규칙 검사를 다시 한다 */
@@ -960,14 +967,20 @@ function updateIssues() {
 }
 window.addEventListener("beforeunload", e => { if (!["saved", "readonly"].includes(S.saveState)) e.preventDefault(); });
 
-function changed() { edit(); saveNow(); }
-function typed(i, k, el) { S.data.cards[i][k] = el.value; autosize(el); scheduleSave(); }
+function changed() { S.undo = null; redraw(); saveNow(); }  // 다른 편집이 있으면 옛 되돌리기는 지운다(그사이 고친 것을 날리지 않게)
+function redraw() {  // 칸을 고친 채 단추를 누르면 change 가 먼저 와서 화면을 다시 그려 클릭이 사라진다 → 손을 뗀 뒤에 그린다
+  if (S.view !== "edit") return;
+  if (S.pdown) S.redrawLater = true; else edit();
+}
+document.addEventListener("pointerdown", () => { S.pdown = true; }, true);
+document.addEventListener("pointerup", () => { S.pdown = false; if (S.redrawLater) { S.redrawLater = false; setTimeout(() => S.view === "edit" && edit(), 0); } }, true);
+function typed(i, k, el) { S.data.cards[i][k] = el.value; S.undo = null; autosize(el); scheduleSave(); }
 function snapshot() { return JSON.parse(JSON.stringify(S.data.cards)); }
 function undoable(msg, before) {
   S.undo = before; if (S.view === "edit") edit();
   toast(msg, T("되돌리기", "Undo"), undoLast);
 }
-function undoLast() { if (!S.undo) return; S.data.cards = S.undo; S.undo = null; document.querySelector(".toast")?.remove(); changed(); }
+function undoLast() { if (!S.undo) return; const u = S.undo; document.querySelector(".toast")?.remove(); S.data.cards = u; changed(); }
 function move(i, d) { const before = snapshot(), cs = S.data.cards; [cs[i], cs[i + d]] = [cs[i + d], cs[i]]; changed(); undoable(T("순서를 바꿨어요.", "Order changed."), before); }
 function del(i) { const before = snapshot(); S.data.cards.splice(i, 1); changed(); undoable(T("카드를 뺐어요.", "Card removed."), before); }
 function merge(i) {
@@ -1000,7 +1013,7 @@ async function recordVoice(i) {  // 교사만(고치기 화면). 한 번 더 누
     fd.append("file", new Blob(chunks, { type }), "voice." + (type.includes("mp4") ? "m4a" : type.split("/")[1]));
     const r = await fetch(`/api/runs/${S.run}/cards/${c.n}/voice`, { method: "POST", body: fd });
     if (r.ok) { c.voice = "rec"; c.voiceV = Date.now(); toast(T("녹음을 저장했어요.", "Recording saved.")); } else toast(T("녹음을 저장하지 못했어요.", "Could not save the recording."));
-    edit();
+    if (S.view === "edit") edit();
   };
   mr.start();
 }
@@ -1008,10 +1021,15 @@ async function deleteVoice(i) {
   const c = S.data.cards[i], r = await fetch(`/api/runs/${S.run}/cards/${c.n}/voice`, { method: "DELETE" });
   if (r.ok) { c.voice = (await r.json()).voice; c.voiceV = Date.now(); edit(); }
 }
+function doneT(c) {  // 완료 기준 시각: 교사가 고른 것, 없으면 카드 끝 뒤 다음 카드 전의 빈 시간(서버 verify.after_t 와 같은 식)
+  if (c.done_t != null) return c.done_t;
+  const cs = S.data.cards, i = cs.findIndex(x => x.n === c.n), nxt = cs[i + 1]?.start ?? (S.data.duration ?? c.end);
+  return nxt - c.end >= 2 ? Math.min(c.end + 2, nxt - 1) : c.end;
+}
 function setCheck(i, k, v) {  // 확인하기의 완료 기준: 기준 사진 시각(done_t, 카드 시작 ~ 다음 카드 전) 또는 기준 문장
   const c = S.data.cards[i], hi = (S.data.cards[i + 1]?.start ?? (S.data.duration || c.end + 1)) - 1;
-  if (k === "done_t") { const t = Math.round(+v); if (!(t >= c.start && t <= Math.max(c.end, hi))) return toast(T(`${c.start}~${Math.max(c.end, hi)}초 안에서 골라 주세요.`, `Pick a time between ${c.start} and ${Math.max(c.end, hi)} s.`)); c.done_t = t; }
-  else c.check = v.trim().slice(0, 80);
+  if (k === "done_t") { const t = Math.round(+v); if (!(t >= c.start && t <= Math.max(c.end, hi))) return toast(T(`${c.start}~${Math.max(c.end, hi)}초 안에서 골라 주세요.`, `Pick a time between ${c.start} and ${Math.max(c.end, hi)} s.`), edit()); c.done_t = t; }
+  else { c.check = v.trim().slice(0, 80); S.undo = null; return saveNow(); }  // 글만 바뀌니 다시 그리지 않는다(바로 누른 단추가 먹게)
   changed();
 }
 function setObject(i, v) {
@@ -1063,8 +1081,13 @@ async function illustrateMissing() {
 
 async function addCard(i) {
   const cs = S.data.cards, prev = cs[i], next = cs[i + 1], dur = S.data.duration || Infinity;
-  const start = prev.end + 1;
-  const end = Math.max(start, next ? next.start - 1 : Math.min(dur - 1, start + 3));
+  let start = prev.end + 1, end = next ? next.start - 1 : Math.min(dur - 1, start + 3);
+  if (end - start < 1) {  // 붙어 있으면 앞 카드를 반으로 나눠 뒤쪽 절반을 새 카드로(시간이 겹치지 않게)
+    if (prev.end - prev.start < 3) return toast(T("여기엔 카드를 넣을 시간이 없어요. 위 카드의 시간을 줄이고 넣어 주세요.", "No time left here. Shorten the card above first."));
+    const mid = Math.floor((prev.start + prev.end) / 2);
+    start = mid + 1; end = prev.end; prev.end = mid; prev.rep = Math.min(prev.rep, mid);
+    if (prev.done_t != null && prev.done_t > mid) delete prev.done_t;
+  }
   const n = Math.max(...cs.map(c => c.n)) + 1;
   cs.splice(i + 1, 0, { n, start, end, rep: start, ko: "", en: "", object: "", look: "", image: `cards/${pad(n)}.jpg`, box: null });
   S.strip.add(n);
@@ -1535,7 +1558,7 @@ function liveCheck(d) {
   if (++C.diffN < 2 || C.diffFor === S.idx || !box) return;
   C.diffFor = S.idx;
   const c = S.data.cards[S.idx], hint = ui === "en" ? d.hint_en : d.hint_ko;
-  box.innerHTML = `<img src="/api/runs/${S.run}/cards/${c.n}/after.jpg?t=${c.done_t ?? c.done_auto ?? c.end}" alt=""><div><b>${T("이렇게 되면 돼요", "It should look like this")}</b><span>${esc(hint)}</span></div>
+  box.innerHTML = `<img src="/api/runs/${S.run}/cards/${c.n}/after.jpg?t=${doneT(c)}" alt=""><div><b>${T("이렇게 되면 돼요", "It should look like this")}</b><span>${esc(hint)}</span></div>
     <button onclick="this.parentElement.hidden=true" aria-label="${T("닫기", "Close")}">${icon("x")}</button>`;
   box.hidden = false;
   if (C.voice && window.speechSynthesis) { speechSynthesis.cancel(); speechSynthesis.speak(utter(hint, ui === "en" ? "en-US" : "ko-KR")); }

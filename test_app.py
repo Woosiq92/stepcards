@@ -359,3 +359,10 @@ def test_coach_reload_after_edit():
     (d / "cards.json").write_text(json.dumps(data))
     f = "data:image/jpeg;base64,AAAA"
     assert client.post(f"/api/runs/{rid}/coach", json={"cur": 1, "frames": [f, f], "ver": 1.0}).json()["decision"] == "reload"
+
+
+# 고치기 화면이 저장 전에 고른 시각의 완료 기준 사진을 미리 받는다(옛 장면이 남지 않게)
+def test_after_preview_time():
+    rid, d = make_run()
+    assert client.get(f"/api/runs/{rid}/cards/1/after.jpg?t=2").status_code == 200
+    assert (d / "cards" / "01_after_2.jpg").exists()

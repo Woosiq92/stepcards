@@ -339,7 +339,7 @@ def cards(run_id: str):
     caught = splits[0]["problems"] if len(splits) > 1 and splits[0].get("problems") else []
     storage.touch_used(d)
     vk = voice.kinds(d, data["cards"])
-    data = {**data, "cards": [{**c, "voice": vk.get(c["n"]), "done_auto": verify.after_t(d, {**c, "done_t": None})} for c in data["cards"]]}
+    data = {**data, "cards": [{**c, "voice": vk.get(c["n"])} for c in data["cards"]]}
     return {**data, "caught": caught, "tries": len(splits), "title_en": SEED_INDEX.get(run_id, {}).get("title_en", ""),
             "stage": storage.stage(d), "delete_on": storage.delete_on(d) if run_id not in SEED_INDEX else None}
 
@@ -665,10 +665,13 @@ def card_similar(run_id: str, n: int):
 
 
 @app.get("/api/runs/{run_id}/cards/{n}/after.jpg")
-def card_after(run_id: str, n: int):
-    """완료 기준 사진(시범 영상에서 그 단계가 끝난 순간)"""
+def card_after(run_id: str, n: int, t: int | None = None):
+    """완료 기준 사진(시범 영상에서 그 단계가 끝난 순간). t 를 주면 그 시각(고치기 화면이 저장 전에 미리 보여 줌)"""
     d = run_dir(run_id)
-    return FileResponse(inside(d, str(verify.reference(d, card_by_n(d, n), "after").relative_to(d))))
+    card = card_by_n(d, n)
+    if t is not None:
+        card = {**card, "done_t": max(0, min(t, int(read(d, "cards.json").get("duration") or t)))}
+    return FileResponse(inside(d, str(verify.reference(d, card, "after").relative_to(d))))
 
 
 def add_record(d, row):
