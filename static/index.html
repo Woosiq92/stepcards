@@ -1474,8 +1474,10 @@ function coachEnd(finished) {
   $(".coachv").insertAdjacentHTML("beforeend", `<div class="cstart" id="csum"><div class="glyph">${icon("check")}</div><div class="t">${finished ? T("다 했어요", "All steps done") : T("오늘 따라 하기", "Today's run")}</div>
     ${C.help && rec.length ? `<div class="sumgrid">${by.map((ns, j) => `<div><b>${j ? T(`${lvName(j + 1)}까지`, `Up to ${lvName(j + 1).toLowerCase()}`) : T("글만 보고", "Text only")}</b><span>${ns.length ? T(`카드 ${ns.join(", ")}`, `Cards ${ns.join(", ")}`) : "–"}</span></div>`).join("")}</div>
     <div class="d">${S.rec ? T("기록에 남겼어요. 3번 화면의 '기록 보기'에서 볼 수 있어요.", "Saved to records. See 'View records' on the Follow & check page.") : T("이 기록은 저장하지 않아요. 필요하면 지금 적어 두세요.", "This is not saved. Write it down now if you need it.")}</div>` : ""}
+    <button class="navb" onclick="shareRun()">${T("오늘 한 것 보내기", "Share today's run")}</button>
     ${by[2].length + by[3].length ? `<button class="navb" onclick="sendStuck()">${T("막힌 카드 고치러 가기", "Fix the cards that were hard")}</button>` : ""}
     <button class="navb next" onclick="go({run:S.run,view:'use'})">${T("나가기", "Exit")}</button></div>`);
+  C.sum = { finished: !!finished, upto: S.idx + 1, by };
   stopCoach(true);
   if (finished && C.voice && window.speechSynthesis) speechSynthesis.speak(utter(T("다 했어요.", "All steps done."), ui === "en" ? "en-US" : "ko-KR"));  // 멈춘 뒤에 읽어야 끊기지 않는다
 }
@@ -1490,6 +1492,16 @@ function callBtn(coming) {
   const b = $("#ccall"); if (!b) return;
   b.disabled = C.called === S.idx;
   b.textContent = coming ? T("오고 있어요", "Help is coming") : C.called === S.idx ? T("불렀어요", "Help called") : T("도와줘요", "Ask for help");
+}
+// 오늘 한 것 보내기: 이름·사진 없이 한 줄 요약 + 같은 카드 링크(보기 전용)를 공유 창으로. 누를 때만 나간다
+async function shareRun() {
+  const { finished, upto, by } = C.sum, n = S.data.cards.length, title = runTitle(S.data) || "StepCards";
+  const done = finished ? T(`「${title}」 ${n}단계를 끝까지 했어요.`, `Finished all ${n} steps of "${title}".`) : T(`「${title}」 ${n}단계 중 카드 ${upto}까지 했어요.`, `Got to card ${upto} of ${n} in "${title}".`);
+  const help = by.slice(1).map((ns, j) => ns.length ? T(`${lvName(j + 2)}까지 카드 ${ns.join(", ")}`, `card${ns.length > 1 ? "s" : ""} ${ns.join(", ")} with ${lvName(j + 2).toLowerCase()}`) : "").filter(Boolean);
+  const text = done + (help.length ? " " + T(`도움 받은 곳: ${help.join(" · ")}.`, `Needed help on ${help.join("; ")}.`) : "");
+  const url = `${location.origin}/?ui=${ui}#run=${S.run}&view=tablet`;
+  try { if (navigator.share) return await navigator.share({ title, text, url }); } catch (e) { if (e?.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(text + "\n" + url); toast(T("요약과 링크를 복사했어요.", "Summary and link copied.")); } catch { toast(text); }
 }
 function sendStuck() {  // 끝 화면 → 고치기: 이 기기에서 소리·움직임까지 간 카드(기록을 끄고 있어도 이 기기 안에서만 넘긴다)
   const ns = Object.entries(C.max || {}).filter(([, lv]) => lv >= 3).map(([i]) => ({ n: S.data.cards[+i].n }));
