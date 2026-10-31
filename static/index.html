@@ -803,7 +803,8 @@ function chipHtml(n) {
 function saveText() {
   return { saved: T("✓ 저장됨", "✓ Saved"), dirty: T("고치는 중…", "Editing…"), saving: T("저장 중…", "Saving…"),
            error: T("저장하지 못했어요. 서버가 켜져 있는지 확인해 주세요.", "Could not save. Check that the server is running."),
-           readonly: T("보기 전용이라 저장되지 않아요 · 접속 키가 있으면 다시 고쳐 보세요", "View only: changes are not saved without the access key") }[S.saveState];
+           readonly: T("보기 전용이라 저장되지 않아요 · 접속 키가 있으면 다시 고쳐 보세요", "View only: changes are not saved without the access key"),
+           others: T("다른 선생님의 카드 묶음이라 고친 내용은 저장되지 않아요", "This is another teacher's card set, so changes are not saved") }[S.saveState];
 }
 function edit() {
   const cs = S.data.cards, { per, global, gaps } = issues();
@@ -918,6 +919,7 @@ function saveNow() {
     setSave("saving");
     const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards, title }) });
     if (r.status === 401) return setSave("readonly");
+    if (r.status === 403) return setSave("others");  // 다른 교사의 카드 묶음
     if (!r.ok) throw new Error(r.status);
     const d = await r.json();
     Object.assign(S.data, { problems: d.problems, warnings: d.warnings, status: d.status });
@@ -965,7 +967,7 @@ function updateIssues() {
   });
   header();
 }
-window.addEventListener("beforeunload", e => { if (!["saved", "readonly"].includes(S.saveState)) e.preventDefault(); });
+window.addEventListener("beforeunload", e => { if (!["saved", "readonly", "others"].includes(S.saveState)) e.preventDefault(); });
 
 function changed() { S.undo = null; redraw(); saveNow(); }  // 다른 편집이 있으면 옛 되돌리기는 지운다(그사이 고친 것을 날리지 않게)
 function redraw() {  // 칸을 고친 채 단추를 누르면 change 가 먼저 와서 화면을 다시 그려 클릭이 사라진다 → 손을 뗀 뒤에 그린다
@@ -1019,7 +1021,8 @@ async function recordVoice(i) {  // 교사만(고치기 화면). 한 번 더 누
 }
 async function deleteVoice(i) {
   const c = S.data.cards[i], r = await fetch(`/api/runs/${S.run}/cards/${c.n}/voice`, { method: "DELETE" });
-  if (r.ok) { c.voice = (await r.json()).voice; c.voiceV = Date.now(); edit(); }
+  if (r.ok) { c.voice = (await r.json()).voice; c.voiceV = Date.now(); if (S.view === "edit") edit(); }
+  else toast(r.status === 403 ? T("다른 선생님의 카드 묶음이라 지울 수 없어요.", "This is another teacher's card set, so it can't be deleted.") : T("녹음을 지우지 못했어요. 다시 해 주세요.", "Could not delete the recording. Please try again."));
 }
 function doneT(c) {  // 완료 기준 시각: 교사가 고른 것, 없으면 카드 끝 뒤 다음 카드 전의 빈 시간(서버 verify.after_t 와 같은 식)
   if (c.done_t != null) return c.done_t;
