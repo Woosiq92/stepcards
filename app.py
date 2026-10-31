@@ -422,7 +422,11 @@ def coach_check(run_id: str, body: dict):
     cur = int(body.get("cur", 1))
     if len(frames) < 2 or not 1 <= cur <= len(data["cards"]):
         raise HTTPException(400, "사진이 부족하거나 카드 번호가 틀렸습니다")
-    return coach.check(data["cards"], cur, frames, int(body.get("prev_seen") or 0), bool(body.get("local")))
+    ref = None
+    if body.get("live"):  # 실시간 확인: 지금 카드의 완료 기준 사진을 같은 판단에 넣는다
+        d = run_dir(run_id)
+        ref = pipeline.data_url(verify.reference(d, data["cards"][cur - 1], "after"))
+    return coach.check(data["cards"], cur, frames, int(body.get("prev_seen") or 0), bool(body.get("local")), ref)
 
 
 # 안경 화면(Ray-Ban Display 웹앱)과 따라 하기 화면이 같은 카드를 보게 하는 공유 상태. 메모리에만 둔다

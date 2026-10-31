@@ -38,3 +38,17 @@ def test_last_card_done_finishes(monkeypatch):
     assert run(monkeypatch, 0, 9, done=True)["decision"] == "finished"
     assert run(monkeypatch, 9, 9, done=False)["decision"] == "wait"
     assert run(monkeypatch, 8, 8, done=True)["decision"] != "finished"
+
+
+# 실시간 확인: 기준 사진을 주면 state·hint 가 붙고, done 이면 넘기기, 이상한 값은 unclear
+def test_live_state(monkeypatch):
+    monkeypatch.setattr(coach, "in_hand", lambda f, c: True)
+    CARDS2 = [{"en": f"step {i}", "ko": f"{i}단계를 하세요.", "object": "cup"} for i in range(1, 10)]
+    monkeypatch.setattr(coach, "ask", lambda c, n, f, ref=None: (2, False, 0.0, {"state": "different", "hint_ko": "끝까지 접으세요.", "hint_en": "Fold all the way."}))
+    r = coach.check(CARDS2, 2, ["f"], 0, False, "data:ref")
+    assert r["state"] == "different" and r["hint_ko"] == "끝까지 접으세요." and r["decision"] == "wait"
+    monkeypatch.setattr(coach, "ask", lambda c, n, f, ref=None: (2, False, 0.0, {"state": "done"}))
+    assert coach.check(CARDS2, 2, ["f"], 0, False, "data:ref")["decision"] == "next"
+    monkeypatch.setattr(coach, "ask", lambda c, n, f, ref=None: (2, False, 0.0, {"state": "???"}))
+    assert coach.check(CARDS2, 2, ["f"], 0, False, "data:ref")["state"] == "unclear"
+    assert "state" not in run(monkeypatch, 3, 2)   # 기준 사진이 없으면 예전과 같다

@@ -266,6 +266,10 @@
   .coachv .exit { z-index:5; }
   .pairbox { display:flex; align-items:center; gap:12px; text-align:left; background:var(--dark2); border-radius:var(--r); padding:10px 14px; }
   .pairbox img { background:#fff; border-radius:8px; padding:4px; } .pairbox b { letter-spacing:.1em; } .pairbox .d { font-size:12px; }
+  .livehint { position:absolute; left:50%; transform:translateX(-50%); top:72px; z-index:3; display:flex; align-items:center; gap:12px; background:var(--paper); color:var(--ink); border-radius:var(--r); padding:8px 8px 8px 8px; box-shadow:var(--sh-3); max-width:min(560px,92vw); text-align:left; }
+  .livehint img { width:120px; aspect-ratio:4/3; object-fit:cover; border-radius:10px; } .livehint b { display:block; font-size:13px; color:var(--warn); } .livehint span { font-size:20px; font-weight:800; }
+  .livehint button { border:none; background:none; color:var(--muted); padding:6px; align-self:flex-start; }
+  .livetoggle { display:flex; align-items:center; gap:8px; color:#cfd9e3; font-size:14px; max-width:520px; text-align:left; } .livetoggle input { width:18px; height:18px; accent-color:var(--accent); }
   .lvtag { position:absolute; top:18px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.1); backdrop-filter:blur(12px); padding:6px 6px 6px 14px; border-radius:99px; font-size:14px; font-weight:700; z-index:3; white-space:nowrap; }
   .lvtag i { width:8px; height:8px; border-radius:50%; background:var(--dark3); } .lvtag i.on { background:#fff; }
   .lvtag span { margin:0 4px 0 6px; }
@@ -1079,6 +1083,7 @@ function coach() {
     <button class="exit voice" id="cvoice" onclick="setVoice(!C.voice)"></button>
     <div class="cam"><video id="cvid" muted playsinline></video><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
     <div class="lvtag" id="clv" hidden></div>
+    <div class="livehint" id="clive" hidden></div>
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
     <div class="imgwrap" id="cwrap"></div>
     <div class="txt" id="ctxt" onclick="speak(true)" title="${T("다시 듣기", "Hear again")}"></div>
@@ -1100,6 +1105,7 @@ function coach() {
       <div class="d" id="cwhered" hidden></div>
       <div class="pairbox"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&s=${C.pair}" alt="" width="96" height="96">
         <span>${T("안경 연결", "Glasses link")} · <b>${C.pair}</b><br><span class="d">${T("이 화면 전용 코드라, 같은 카드를 다른 학생이 써도 섞이지 않아요.", "This screen's own code, so other learners on the same cards don't mix.")}</span></span></div>
+      <label class="livetoggle"><input type="checkbox" ${C.live ? "checked" : ""} onchange="setLive(this.checked)"> ${T("따라 하는 동안 계속 확인하기 (단계 결과를 기준 사진과 비교)", "Keep checking while following (compare each step's result with its reference)")}</label>
       <div class="seg" id="chelpseg">${[[false, T("카드 다 보여 주기", "Show the whole card")], [true, T("필요할 때만 도움", "Help only when needed")]].map(([v, l]) =>
         `<button class="${C.help === v ? "on" : ""}" onclick="setHelp(${v})">${l}</button>`).join("")}</div>
       <div class="d" id="chelpd"></div>
@@ -1200,7 +1206,7 @@ function coachEnd(finished) {
 }
 function coachCard() {
   const cs = S.data.cards, c = cs[S.idx];
-  if (C.shown !== S.idx) { C.shown = S.idx; C.lv = 1; C.since = Date.now(); C.lastMove = Date.now(); }
+  if (C.shown !== S.idx) { C.shown = S.idx; C.lv = 1; C.since = Date.now(); C.lastMove = Date.now(); C.diffN = 0; C.diffFor = -1; $("#clive")?.setAttribute("hidden", ""); }
   if (C.started && C.help) C.max[S.idx] = Math.max(C.max[S.idx] || 0, C.lv);
   glassesSync(false);
   if (!C.help || C.lv >= 3) speak();
@@ -1255,12 +1261,13 @@ async function coachLoop() {
     const cs = S.data.cards, cur = S.idx + 1;
     if (!C.manual && C.buf.length >= 2 && cur <= cs.length) {
       let d = null;  // 네트워크 오류도 '판단 못 함'으로 보고 계속 본다
-      try { const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev, local: C.local }) }); if (r.ok) d = await r.json();
+      try { const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev, local: C.local, live: C.live }) }); if (r.ok) d = await r.json();
         if (r.status === 401 || r.status === 429) { C.manual = true; pill(T("자동 넘김은 접속 키가 필요해요 · 이전·다음으로 넘겨요", "Auto-advance needs the access key · use Back and Next")); continue; } } catch { d = null; }
       if (!C.running || S.idx + 1 !== cur) continue;  // 그 사이 사람이 직접 넘겼으면 결과는 버린다
       if (!d) { pill(T("판단하지 못했어요 · 다시 보는 중", "No answer · watching again")); }
       else {
         C.prev = d.seen;
+        liveCheck(d);
         C.fin = d.decision === "finished" ? (C.fin || 0) + 1 : 0;
         if (C.fin >= 2) { coachEnd(true); break; }  // 마지막 단계를 마쳤다는 판단이 두 번 연속
         const to = d.decision === "next" ? cur + 1 : d.decision === "jump" ? d.target : 0;
@@ -1276,6 +1283,24 @@ async function coachLoop() {
     }
     await new Promise(r => setTimeout(r, 1500));
   }
+}
+/* 실시간 확인: 따라 하기 판단(2~4초마다)에 지금 카드의 기준 사진을 같이 넣어, 결과가 기준과 다르면 막지 않고 알려 준다.
+   '달라요'가 두 번 연속일 때만(한 번은 잘못 볼 수 있어서), 카드마다 한 번 말하고 도움을 한 칸 올린다 */
+C.live = (() => { try { return localStorage.getItem("live") !== "off"; } catch { return true; } })();
+function setLive(on) { C.live = on; try { localStorage.setItem("live", on ? "on" : "off"); } catch {} }
+function liveCheck(d) {
+  if (!d.state) return;
+  const box = $("#clive");
+  if (d.state !== "different") { C.diffN = 0; if (d.state === "done" && box) box.hidden = true; return; }
+  if (++C.diffN < 2 || C.diffFor === S.idx || !box) return;
+  C.diffFor = S.idx;
+  const c = S.data.cards[S.idx], hint = ui === "en" ? d.hint_en : d.hint_ko;
+  box.innerHTML = `<img src="/api/runs/${S.run}/cards/${c.n}/after.jpg?t=${c.done_t ?? c.end}" alt=""><div><b>${T("이렇게 되면 돼요", "It should look like this")}</b><span>${esc(hint)}</span></div>
+    <button onclick="this.parentElement.hidden=true" aria-label="${T("닫기", "Close")}">${icon("x")}</button>`;
+  box.hidden = false;
+  if (C.voice && window.speechSynthesis) { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(hint); u.lang = ui === "en" ? "en-US" : "ko-KR"; u.rate = 0.9; speechSynthesis.speak(u); }
+  if (C.help) helpUp();
+  glassesResult({ result: "different", hint_ko: d.hint_ko, hint_en: d.hint_en });
 }
 const IDLE_MIN = 5;
 function coachPause() {  // 카메라와 판단만 멈춘다(카드·안경 맞추기는 그대로). '다시 시작'으로 이어서
