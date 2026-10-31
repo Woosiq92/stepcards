@@ -10,6 +10,7 @@ import coach
 import pipeline
 import storage
 import verify
+import voice
 from check import check
 
 ROOT = Path(__file__).parent
@@ -24,7 +25,8 @@ for s in sorted(SEED.iterdir()) if SEED.is_dir() else []:
         continue
     new = not (RUNS / s.name).exists()
     for f in s.rglob("*"):  # 빠진 파일만 채운다(교사가 고친 cards.json 은 그대로)
-        if f.is_file() and not (RUNS / s.name / f.relative_to(s)).exists():
+        dst = RUNS / s.name / f.relative_to(s)
+        if f.is_file() and (not dst.exists() or (f.name == "video.mp4" and dst.stat().st_size != f.stat().st_size)):
             (RUNS / s.name / f.relative_to(s)).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(f, RUNS / s.name / f.relative_to(s))
     if new:
@@ -336,6 +338,8 @@ def cards(run_id: str):
     splits = [e for e in (read(d, "progress.json") or {}).get("events", []) if e.get("stage") == "split" and "n" in e]
     caught = splits[0]["problems"] if len(splits) > 1 and splits[0].get("problems") else []
     storage.touch_used(d)
+    vk = voice.kinds(d, data["cards"])
+    data = {**data, "cards": [{**c, "voice": vk.get(c["n"])} for c in data["cards"]]}
     return {**data, "caught": caught, "tries": len(splits), "title_en": SEED_INDEX.get(run_id, {}).get("title_en", ""),
             "stage": storage.stage(d), "delete_on": storage.delete_on(d) if run_id not in SEED_INDEX else None}
 
@@ -608,6 +612,45 @@ def verify_card(run_id: str, n: int, body: dict):
     if body.get("record"):
         add_record(d, {"kind": "verify", "n": n, "result": out["result"], "lv": int(body.get("lv") or 0), "s": str(body.get("s", ""))[:8]})
     return out
+
+
+@app.get("/api/runs/{run_id}/voice/{n}")
+def card_voice(run_id: str, n: int):
+    """카드의 사람 목소리: 교사 녹음 → 영상 속 그 단계 말소리. 없으면 404(화면이 기기 음성으로 읽는다)"""
+    d = run_dir(run_id)
+    c = card_by_n(d, n)
+    f = voice.recorded(d, n) or voice.cut(d, c)
+    if not f:
+        raise HTTPException(404, "목소리가 없습니다")
+    return FileResponse(f, media_type={"webm": "audio/webm", "m4a": "audio/mp4", "ogg": "audio/ogg", "mp3": "audio/mpeg"}[f.suffix[1:]],
+                        headers={"Cache-Control": "no-cache"})
+
+
+@app.post("/api/runs/{run_id}/cards/{n}/voice")
+async def record_voice(run_id: str, n: int, file: UploadFile):
+    """교사가 카드 문장을 직접 녹음(고치기 화면)"""
+    d = run_dir(run_id)
+    card_by_n(d, n)
+    ext = voice.REC_TYPES.get((file.content_type or "").split(";")[0])
+    data = await file.read(voice.REC_MAX_BYTES + 1)
+    if not ext or not data or len(data) > voice.REC_MAX_BYTES:
+        raise HTTPException(400, "녹음 파일 형식이나 크기가 맞지 않습니다")
+    (d / "voice").mkdir(exist_ok=True)
+    old = voice.recorded(d, n)
+    if old:
+        old.unlink()
+    (d / "voice" / f"{n:02d}_rec.{ext}").write_bytes(data)
+    return {"ok": True, "voice": "rec"}
+
+
+@app.delete("/api/runs/{run_id}/cards/{n}/voice")
+def delete_voice(run_id: str, n: int):
+    d = run_dir(run_id)
+    old = voice.recorded(d, n)
+    if old:
+        old.unlink()
+    c = card_by_n(d, n)
+    return {"ok": True, "voice": voice.kinds(d, [c]).get(n)}
 
 
 @app.get("/api/runs/{run_id}/cards/{n}/after.jpg")

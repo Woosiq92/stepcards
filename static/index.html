@@ -153,6 +153,7 @@
   .vcard.ok .vhead { color:var(--ok); } .vcard.diff .vhead { color:var(--warn); } .vcard.wait .vhead { color:var(--ink2); }
   .vpair { display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; } .vpair figure { margin:0; } .vpair img { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:12px; background:var(--line); }
   .vpair figcaption { font-size:13px; color:var(--muted); margin-top:4px; } .vhint { font-size:22px; font-weight:700; } .vbtns { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .voicerow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; } .voicerow .btn { padding:4px 12px; font-size:13px; }
   .afterimg { width:96px; aspect-ratio:16/9; object-fit:cover; border-radius:6px; vertical-align:middle; } .more input.wide { flex:1; min-width:200px; }
   .adminlink { margin-top:28px; } .adminlink a { color:var(--muted); font-weight:500; }
   .adminrow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 14px; }
@@ -830,6 +831,11 @@ function rowHtml(c, i, iss = []) {
       ${open ? `<div class="more">
         <label>${T("영상", "Video from")} <input type="number" min="0" value="${c.start}" onchange="setTime(${i},'start',this.value)">${T("초부터", "s to")}
           <input type="number" min="0" value="${c.end}" onchange="setTime(${i},'end',this.value)">${T("초까지", "s")}</label>
+        <div class="voicerow">${T("목소리", "Voice")}: <b>${c.voice === "rec" ? T("직접 녹음", "your recording") : c.voice === "auto" ? T("영상 속 목소리", "voice from the video") : T("없음 · 기기 음성으로 읽어요", "none · device voice")}</b>
+          ${c.voice ? `<button class="btn" onclick="previewVoice(${i})">▶ ${T("듣기", "Play")}</button>` : ""}
+          ${c.voice === "auto" ? `<label><input type="checkbox" ${c.voice_ok ? "checked" : ""} onchange="S.data.cards[${i}].voice_ok=this.checked;changed()"> ${T("이 카드에 쓰기", "Use for this card")}</label>` : ""}
+          <button class="btn" id="rec${c.n}" onclick="recordVoice(${i})">● ${T("녹음", "Record")}</button>
+          ${c.voice === "rec" ? `<button class="btn" onclick="deleteVoice(${i})">${T("녹음 지우기", "Delete recording")}</button>` : ""}</div>
         <label>${T("완료 기준 사진", "Done photo")} <img class="afterimg" src="/api/runs/${S.run}/cards/${c.n}/after.jpg?t=${c.done_t ?? c.end}" alt="" loading="lazy"> ${T("영상", "at")}
           <input type="number" min="0" value="${c.done_t ?? c.end}" onchange="setCheck(${i},'done_t',this.value)">${T("초", "s")}</label>
         <label>${T("완료 기준 문장(선택)", "Done when (optional)")} <input type="text" class="wide" maxlength="80" value="${esc(c.check || "")}" placeholder="${T("예: 냅킨이 반으로 접혀 직사각형이에요", "e.g. the napkin is folded in half into a rectangle")}" onchange="setCheck(${i},'check',this.value)"></label>
@@ -949,6 +955,31 @@ function setTime(i, k, v) {
   changed();
 }
 function setHl(i, on) { S.data.cards[i].hl_off = !on; changed(); }
+function previewVoice(i) { stopVoice(); playVoice(S.data.cards[i], false); }
+let recState = null;
+async function recordVoice(i) {  // 교사만(고치기 화면). 한 번 더 누르면 멈추고 올린다. 최대 15초
+  const c = S.data.cards[i], btn = $("#rec" + c.n);
+  if (recState) { recState.stop(); return; }
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch { return toast(T("마이크를 켤 수 없어요.", "Microphone unavailable.")); }
+  const mr = new MediaRecorder(stream), chunks = [];
+  recState = mr; btn.textContent = "■ " + T("멈추고 저장", "Stop & save"); btn.classList.add("primary");
+  const timer = setTimeout(() => mr.state === "recording" && mr.stop(), 15000);
+  mr.ondataavailable = e => chunks.push(e.data);
+  mr.onstop = async () => {
+    clearTimeout(timer); stream.getTracks().forEach(t => t.stop()); recState = null;
+    const type = (mr.mimeType || "audio/webm").split(";")[0], fd = new FormData();
+    fd.append("file", new Blob(chunks, { type }), "voice." + (type.includes("mp4") ? "m4a" : type.split("/")[1]));
+    const r = await fetch(`/api/runs/${S.run}/cards/${c.n}/voice`, { method: "POST", body: fd });
+    if (r.ok) { c.voice = "rec"; c.voiceV = Date.now(); toast(T("녹음을 저장했어요.", "Recording saved.")); } else toast(T("녹음을 저장하지 못했어요.", "Could not save the recording."));
+    edit();
+  };
+  mr.start();
+}
+async function deleteVoice(i) {
+  const c = S.data.cards[i], r = await fetch(`/api/runs/${S.run}/cards/${c.n}/voice`, { method: "DELETE" });
+  if (r.ok) { c.voice = (await r.json()).voice; c.voiceV = Date.now(); edit(); }
+}
 function setCheck(i, k, v) {  // 확인하기의 완료 기준: 기준 사진 시각(done_t, 카드 구간 안) 또는 기준 문장
   const c = S.data.cards[i];
   if (k === "done_t") { const t = Math.round(+v); if (!(t >= c.start && t <= c.end)) return toast(T(`카드 구간(${c.start}~${c.end}초) 안에서 골라 주세요.`, `Pick a time within this card (${c.start}–${c.end} s).`)); c.done_t = t; }
@@ -1218,14 +1249,31 @@ function speak(force, again, only) {
   if (!window.speechSynthesis || !(C.voice || force) || !C.started) return;
   const c = S.data.cards[S.idx], parts = only ? [[only, ui === "en" ? "en-US" : "ko-KR"]] : [];
   if (again) parts.push([T("이 카드부터 해요.", "Start with this card."), ui === "en" ? "en-US" : "ko-KR"]);
+  stopVoice();
+  if (!only && useVoice(c)) {  // 선생님 목소리가 있으면 카드 문장은 사람 목소리로
+    for (const [t, l] of parts) speechSynthesis.speak(utter(t, l));
+    return playVoice(c, parts.length > 0);
+  }
   if (!only && lang !== "en") parts.push([c.ko, "ko-KR"]);
   if (!only && lang !== "ko") parts.push([c.en, "en-US"]);
-  speechSynthesis.cancel();
   for (const [t, l] of parts) { speechSynthesis.speak(utter(t, l)); }
 }
-function sayCard(c) {  // 태블릿: 문장을 누르면 읽어 준다(누를 때만)
+/* 선생님 목소리: 교사 녹음 → 시범 영상 속 그 단계 말소리. 재생이 안 되면 기기 음성으로 카드 문장 */
+let curAudio = null;
+const useVoice = c => c.voice === "rec" || (c.voice === "auto" && c.voice_ok);  // 영상 속 목소리는 교사가 들어 보고 고른 것만(수다가 섞일 수 있어서)
+function stopVoice() { window.speechSynthesis?.cancel(); curAudio?.pause(); curAudio = null; }
+function playVoice(c, afterSpeech) {
+  const a = new Audio(`/api/runs/${S.run}/voice/${c.n}?v=${c.voiceV || 0}`);
+  curAudio = a;
+  const fallback = () => { if (curAudio === a) { curAudio = null; speechSynthesis.speak(utter(lang === "en" ? c.en : c.ko, lang === "en" ? "en-US" : "ko-KR")); } };
+  a.onerror = fallback;
+  const go = () => a.play().catch(fallback);
+  if (afterSpeech) { const wait = setInterval(() => { if (!speechSynthesis.speaking) { clearInterval(wait); go(); } }, 150); } else go();
+}
+function sayCard(c) {  // 태블릿: 문장을 누르면 읽어 준다(누를 때만). 선생님 목소리가 있으면 그것으로
   if (!window.speechSynthesis) return;
-  speechSynthesis.cancel();
+  stopVoice();
+  if (useVoice(c)) return playVoice(c, false);
   for (const [t, l] of [[lang !== "en" && c.ko, "ko-KR"], [lang !== "ko" && c.en, "en-US"]]) if (t) { speechSynthesis.speak(utter(t, l)); }
 }
 /* 읽어 주는 목소리: 브라우저 기본값은 기기에 따라 로봇·장난용 음성이 걸린다 → 기기에 있는 자연스러운 음성을 고른다 */

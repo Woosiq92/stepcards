@@ -72,14 +72,15 @@ def shared(v, runs, me):
 
 
 def compact(d, runs, uploads):
-    """정리: 원본을 640px 무음 사본으로 바꾸고(장면 바꾸기·움직임 카드는 사본으로 계속 된다) 1초 사진·캐시를 지운다"""
+    """정리: 원본을 640px 사본(말소리는 작게)으로 바꾸고(장면 바꾸기·움직임 카드는 사본으로 계속 된다) 1초 사진·캐시를 지운다"""
     v = video_of(d)
     if stage(d) not in ("done",) or not v:
         return False
     small = d / "video_small.mp4"
     tmp = d / ".video_small.tmp.mp4"
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(v), "-an", "-vf", "scale='min(640,iw)':-2", "-c:v", "libx264", "-preset", "veryfast",
-                    "-crf", "28", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(tmp)], check=True)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(v), "-vf", "scale='min(640,iw)':-2", "-c:v", "libx264", "-preset", "veryfast",
+                    "-crf", "28", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "32k", "-ac", "1",  # 말소리는 작게 남긴다(선생님 목소리 카드)
+                    "-movflags", "+faststart", str(tmp)], check=True)
     os.replace(tmp, small)
     p = progress(d)
     p["video_path"] = str(small)
@@ -110,6 +111,11 @@ def archive(d, runs, uploads):
     """보관: 카드·그림·글만 남기고 영상·사진을 지운다(장면 바꾸기·움직임 카드는 꺼진다)"""
     if stage(d) not in ("done", "compact"):
         return False
+    try:  # 영상을 지우기 전에 카드별 선생님 목소리를 잘라 둔다
+        import voice
+        voice.cut_all(d)
+    except Exception:
+        pass
     v = video_of(d)
     if v and (v.parent == d or (v.resolve().parent == uploads.resolve() and not shared(v, runs, d))):
         v.unlink(missing_ok=True)
