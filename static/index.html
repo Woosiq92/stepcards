@@ -578,6 +578,7 @@ async function home() {
       <p>${T("다 했다 싶을 때 한 번 찍으면 시범의 마지막 장면과 맞춰 봐요. 다르면 무엇을 고치면 되는지 한 줄로 알려 줘요.", "Snap one photo when it feels done. It's matched against the end of the demonstration, and if something's off, one line says what to fix.")}</p>
       <div class="mpair"><figure><img src="/api/runs/${N}/cards/1/after.jpg" alt=""><figcaption>${T("이렇게 되면 돼요", "Should look like")}</figcaption></figure>
         <figure><img src="/runs/${N}/cards/01.jpg" alt=""><figcaption>${T("지금", "Now")}</figcaption><b class="okbadge">${icon("check")} ${T("됐어요", "Done")}</b></figure></div>
+      <a class="pill" href="#run=${N}&view=tablet">${icon("camera")} ${T("확인해 보기", "Try a check")}</a>
     </section>` : ""}
 
     <section class="mstart" id="start">
@@ -1033,8 +1034,8 @@ function use() {
       ${nIss ? `<div class="issue">${T(`아직 확인할 곳이 ${nIss}곳 있어요.`, `${nIss} item(s) still need checking.`)} <a href="#run=${S.run}&view=edit">${T("고치러 가기", "Go fix")}</a></div>` : ""}
       <div class="choices three">
         <button class="choice" onclick="printWhat('cards')"><span class="ci">${icon("print")}</span><div class="t">${T("종이로 인쇄하기", "Print")}</div><div class="d">${T(`A4 한 장에 카드 6장 · 아래 미리보기 그대로 나와요 (${pages}쪽)`, `Six cards per A4 page, exactly as previewed below (${pages} pages)`)}</div></button>
-        <button class="choice" onclick="go({run:S.run,view:'tablet'})"><span class="ci">${icon("tablet")}</span><div class="t">${T("태블릿으로 한 장씩 보기", "Tablet, one card at a time")}</div><div class="d">${T("화면 오른쪽을 누르거나 밀면 다음 카드로 넘어가요", "Tap the right side or swipe for the next card")}</div></button>
-        <button class="choice" onclick="go({run:S.run,view:'coach'})"><span class="ci">${icon("glasses")}</span><div class="t">${T("따라 하기", "Coach mode")}</div><div class="d">${T("카메라가 하는 모습을 보고, 다음 카드를 알아서 띄워 줘요", "A camera watches the learner and shows the next card at the right time")}</div></button>
+        <button class="choice" onclick="go({run:S.run,view:'tablet'})"><span class="ci">${icon("tablet")}</span><div class="t">${T("태블릿으로 한 장씩 보기", "Tablet, one card at a time")}</div><div class="d">${T("한 장씩 넘겨 보고, 📷 확인하기로 됐는지 찍어 봐요", "Flip through card by card, and tap 📷 Check to see if a step is done")}</div></button>
+        <button class="choice" onclick="go({run:S.run,view:'coach'})"><span class="ci">${icon("glasses")}</span><div class="t">${T("따라 하기", "Coach mode")}</div><div class="d">${T("카메라가 지켜보며 카드를 넘기고, 따라 하는 동안 됐는지도 계속 봐요", "The camera turns the cards and keeps checking each step while the learner follows")}</div></button>
       </div>
       <div class="glassrow"><span class="ci">${icon("glasses")}</span><div><strong>${T("안경 화면", "Glasses display")}</strong>
         <span class="muted">${T("Meta Ray-Ban Display용 웹앱이에요. 따라 하기에서 넘어간 카드가 안경에도 같이 떠요.", "A web app for Meta Ray-Ban Display. It shows the same card as Coach mode.")}</span></div>
