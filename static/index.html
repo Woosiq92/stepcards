@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -105,7 +105,7 @@
   .trust span { display:inline-flex; align-items:center; gap:4px; } .trust .ico { width:15px; height:15px; color:var(--ok); }
   .where { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
   .where > div { background:var(--paper); border-radius:var(--r); padding:16px 18px; box-shadow:var(--sh-1); display:flex; flex-direction:column; gap:4px; border-top:4px solid var(--accent); }
-  .where > div:nth-child(2) { border-top-color:var(--ok); } .where > div:nth-child(3) { border-top-color:var(--ink); }
+  .where > div:nth-child(2) { border-top-color:var(--ink); } .where.two { grid-template-columns:repeat(2,1fr); max-width:900px; margin:0 auto; }
   .where .m { font-size:12px; font-weight:700; color:var(--muted); } .where .muted { font-size:13px; }
   @media (max-width:720px) { .where { grid-template-columns:1fr; } }
   .uses { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
@@ -399,10 +399,10 @@ const S = { run: null, view: "home", data: null, idx: 0, poll: null, busy: new M
             saveTimer: null, saving: Promise.resolve(), saveState: "saved" };
 let lang = (() => { try { return localStorage.getItem("lang"); } catch { return null; } })();  // 카드 글자(고른 적 없으면 화면 언어)
 const langChosen = !!lang;
-let ui = (() => {  // 화면 글자: 주소의 ?ui= → 저장된 값 → 브라우저 언어
+let ui = (() => {  // 화면 글자: 주소의 ?ui= → 저장된 값 → 영어
   const q = new URLSearchParams(location.search).get("ui");
   if (q === "ko" || q === "en") return q;
-  try { return localStorage.getItem("ui") || (navigator.language.startsWith("ko") ? "ko" : "en"); } catch { return "ko"; }
+  try { return localStorage.getItem("ui") || "en"; } catch { return "en"; }  // 기본은 영어(심사·해외 사용자). 한국어는 위 단추로
 })();
 const T = (ko, en) => ui === "en" ? en : ko;
 lang ??= ui === "en" ? "en" : "ko";
@@ -607,11 +607,10 @@ async function home() {
     ].map(([u, t]) => { const r = runs.find(x => x.use === u && x.done); return r ? `<a class="newscard" href="#run=${r.id}&view=use">
         <img src="/runs/${r.id}/${r.thumb}" alt=""><span class="kicker">${t}</span><strong>${name(r)}</strong><span class="seemore">${icon("arrow")}<b>${T("예시 보기", "See example")}</b></span></a>` : ""; }).join("")}</div>
 
-    <h2 class="center sect">${T("어디서 돌릴지는 고를 수 있어요", "Choose where it runs")}</h2>
-    <div class="where">${[
-      [T("Meta API", "Meta API"), "Muse Spark · SAM 3.1 · Muse Image · Voice", T("가장 정확해요. 카드를 만들고, 됐는지 확인해요.", "The most accurate. Makes the cards and checks the result.")],
-      [T("이 기기", "This device"), "MediaPipe · 4 MB", T("휴대폰 안에서 바로 판단해요. 비용이 들지 않고, 영상은 휴대폰에만 남아요.", "Decides right on the phone. Free, and the video never leaves it.")],
-      [T("학교 컴퓨터", "School computer"), T("Muse Glimmer 30B · 공개 가중치", "Muse Glimmer 30B · open weights"), T("공개 모델을 학교 컴퓨터에서 돌려요. 학생 영상이 학교 밖으로 나가지 않아요.", "An open model on the school's own computer. Student video stays in school.")],
+    <h2 class="center sect">${T("모두 Meta 모델로 돌아가요", "Runs on Meta models")}</h2>
+    <div class="where two">${[
+      [T("Meta Model API", "Meta Model API"), "Muse Spark · SAM 3.1 · Muse Image · Muse Voice Transcribe", T("카드를 만들고, 따라 하는 동안 단계를 알아보고, 됐는지 확인해요.", "Makes the cards, follows the steps and checks each result.")],
+      [T("학교 컴퓨터에서", "On the school's computer"), T("Muse Glimmer 30B · 공개 가중치", "Muse Glimmer 30B · open weights"), T("같은 일을 학교 안에서. 학생 영상이 학교 밖으로 나가지 않아요.", "The same work inside the school. Student video never leaves it.")],
     ].map(([t, m, d]) => `<div><strong>${t}</strong><span class="m">${m}</span><span class="muted">${d}</span></div>`).join("")}</div>
 `;
     })()}
@@ -1171,7 +1170,7 @@ function coach() {
         "The camera watches hands and objects and shows the card for the current step.<br>Back and Next always work by hand. Camera frames are never stored.")}</div>
       <div class="seg" id="cwhere">
         <button class="on" onclick="coachWhere('api')">${T("Meta API", "Meta API")}</button>
-        <button onclick="coachWhere('device')">${T("이 기기 (빠름)", "On this device (fast)")}</button>
+        ${LAB ? `<button onclick="coachWhere('device')">${T("이 기기 (실험)", "On this device (lab)")}</button>` : ""}
         <button onclick="coachWhere('mac')" hidden id="cwmac">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button>
       </div>
       <div class="d" id="cwhered" hidden></div>
@@ -1197,7 +1196,7 @@ function coach() {
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && C.help && d.lv > C.lv) { C.v = d.v; helpUp(); }  // 안경에서 '도움'을 눌렀다
   }, 1000);
   C.local = false;
-  coachWhere(C.where || "api");
+  coachWhere(C.where === "device" && !LAB ? "api" : C.where || "api");
   fetch("/api/local").then(r => r.json()).then(d => { if (d.ready && $("#cwmac")) $("#cwmac").hidden = false; }).catch(() => {});
 }
 function coachWhere(where) {
@@ -1331,6 +1330,8 @@ function coachStart() {
 }
 /* 이 기기에서 빠른 추적: 시범 영상의 1초 사진(카드 시각으로 단계가 정해져 있음)을 작은 이미지 모델로 숫자 묶음(임베딩)으로 바꿔 두고,
    카메라 화면을 1초에 여러 번 같은 방식으로 바꿔 가장 비슷한 시범 장면들의 단계로 지금 단계를 정한다(최근접 이웃 투표). 서버 호출·비용 없음 */
+// 실험 기능: Meta 모델이 아니라서(MediaPipe) 기본으로 숨긴다. 주소에 ?lab=1 을 붙이면 보인다
+const LAB = new URLSearchParams(location.search).get("lab") === "1";
 const MP = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 const MP_MODEL = "https://storage.googleapis.com/mediapipe-models/image_embedder/mobilenet_v3_small/float32/1/mobilenet_v3_small.tflite";
 const OD = { emb: null, loading: null, index: null };
