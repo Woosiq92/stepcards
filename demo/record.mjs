@@ -92,7 +92,7 @@ if (scene === "use") {
   const rec = await page.screencast({ path: OUT + "use.webm" });
   await wait(2500);
   await smoothScroll(500, 2000); await wait(1500); await smoothScroll(1700, 2500); await wait(1500); await smoothScroll(0, 1200); await wait(500);
-  await clickText("button.choice", "Tablet");
+  await clickText("button", "Tablet");
   await wait(2500);
   for (let i = 0; i < 4; i++) { await page.keyboard.press("ArrowRight"); await wait(1800); }
   await rec.stop();

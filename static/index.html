@@ -122,6 +122,26 @@
   .keyask form { background:var(--paper); color:var(--ink); border-radius:var(--r-l); padding:24px; width:min(380px,100%); display:grid; gap:10px; box-shadow:var(--sh-3); }
   .keyask input { font:inherit; padding:12px; border:1px solid var(--line2); border-radius:12px; } .keyask input:focus { outline:none; border-color:var(--accent); box-shadow:var(--focus); }
   .pastcard { position:relative; }
+  @media screen { .printonly { display:none; } }
+  .followhero { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:32px; align-items:center; background:#000; color:#fff; border-radius:28px; padding:28px; margin:4px 0 18px; }
+  .fh-media { position:relative; border-radius:20px; overflow:hidden; aspect-ratio:4/3; background:#111; }
+  .fh-media img { width:100%; height:100%; object-fit:cover; display:block; opacity:.92; }
+  .fh-pov { position:absolute; top:12px; left:12px; display:inline-flex; align-items:center; gap:6px; background:rgba(11,16,21,.6); backdrop-filter:blur(8px); padding:6px 12px; border-radius:999px; font-size:13px; font-weight:700; }
+  .fh-check { position:absolute; top:12px; right:12px; display:inline-flex; align-items:center; gap:6px; background:var(--ok); padding:6px 12px; border-radius:999px; font-size:14px; font-weight:700; }
+  .fh-card { position:absolute; left:50%; bottom:14px; transform:translateX(-50%); background:rgba(11,16,21,.72); backdrop-filter:blur(8px); padding:8px 16px; border-radius:14px; font-size:18px; font-weight:800; white-space:nowrap; max-width:92%; overflow:hidden; text-overflow:ellipsis; }
+  .fh-pov .ico, .fh-check .ico { width:16px; height:16px; }
+  .fh-copy .kicker { color:#a9b8c6; font-size:14px; font-weight:600; } .fh-copy h2 { font-size:clamp(26px,3vw,36px); font-weight:500; line-height:1.25; margin:6px 0 14px; }
+  .fh-steps { margin:0 0 20px; padding-left:20px; color:#cfd9e3; line-height:1.8; } .fh-btns { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .fh-btns .btn { background:rgba(255,255,255,.12); color:#fff; border-color:transparent; } .fh-btns .btn:hover { background:rgba(255,255,255,.2); }
+  .pill.big { font-size:17px; padding:14px 24px; border:none; } .pill .ico { width:20px; height:20px; } .fh-note { color:#8d9bab !important; font-size:13px; margin:14px 0 0; }
+  .fh-side { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px; }
+  .fh-box { background:var(--paper); border-radius:var(--r); padding:16px 18px; box-shadow:var(--sh-1); display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
+  .fh-box strong { display:inline-flex; align-items:center; gap:6px; } .fh-box .ico { width:18px; height:18px; color:var(--accent); } .fh-box .muted { font-size:13px; }
+  .fh-qr { display:flex; align-items:center; gap:12px; } .fh-qr img { border-radius:8px; } .fh-rec { display:flex; align-items:center; gap:6px; font-weight:600; } .fh-rec input { width:18px; height:18px; accent-color:var(--accent); }
+  #records { width:100%; }
+  .others { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:14px 0; border-top:1px solid var(--line); } .others .btn { padding:6px 12px; font-size:13px; }
+  .others .langrow { margin-left:auto; display:inline-flex; align-items:center; gap:8px; }
+  @media (max-width:860px) { .followhero, .fh-side { grid-template-columns:1fr; } .followhero { padding:16px; border-radius:22px; } }
   .vrow { display:flex; justify-content:center; padding:2px 0 4px; }
   .verifybtn { display:inline-flex; align-items:center; gap:8px; border:2px solid rgba(255,255,255,.35); background:transparent; color:#fff; border-radius:999px; padding:10px 22px; font-size:18px; font-weight:700; min-height:48px; }
   .verifybtn:hover { background:rgba(255,255,255,.1); }
@@ -134,7 +154,6 @@
   .vpair { display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; } .vpair figure { margin:0; } .vpair img { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:12px; background:var(--line); }
   .vpair figcaption { font-size:13px; color:var(--muted); margin-top:4px; } .vhint { font-size:22px; font-weight:700; } .vbtns { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
   .afterimg { width:96px; aspect-ratio:16/9; object-fit:cover; border-radius:6px; vertical-align:middle; } .more input.wide { flex:1; min-width:200px; }
-  .recrow { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:0 0 12px; } .recrow label { display:flex; align-items:center; gap:6px; font-weight:600; } .recrow input { accent-color:var(--accent); width:18px; height:18px; }
   .adminlink { margin-top:28px; } .adminlink a { color:var(--muted); font-weight:500; }
   .adminrow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 14px; }
   .admintable { width:100%; border-collapse:collapse; background:var(--paper); border-radius:var(--r); overflow:hidden; box-shadow:var(--sh-1); font-size:13px; }
@@ -227,20 +246,6 @@
   @keyframes up { from { opacity:0; transform:translate(-50%,8px); } }
 
   /* 인쇄·태블릿 */
-  .choices { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:16px 0 24px; }
-  .choice { display:flex; flex-direction:column; align-items:flex-start; gap:4px; background:var(--paper); border:none; border-radius:var(--r-l); padding:22px; text-align:left; color:var(--ink); box-shadow:var(--sh-1); transition:box-shadow .15s, transform .15s; }
-  .choice:hover { box-shadow:var(--sh-2); transform:translateY(-2px); }
-  .choice .ci { width:48px; height:48px; border-radius:14px; display:grid; place-items:center; background:var(--accent-soft); color:var(--accent); margin-bottom:10px; }
-  .choice .ci .ico { width:24px; height:24px; }
-  .choice.feat { background:var(--dark); color:#fff; } .choice.feat .ci { background:var(--accent); color:#fff; } .choice.feat .d { color:#a9b8c6; }
-  .choice .t { font-size:18px; font-weight:700; letter-spacing:-.015em; } .choice .d { color:var(--muted); font-size:14px; }
-  .glassrow { display:flex; align-items:center; gap:14px; background:var(--paper); border-radius:var(--r); padding:14px 18px; box-shadow:var(--sh-1); margin:-8px 0 20px; }
-  .qrrow { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin:-6px 0 20px; }
-  .qrrow > div { background:var(--paper); border-radius:var(--r); padding:14px; box-shadow:var(--sh-1); display:flex; flex-direction:column; align-items:center; text-align:center; gap:2px; }
-  .qrrow img { border-radius:8px; margin-bottom:6px; } .qrrow .btn { margin-top:8px; }
-  @media (max-width:720px) { .qrrow img { display:none; } } .qrrow p { grid-column:1/-1; margin:0; }
-  .glassrow .ci { width:40px; height:40px; border-radius:12px; display:grid; place-items:center; background:var(--dark); color:#fff; flex:none; }
-  .glassrow > div { flex:1; display:flex; flex-direction:column; } .glassrow a:hover { text-decoration:none; }
   .langrow { flex-wrap:wrap; }
   .langrow { display:flex; align-items:center; gap:12px; }
   .seg { display:inline-flex; gap:2px; padding:3px; border-radius:999px; background:var(--bg); }
@@ -256,7 +261,6 @@
   .record table { width:100%; border-collapse:collapse; font-size:14px; } .record th, .record td { border:1px solid #9aa7b3; padding:4px 6px; text-align:left; vertical-align:middle; }
   .record th:nth-child(n+4), .record td:nth-child(n+4) { width:9%; } .record td:first-child { width:28px; text-align:center; font-weight:700; }
   .record td img { width:72px; aspect-ratio:16/9; object-fit:cover; display:block; } .record thead { display:table-header-group; } .record tr { break-inside:avoid; }
-  .recordbar { max-width:794px; margin:12px auto 12px; } .recordbar h3 { margin-top:16px; }
   .pcard { border:2px solid var(--ink); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; position:relative; min-height:0; }
   .pcard img { width:100%; aspect-ratio:16/9; object-fit:cover; display:block; }
   .pcard .txt { padding:6px 10px; font-size:clamp(12px,2.2vw,19px); font-weight:700; }
@@ -288,7 +292,6 @@
   .tab .exit { position:absolute; top:16px; right:16px; display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.12); backdrop-filter:blur(12px); color:#fff; border:none; border-radius:999px; padding:9px 16px; font-weight:600; font-size:14px; z-index:3; }
   .tab .exit:hover { background:rgba(255,255,255,.2); }
 
-  .choices.three { grid-template-columns:repeat(3,1fr); }
   .coachv .cam { position:absolute; top:16px; left:16px; width:240px; border-radius:var(--r); overflow:hidden; background:#000; box-shadow:0 0 0 1px rgba(255,255,255,.12), 0 10px 30px rgba(0,0,0,.5); z-index:3; }
   .coachv .cam video { width:100%; display:block; min-height:135px; }
   .coachv .pill { position:absolute; left:8px; top:8px; display:flex; align-items:center; gap:6px; background:rgba(11,16,21,.7); backdrop-filter:blur(8px); font-size:12px; font-weight:600; padding:3px 10px 3px 8px; border-radius:99px; }
@@ -322,8 +325,8 @@
   [hidden] { display:none !important; }
   @media (max-width:720px) {
     header { padding:0 16px; gap:10px; } .logo span:last-child { display:none; } .step { padding:6px 8px; font-size:0; gap:0; } .step .dot { font-size:12px; } .step.on { font-size:13px; gap:6px; padding-right:12px; white-space:nowrap; } .steps { flex-shrink:0; } #uiseg .long { display:none; } #uiseg button { padding:6px 10px; }
-    .choices.three { grid-template-columns:1fr; } .coachv .cam { width:130px; }
-    main { padding:20px 16px 48px; } .choices { grid-template-columns:1fr; }
+    .coachv .cam { width:130px; }
+    main { padding:20px 16px 48px; }
     .row { grid-template-columns:1fr; } .row .n { position:absolute; top:26px; left:26px; z-index:2; }
     .tab .navb { padding:14px 18px; min-width:0; font-size:17px; white-space:nowrap; }
     .tab .mid { flex:1; min-width:0; } .dots i { flex:1; max-width:22px; min-width:4px; } .dots { flex-wrap:nowrap; }
@@ -429,7 +432,7 @@ async function route() {
 /* 위쪽 1·2·3 단계 표시 */
 function header() {
   const done = !!S.data, cur = ["tablet", "coach"].includes(S.view) ? "use" : S.view === "home" ? "making" : S.view;
-  const items = [["making", T("영상 넣기", "Add video"), T("영상", "Video")], ["edit", T("카드 확인·고치기", "Check & edit"), T("고치기", "Edit")], ["use", T("인쇄·태블릿", "Print · Tablet · Coach"), T("쓰기", "Use")]];  // 세 번째는 휴대폰용 짧은 이름
+  const items = [["making", T("영상 넣기", "Add video"), T("영상", "Video")], ["edit", T("카드 확인·고치기", "Check & edit"), T("고치기", "Edit")], ["use", T("따라 하며 확인", "Follow & check"), T("확인", "Check")]];  // 세 번째는 휴대폰용 짧은 이름
   $("#steps").innerHTML = items.map(([v, l, short], i) => {
     const ok = (v === "making" && done) || (v === "edit" && done && cur === "use" && !(S.data.problems || []).length);
     const off = !S.run || (v !== "making" && !done);
@@ -782,7 +785,7 @@ function edit() {
       <span style="flex:1"></span>
       <button class="btn" onclick="illustrateAll()" title="Muse Image">${icon("draw")} ${T("모든 카드 그림으로", "Make drawings for all")}</button>
       ${S.undo ? `<button class="btn" onclick="undoLast()">↶ ${T("되돌리기", "Undo")}</button>` : ""}
-      <button class="btn primary" onclick="go({run:S.run,view:'use'})">${T("다 됐어요 → 인쇄·태블릿", "Done → Print · Tablet · Coach")}</button>
+      <button class="btn primary" onclick="go({run:S.run,view:'use'})">${T("다 됐어요 → 따라 하며 확인", "Done → Follow & check")}</button>
     </div>
     <form class="ask" onsubmit="askAgent(event)">
       <span class="ci">${icon("draw")}</span>
@@ -1028,37 +1031,50 @@ function use() {
     <div class="rkey">${T("적는 법: ○ 혼자 · 1 글 · 2 그림 · 3 소리 · 4 움직임 · 5 손으로 도움", "Key: ○ on own · 1 text · 2 picture · 3 sound · 4 motion · 5 hands-on help")}</div>
     <table><thead><tr><th>#</th><th></th><th>${T("할 일", "Step")}</th>${"<th>/</th>".repeat(6)}</tr></thead>
     <tbody>${cs.map((c, i) => `<tr><td>${i + 1}</td><td><img src="${imgSrc(c)}" alt=""></td><td>${text(c)}</td>${"<td></td>".repeat(6)}</tr>`).join("")}</tbody></table></div>`;
+  // 3번 화면의 중심은 '안경(눈높이) 카메라로 따라 하며 확인하기'. 인쇄·태블릿·보내기는 아래에 작게
+  const first = cs[0];
   $("#main").innerHTML = `
     <div class="noprint">
-      <h2>${T("카드 쓰기", "Use the cards")}</h2>
       ${nIss ? `<div class="issue">${T(`아직 확인할 곳이 ${nIss}곳 있어요.`, `${nIss} item(s) still need checking.`)} <a href="#run=${S.run}&view=edit">${T("고치러 가기", "Go fix")}</a></div>` : ""}
-      <div class="choices three">
-        <button class="choice" onclick="printWhat('cards')"><span class="ci">${icon("print")}</span><div class="t">${T("종이로 인쇄하기", "Print")}</div><div class="d">${T(`A4 한 장에 카드 6장 · 아래 미리보기 그대로 나와요 (${pages}쪽)`, `Six cards per A4 page, exactly as previewed below (${pages} pages)`)}</div></button>
-        <button class="choice" onclick="go({run:S.run,view:'tablet'})"><span class="ci">${icon("tablet")}</span><div class="t">${T("태블릿으로 한 장씩 보기", "Tablet, one card at a time")}</div><div class="d">${T("한 장씩 넘겨 보고, 📷 확인하기로 됐는지 찍어 봐요", "Flip through card by card, and tap 📷 Check to see if a step is done")}</div></button>
-        <button class="choice" onclick="go({run:S.run,view:'coach'})"><span class="ci">${icon("glasses")}</span><div class="t">${T("따라 하기", "Coach mode")}</div><div class="d">${T("카메라가 지켜보며 카드를 넘기고, 따라 하는 동안 됐는지도 계속 봐요", "The camera turns the cards and keeps checking each step while the learner follows")}</div></button>
+      <section class="followhero">
+        <div class="fh-media"><img src="${imgSrc(first)}" alt="">
+          <span class="fh-pov">${icon("glasses")} ${T("안경 시점", "Glasses view")}</span>
+          <span class="fh-check">${icon("check")} ${T("됐어요", "Done")}</span>
+          <span class="fh-card">${esc(lang === "en" ? first.en : first.ko)}</span></div>
+        <div class="fh-copy">
+          ${title ? `<span class="kicker">${title}</span>` : ""}
+          <h2>${T("안경을 쓰고 따라 하면, 잘 하고 있는지 바로 알려 줘요", "Follow along with glasses on, and know right away you're doing it right")}</h2>
+          <ol class="fh-steps">
+            <li>${T("눈높이 카메라가 손과 물건을 봐요", "An eye-level camera watches the hands and objects")}</li>
+            <li>${T("지금 단계를 알아보고 카드를 넘겨요", "It follows the step and turns the card")}</li>
+            <li>${T("단계마다 시범과 맞춰 보고, 다르면 고칠 점을 한 줄로", "Each step is matched to the demonstration; if it's off, one line says what to fix")}</li>
+          </ol>
+          <div class="fh-btns"><button class="pill big" onclick="go({run:S.run,view:'coach'})">${icon("camera")} ${T("따라 하며 확인 시작", "Start following & checking")}</button>
+            <a class="btn" href="/glasses?run=${S.run}&lang=${lang}" target="_blank">${icon("glasses")} ${T("안경 화면", "Glasses view")}</a></div>
+          <p class="muted fh-note">${T("셀카 카메라가 아니라, 하는 사람의 눈높이(안경, 또는 이마 앞 휴대폰 뒤 카메라)에서 손이 보이게 찍어요.", "Not the selfie camera: film from the doer's eye level (glasses, or a phone's back camera held at the forehead) with the hands in view.")}</p>
+        </div>
+      </section>
+      <div class="fh-side">
+        <div class="fh-box"><strong>${icon("glasses")} ${T("Ray-Ban Display에 띄우기", "Show on Ray-Ban Display")}</strong>
+          <span class="muted">${T("Meta AI 앱 → 웹앱 추가에 아래 주소를 넣거나 QR을 찍어요. 따라 하기의 카드와 확인 결과가 렌즈에 떠요.", "Add this address as a Web App in the Meta AI app, or scan the QR. Coach cards and check results appear on the lens.")}</span>
+          <div class="fh-qr"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}" alt="QR" width="112" height="112"><button class="btn" onclick="shareLink('glasses')">${icon("share")} ${T("링크 보내기", "Send link")}</button></div></div>
+        <div class="fh-box"><strong>${icon("check")} ${T("확인 결과 기록", "Check records")}</strong>
+          <label class="fh-rec"><input type="checkbox" ${S.rec ? "checked" : ""} onchange="setRec(this.checked)"> ${T("이 기기에서 기록 남기기", "Keep records on this device")}</label>
+          <span class="muted">${T("이름 없이 날짜·카드·확인 결과·도움 단계만. 사진은 남지 않아요.", "No names: date, card, check result and help level. No photos.")}</span>
+          <button class="btn" onclick="showRecords()">${T("기록 보기", "View records")}</button><div id="records"></div></div>
       </div>
-      <div class="glassrow"><span class="ci">${icon("glasses")}</span><div><strong>${T("안경 화면", "Glasses display")}</strong>
-        <span class="muted">${T("Meta Ray-Ban Display용 웹앱이에요. 따라 하기에서 넘어간 카드가 안경에도 같이 떠요.", "A web app for Meta Ray-Ban Display. It shows the same card as Coach mode.")}</span></div>
-        <a class="btn" href="/glasses?run=${S.run}&lang=${lang}" target="_blank">${T("안경 화면 열기", "Open glasses view")}</a></div>
-      <div class="qrrow">${[["tablet", T("학생 태블릿·휴대폰", "Learner's tablet or phone"), T("카드를 한 장씩 넘겨 봐요", "Flip through the cards")],
-                            ["glasses", T("안경(Ray-Ban Display)", "Glasses (Ray-Ban Display)"), T("Meta AI 앱 → 웹앱 추가에 이 주소", "Add as a Web App in the Meta AI app")]].map(([to, t, d]) =>
-        `<div><img src="/api/runs/${S.run}/qr.svg?to=${to}&lang=${lang}" alt="${t} QR" width="132" height="132"><strong>${t}</strong><span class="muted">${d}</span>
-          <button class="btn" onclick="shareLink('${to}')">${icon("share")} ${T("링크 보내기", "Send link")}</button></div>`).join("")}
-        <p class="muted">${/^(127\.|localhost|\[::1\])/.test(location.hostname) ? T("지금은 이 맥 안에서만 열리는 주소예요. 배포한 주소에서 열면 다른 기기에서도 열려요.", "This address only works on this Mac. Open StepCards from your deployed address to use it on other devices.")
-          : T("보기는 키 없이 열려요. 학생 기기에서 카드를 만들거나 고치려면 접속 키가 필요해요.", "Viewing needs no key. Making or editing cards on a learner device needs the access key.")}</p></div>
-      <div class="recrow"><label><input type="checkbox" ${S.rec ? "checked" : ""} onchange="setRec(this.checked)"> ${T("이 기기에서 학습 기록 남기기", "Keep learning records on this device")}</label>
-        <span class="muted">${T("이름 없이 날짜·카드·확인 결과·도움 단계만. 사진은 남기지 않아요.", "No names: date, card, check result and help level only. No photos.")}</span>
-        <button class="btn" onclick="showRecords()">${T("기록 보기", "View records")}</button></div>
-      <div id="records"></div>
-      <div class="langrow"><span class="muted">${T("카드 글자", "Card language")}</span> ${segHtml()}
-        <span style="flex:1"></span><button class="btn" onclick="printWhat('record')">${icon("print")} ${T("기록지 인쇄", "Print record sheet")}</button><a class="btn" href="/api/runs/${S.run}/export.zip" download>${icon("share")} ${T("백업(.zip)", "Backup (.zip)")}</a><button class="btn" onclick="shareCards(this)">${icon("share")} ${navigator.canShare ? T("이미지로 보내기", "Send as images") : T("이미지로 저장", "Save as image")}</button></div>
-      <h3>${T("인쇄 미리보기", "Print preview")}</h3>
+      <div class="others">
+        <span class="muted">${T("다른 방법", "Other ways")}</span>
+        <button class="btn" onclick="printWhat('cards')">${icon("print")} ${T(`카드 인쇄 (${pages}쪽)`, `Print cards (${pages} p)`)}</button>
+        <button class="btn" onclick="printWhat('record')">${icon("print")} ${T("기록지 인쇄", "Print record sheet")}</button>
+        <button class="btn" onclick="go({run:S.run,view:'tablet'})">${icon("tablet")} ${T("태블릿으로 보기", "Tablet view")}</button>
+        <button class="btn" onclick="shareLink('tablet')">${icon("share")} ${T("학생 기기로 링크", "Link for a learner device")}</button>
+        <button class="btn" onclick="shareCards(this)">${icon("share")} ${navigator.canShare ? T("이미지로 보내기", "Send as images") : T("이미지로 저장", "Save as image")}</button>
+        <a class="btn" href="/api/runs/${S.run}/export.zip" download>${icon("share")} ${T("백업(.zip)", "Backup (.zip)")}</a>
+        <span class="langrow"><span class="muted">${T("카드 글자", "Card language")}</span> ${segHtml()}</span>
+      </div>
     </div>
-    ${sheets}
-    <div class="noprint recordbar"><h3>${T("교사용 기록지", "Teacher's record sheet")}</h3>
-      <p class="muted">${T("카드마다 한 줄. 날짜 칸에 그날 학생이 받은 도움 단계를 적어요. 따라 하기 끝 화면의 요약을 옮겨 적기 좋아요.", "One row per card. Write the help level the learner needed that day; copy it from the Coach end screen.")}</p>
-      <button class="btn" onclick="printWhat('record')">${icon("print")} ${T("기록지 인쇄", "Print record sheet")}</button></div>
-    ${record}`;
+    <div class="printonly">${sheets}${record}</div>`;
 }
 /* 카드를 이미지로: 휴대폰은 공유창(메신저·문자 등)으로 카드마다 한 장씩, 그 밖에는 모든 카드를 한 장에 모아 내려받기 */
 function cardCanvas(c, n, img) {
