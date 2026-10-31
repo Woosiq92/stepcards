@@ -1098,9 +1098,10 @@ function coach() {
       <div class="t">${T("따라 하기", "Coach mode")}</div>
       <div class="d">${T("카메라가 손과 물건을 보고, 지금 할 카드를 띄워 줘요.<br>언제든 이전·다음 단추로 직접 넘길 수 있어요. 카메라 사진은 저장하지 않아요.",
         "The camera watches hands and objects and shows the card for the current step.<br>Back and Next always work by hand. Camera frames are never stored.")}</div>
-      <div class="seg" id="cwhere" hidden>
-        <button class="on" onclick="coachWhere(false)">${T("Meta API", "Meta API")}</button>
-        <button onclick="coachWhere(true)">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button>
+      <div class="seg" id="cwhere">
+        <button class="on" onclick="coachWhere('api')">${T("Meta API", "Meta API")}</button>
+        <button onclick="coachWhere('device')">${T("이 기기 (빠름)", "On this device (fast)")}</button>
+        <button onclick="coachWhere('mac')" hidden id="cwmac">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button>
       </div>
       <div class="d" id="cwhered" hidden></div>
       <div class="pairbox"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&s=${C.pair}" alt="" width="96" height="96">
@@ -1125,15 +1126,16 @@ function coach() {
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && C.help && d.lv > C.lv) { C.v = d.v; helpUp(); }  // 안경에서 '도움'을 눌렀다
   }, 1000);
   C.local = false;
-  fetch("/api/local").then(r => r.json()).then(d => { if (d.ready && $("#cwhere")) { $("#cwhere").hidden = false; coachWhere(false); } }).catch(() => {});
+  coachWhere(C.where || "api");
+  fetch("/api/local").then(r => r.json()).then(d => { if (d.ready && $("#cwmac")) $("#cwmac").hidden = false; }).catch(() => {});
 }
-function coachWhere(local) {
-  C.local = local;
-  $("#cwhere").querySelectorAll("button").forEach((b, i) => b.classList.toggle("on", i === +local));
+function coachWhere(where) {
+  C.where = where; C.local = where === "mac";
+  $("#cwhere").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.getAttribute("onclick").includes(`'${where}'`)));
   $("#cwhered").hidden = false;
-  $("#cwhered").innerHTML = local
-    ? T("공개 가중치 모델이 이 맥에서 판단해요. 카메라 사진이 맥 밖으로 나가지 않아요. 물건 확인(SAM)은 건너뛰어요.", "An open-weight model decides on this Mac. Camera frames never leave it. The object check (SAM) is skipped.")
-    : T("Muse Spark가 단계를 보고, SAM 3.1이 손에 든 물건을 한 번 더 확인해요.", "Muse Spark reads the step and SAM 3.1 double-checks the object in hand.");
+  $("#cwhered").innerHTML = { mac: T("공개 가중치 모델이 이 맥에서 판단해요. 카메라 사진이 맥 밖으로 나가지 않아요. 물건 확인(SAM)은 건너뛰어요.", "An open-weight model decides on this Mac. Camera frames never leave it. The object check (SAM) is skipped."),
+    device: T("이 기기 안의 작은 모델(MediaPipe)이 1초에 여러 번 시범 영상 장면과 비교해 단계를 따라가요. 비용이 없고 사진이 밖으로 나가지 않아요. 결과 확인(달라요)은 '확인하기'로 해요.", "A small on-device model (MediaPipe) compares the camera with the demonstration several times a second. No cost, nothing leaves the device. Use Check to compare results."),
+    api: T("Muse Spark가 단계를 보고, SAM 3.1이 손에 든 물건을 한 번 더 확인해요.", "Muse Spark reads the step and SAM 3.1 double-checks the object in hand.") }[where];
 }
 // 카드 문장 소리로 읽기: 휴대폰 스피커나 블루투스로 이어진 안경 스피커로 나온다. 시작 단추를 누르기 전엔 읽지 않는다(브라우저가 막음)
 C.voice = (() => { try { return localStorage.getItem("voice") !== "off"; } catch { return true; } })();
@@ -1256,7 +1258,64 @@ function coachStart() {
   }, 1000);
   coachLoop();
 }
+/* 이 기기에서 빠른 추적: 시범 영상의 1초 사진(카드 시각으로 단계가 정해져 있음)을 작은 이미지 모델로 숫자 묶음(임베딩)으로 바꿔 두고,
+   카메라 화면을 1초에 여러 번 같은 방식으로 바꿔 가장 비슷한 시범 장면들의 단계로 지금 단계를 정한다(최근접 이웃 투표). 서버 호출·비용 없음 */
+const MP = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+const MP_MODEL = "https://storage.googleapis.com/mediapipe-models/image_embedder/mobilenet_v3_small/float32/1/mobilenet_v3_small.tflite";
+const OD = { emb: null, loading: null, index: null };
+async function odLoad() {
+  return OD.loading ??= (async () => {
+    const { FilesetResolver, ImageEmbedder } = await import(`${MP}/vision_bundle.mjs`);
+    const files = await FilesetResolver.forVisionTasks(`${MP}/wasm`);
+    OD.emb = await ImageEmbedder.createFromOptions(files, { baseOptions: { modelAssetPath: MP_MODEL }, runningMode: "IMAGE", l2Normalize: true });
+  })();
+}
+const loadImg = src => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
+async function odIndex() {  // 시범 사진 → (임베딩, 카드 번호, 카드 안 위치 0~1)
+  await odLoad();
+  if (OD.index?.run === S.run) return OD.index;
+  if (S.data.stage === "compact") await fetch(`/api/runs/${S.run}/frames`, { method: "POST" });
+  const cs = S.data.cards, items = [], t0 = performance.now();
+  for (let t = 0; t <= (S.data.duration || cs.at(-1).end); t++) {
+    const k = cs.findIndex(c => t >= c.start && t <= c.end);
+    if (k < 0) continue;  // 카드 사이 빈 시간은 쓰지 않는다
+    const img = await loadImg(`/runs/${S.run}/frames/f${pad(t + 1, 3)}.jpg`).catch(() => null);
+    if (img) items.push({ e: OD.emb.embed(img).embeddings[0].floatEmbedding, k: k + 1, pos: (t - cs[k].start) / Math.max(1, cs[k].end - cs[k].start) });
+  }
+  return OD.index = { run: S.run, items, ms: Math.round(performance.now() - t0) };
+}
+function odGuess(video) {  // 지금 화면이 몇 번 카드와 가장 닮았는지(위 5개 투표)와 그 카드 안 위치
+  const e = OD.emb.embed(video).embeddings[0].floatEmbedding;
+  const top = OD.index.items.map(it => { let s = 0; for (let j = 0; j < e.length; j++) s += e[j] * it.e[j]; return [s, it]; }).sort((a, b) => b[0] - a[0]).slice(0, 5);
+  const votes = {};
+  for (const [s, it] of top) votes[it.k] = (votes[it.k] || 0) + s;
+  const k = +Object.entries(votes).sort((a, b) => b[1] - a[1])[0][0], mine = top.filter(([, it]) => it.k === k);
+  return { k, pos: mine.reduce((a, [, it]) => a + it.pos, 0) / mine.length, sim: top[0][0] };
+}
+async function odLoop() {
+  pill(T("이 기기 모델 준비 중…", "Preparing on-device model…"));
+  try { await odIndex(); } catch { pill(T("이 기기 모델을 불러오지 못했어요 · 이전·다음으로 넘겨요", "Could not load the on-device model · use Back and Next")); return; }
+  const v = $("#cvid"), hist = [];
+  C.odStats = { n: 0, ms: 0 };
+  while (C.running && S.view === "coach" && C.where === "device") {
+    if (v.readyState >= 2) {
+      const t0 = performance.now(), g = odGuess(v), ms = performance.now() - t0;
+      C.odStats.n++; C.odStats.ms += ms;
+      hist.push(g); if (hist.length > 8) hist.shift();
+      const cur = S.idx + 1, n = S.data.cards.length, count = k => hist.filter(h => h.k === k).length;
+      pill(T(`이 기기 · ${Math.round(ms)}ms`, `On device · ${Math.round(ms)} ms`));
+      if (hist.length >= 6 && cur < n && count(cur + 1) >= 6) {  // 다음 단계 장면이 1초쯤 이어지면 넘긴다
+        S.idx++; hist.length = 0; C.buf = []; $("#cagain").hidden = true; coachCard(); pill(T(`${S.idx + 1}번 카드로 넘겼어요 · 이 기기`, `Moved to card ${S.idx + 1} · on device`));
+      } else if (hist.length >= 8 && hist.every(h => h.k > cur + 1) && C.againSaid !== S.idx) {  // 뒤 단계가 계속 보이면 '이 카드부터'
+        $("#cagain").hidden = false; glassesSync(true); C.againSaid = S.idx; speak(false, true);
+        setTimeout(() => { const a = $("#cagain"); if (a) a.hidden = true; }, 4000);
+      } else if (cur === n && hist.length >= 8 && hist.filter(h => h.k === cur && h.pos > 0.8).length >= 6) { coachEnd(true); break; }
+    }
+    await new Promise(r => setTimeout(r, 150));
+  }
+}
 async function coachLoop() {
+  if (C.where === "device") return odLoop();
   while (C.running && S.view === "coach") {
     const cs = S.data.cards, cur = S.idx + 1;
     if (!C.manual && C.buf.length >= 2 && cur <= cs.length) {
