@@ -144,7 +144,7 @@
   .others { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:14px 0; border-top:1px solid var(--line); } .others .btn { padding:6px 12px; font-size:13px; }
   .others .langrow { margin-left:auto; display:inline-flex; align-items:center; gap:8px; }
   @media (max-width:860px) { .followhero, .fh-side { grid-template-columns:1fr; } .followhero { padding:16px; border-radius:22px; } }
-  .vrow { display:flex; justify-content:center; padding:2px 0 4px; }
+  .vrow { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; padding:2px 0 4px; }
   .verifybtn { display:inline-flex; align-items:center; gap:8px; border:2px solid rgba(255,255,255,.35); background:transparent; color:#fff; border-radius:999px; padding:10px 22px; font-size:18px; font-weight:700; min-height:48px; }
   .verifybtn:hover { background:rgba(255,255,255,.1); }
   .vbox { position:fixed; inset:0; z-index:40; background:rgba(11,16,21,.85); display:grid; place-items:center; padding:16px; }
@@ -161,6 +161,12 @@
   .stuckrow { display:flex; gap:10px; align-items:center; flex-wrap:wrap; } .stuckrow > div { flex:1; min-width:180px; }
   .stuckrow .n { width:26px; height:26px; border-radius:50%; background:var(--warn-soft); color:var(--warn); display:grid; place-items:center; font-weight:700; font-size:13px; flex:none; }
   .stuckbtns { display:flex; gap:6px; }
+  .callbtn { border:1.5px solid rgba(255,255,255,.5); background:rgba(255,255,255,.12); color:#fff; border-radius:999px; padding:10px 18px; font-weight:700; font-size:15px; }
+  .callbtn:disabled { opacity:.7; }
+  .livebox { background:var(--paper); border-radius:var(--r); box-shadow:var(--sh-1); padding:14px 16px; margin:0 0 16px; display:grid; gap:8px; }
+  .liverow { display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:8px 10px; border-radius:10px; background:var(--bg); }
+  .liverow.call { background:var(--warn-soft); } .liverow.call b { color:var(--warn); }
+  .liverow .code { font-family:ui-monospace,monospace; font-weight:700; } .liverow .btn { margin-left:auto; }
   .simwarn { background:var(--warn-soft); color:var(--warn); border-radius:10px; padding:8px 12px; font-size:13px; font-weight:600; }
   .voicerow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; } .voicerow .btn { padding:4px 12px; font-size:13px; }
   .afterimg { width:96px; aspect-ratio:16/9; object-fit:cover; border-radius:6px; vertical-align:middle; } .more input.wide { flex:1; min-width:200px; }
@@ -427,7 +433,7 @@ window.addEventListener("hashchange", route);
 const VIEWS = ["making", "edit", "use", "tablet", "coach"];
 async function route() {
   const me = S.nav = (S.nav || 0) + 1;  // 빨리 연달아 옮기면 늦게 온 옛 응답은 버린다
-  clearInterval(S.poll);
+  clearInterval(S.poll); clearInterval(S.livePoll);
   stopCoach();
   if ($("#vbox")) closeVerify();  // 확인하기 카메라가 켜진 채 다른 화면으로 가지 않게
   if (recState?.state === "recording") recState.stop();  // 녹음 중에 나가면 마이크를 끈다(녹음은 저장)
@@ -565,7 +571,8 @@ async function verifyNow(glassesReq) {
       <button class="btn" onclick="closeVerify()">${d.result === "done" ? T("닫기", "Close") : T("계속해요", "Keep going")}</button></div></div>`;
   const say = [look[1], hint].filter(Boolean).join(". ");
   if (window.speechSynthesis && (S.view !== "coach" || C.voice)) { speechSynthesis.cancel(); speechSynthesis.speak(utter(say, ui === "en" ? "en-US" : "ko-KR")); }
-  if (S.view === "coach" && d.result === "different" && C.help) helpUp(true);  // 다르면 도움 한 칸(방금 읽은 안내를 끊지 않게 조용히)
+  if (S.view === "coach" && d.result === "different" && C.help) helpUp(true);
+  if (S.view === "coach" && d.result === "different" && idx === S.idx && ++C.vdiff >= 2) callMaker("auto");  // 다르면 도움 한 칸(방금 읽은 안내를 끊지 않게 조용히)
   if (S.view === "coach") { C.lastMove = Date.now(); glassesResult(d, glassesReq); }
 }
 function closeVerify() { const b = $("#vbox"); b?.stream?.getTracks().forEach(t => t.stop()); b?.remove(); C.checking = false; C.buf = []; C.since = Date.now(); }
@@ -1158,6 +1165,7 @@ function use() {
   $("#main").innerHTML = `
     <div class="noprint">
       ${nIss ? `<div class="issue">${T(`아직 확인할 곳이 ${nIss}곳 있어요.`, `${nIss} item(s) still need checking.`)} <a href="#run=${S.run}&view=edit">${T("고치러 가기", "Go fix")}</a></div>` : ""}
+      <div id="liveboard"></div>
       <section class="followhero">
         <div class="fh-media"><img src="${imgSrc(first)}" alt="">
           <span class="fh-pov">${icon("glasses")} ${T("안경 시점", "Glasses view")}</span>
@@ -1197,6 +1205,27 @@ function use() {
       </div>
     </div>
     <div class="printonly">${sheets}${record}</div>`;
+  liveBoard(); S.livePoll = setInterval(liveBoard, 3000);
+}
+/* 만든 사람의 현황판: 이 카드 묶음을 지금 따라 하는 화면들(짝 코드별 카드·도움 단계). '도와줘요'가 온 화면이 맨 위.
+   카드 번호와 도움 단계만 보이고 사진·이름은 없다. 키가 없거나 아무도 안 하면 숨는다 */
+async function liveBoard() {
+  if (S.view !== "use") return clearInterval(S.livePoll);
+  let list = [];
+  try { const r = await fetch(`/api/runs/${S.run}/live`); if (r.ok) list = await r.json(); } catch {}
+  const b = $("#liveboard"); if (!b) return;
+  const n = S.data.cards.length, called = list.filter(x => x.call);
+  if (called.length > (S.calledN || 0)) beep();  // 새 부름이 오면 짧게 소리
+  S.calledN = called.length;
+  b.innerHTML = list.length ? `<div class="livebox"><strong>${T("지금 따라 하는 중", "Following now")}</strong>
+    ${list.map(x => `<div class="liverow ${x.call ? "call" : ""}"><span class="code">${esc(x.s || "–")}</span>
+      <span>${T(`${x.i + 1} / ${n}번 카드`, `Card ${x.i + 1} / ${n}`)}${x.lv ? ` · ${T("도움", "Help")}: ${lvName(x.lv)}` : ""}</span>
+      ${x.call ? `<b>${x.why === "auto" ? T("계속 막혀 있어요", "Still stuck") : T("도와줘요", "Asked for help")} · ${Math.max(0, Math.round((Date.now() / 1000 - x.call) / 60))}${T("분", " min")}</b>
+        <button class="btn primary" onclick="ackCall('${esc(x.s)}')">${T("갈게요", "On my way")}</button>` : ""}</div>`).join("")}</div>` : "";
+}
+function ackCall(s) { fetch(`/api/runs/${S.run}/call`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ s, ack: true }) }).then(liveBoard).catch(() => {}); }
+function beep() {
+  try { const a = new AudioContext(), o = a.createOscillator(), g = a.createGain(); o.frequency.value = 880; g.gain.value = 0.08; o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + 0.15); } catch {}
 }
 /* 카드를 이미지로: 휴대폰은 공유창(메신저·문자 등)으로 카드마다 한 장씩, 그 밖에는 모든 카드를 한 장에 모아 내려받기 */
 function cardCanvas(c, n, img) {
@@ -1280,7 +1309,8 @@ function coach() {
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
     <div class="imgwrap" id="cwrap"></div>
     <div class="txt" id="ctxt" onclick="speak(true)" title="${T("다시 듣기", "Hear again")}"></div>
-    ${S.data.stage === "archived" ? "" : `<div class="vrow"><button class="verifybtn" onclick="verifyNow()">${icon("camera")} ${T("확인하기", "Check")}</button></div>`}
+    <div class="vrow">${S.data.stage === "archived" ? "" : `<button class="verifybtn" onclick="verifyNow()">${icon("camera")} ${T("확인하기", "Check")}</button>`}
+      <button class="callbtn" id="ccall" onclick="callMaker('button')">${T("도와줘요", "Ask for help")}</button></div>
     <div class="bar">
       <button class="navb" id="cprev" onclick="coachFlip(-1)">${T("◀ 이전", "◀ Back")}</button>
       <div class="mid" id="cmid"></div>
@@ -1318,6 +1348,8 @@ function coach() {
   C.sync = setInterval(async () => {
     if (S.view !== "coach") return clearInterval(C.sync);
     const d = await fetch(`/api/runs/${S.run}/now?s=${C.pair}`).then(r => r.json()).catch(() => null);
+    if (d && d.ack && d.ack !== C.ackSeen) { C.ackSeen = d.ack; if (C.called === S.idx || d.ack > Date.now() / 1000 - 5) { callBtn(true); pill(T("도와주러 오고 있어요", "Help is on the way")); speak(true, false, T("도와주러 오고 있어요.", "Help is on the way.")); } }
+    if (d && d.call && C.called !== S.idx && d.why === "glasses") { C.called = S.idx; callBtn(); }  // 안경에서 부름
     if (d && d.by === "glasses" && d.v > (C.v || 0) && !d.fin && $("#csum")) { C.v = d.v; $("#csum").remove(); C.max = {}; S.idx = d.i; coachCard(true); }  // 끝 화면 뒤 안경에서 '처음으로'
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.fin) { C.v = d.v; coachEnd(true); }  // 안경에서 '다 했어요'
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.i !== S.idx) { C.v = d.v; clog("card", { cur: S.idx + 1, to: d.i + 1, by: "glasses" }); S.idx = d.i; C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); }
@@ -1447,6 +1479,18 @@ function coachEnd(finished) {
   stopCoach(true);
   if (finished && C.voice && window.speechSynthesis) speechSynthesis.speak(utter(T("다 했어요.", "All steps done."), ui === "en" ? "en-US" : "ko-KR"));  // 멈춘 뒤에 읽어야 끊기지 않는다
 }
+/* 만든 사람 부르기: 기기가 도울 수 있는 만큼 도와도 안 될 때 사람을 잇는다. 카드마다 한 번, 카드를 넘기면 꺼진다 */
+function callMaker(why) {
+  if (C.called === S.idx) return;
+  C.called = S.idx; callBtn(); clog("call", { n: S.idx + 1, by: why });
+  fetch(`/api/runs/${S.run}/call`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ s: C.pair, call: true, why }) }).catch(() => {});
+  pill(why === "auto" ? T("계속 막혀 있어서 도와줄 사람을 불렀어요", "Still stuck, so help was called") : T("도와줄 사람을 불렀어요", "Help is called"));
+}
+function callBtn(coming) {
+  const b = $("#ccall"); if (!b) return;
+  b.disabled = C.called === S.idx;
+  b.textContent = coming ? T("오고 있어요", "Help is coming") : C.called === S.idx ? T("불렀어요", "Help called") : T("도와줘요", "Ask for help");
+}
 function sendStuck() {  // 끝 화면 → 고치기: 이 기기에서 소리·움직임까지 간 카드(기록을 끄고 있어도 이 기기 안에서만 넘긴다)
   const ns = Object.entries(C.max || {}).filter(([, lv]) => lv >= 3).map(([i]) => ({ n: S.data.cards[+i].n }));
   try { sessionStorage.setItem("stuck:" + S.run, JSON.stringify(ns)); } catch {}
@@ -1454,7 +1498,7 @@ function sendStuck() {  // 끝 화면 → 고치기: 이 기기에서 소리·�
 }
 function coachCard(quiet) {
   const cs = S.data.cards, c = cs[S.idx];
-  if (C.shown !== S.idx) { stopVoice(); C.shown = S.idx; C.lv = 1; C.since = Date.now(); C.lastMove = Date.now(); C.diffN = 0; C.diffFor = -1; $("#clive")?.setAttribute("hidden", ""); }
+  if (C.shown !== S.idx) { stopVoice(); C.called = -1; C.vdiff = 0; callBtn(); C.shown = S.idx; C.lv = 1; C.since = Date.now(); C.lastMove = Date.now(); C.diffN = 0; C.diffFor = -1; $("#clive")?.setAttribute("hidden", ""); }
   if (C.started && C.help) C.max[S.idx] = Math.max(C.max[S.idx] || 0, C.lv);
   glassesSync(false);
   if (!quiet && (!C.help || C.lv >= 3)) speak();
@@ -1491,6 +1535,7 @@ function coachStart() {
   clearInterval(C.helpTimer);
   C.helpTimer = setInterval(() => {
     if (C.help && C.running && !C.checking && C.lv < maxLv() && Date.now() - C.since > helpWait(S.data.cards[S.idx]) * 1000) helpUp();
+    else if (C.help && C.running && !C.checking && C.lv >= maxLv() && Date.now() - C.since > helpWait(S.data.cards[S.idx]) * 1500) callMaker("auto");  // 도움을 다 써도 안 되면 사람을 부른다
     if (C.running && Date.now() - C.lastMove > IDLE_MIN * 60000) coachPause();  // 켜 둔 채 잊어도 비용이 계속 나가지 않게
   }, 1000);
   C.lastMove = Date.now();
@@ -1611,7 +1656,7 @@ function liveCheck(d) {
   const box = $("#clive");
   if (d.state !== "different") { C.diffN = 0; if (d.state === "done" && box) box.hidden = true; return; }
   if (++C.diffN < 2 || C.diffFor === S.idx || !box) return;
-  C.diffFor = S.idx;
+  C.diffFor = S.idx; callMaker("auto");
   const c = S.data.cards[S.idx], hint = ui === "en" ? d.hint_en : d.hint_ko;
   box.innerHTML = `<img src="/api/runs/${S.run}/cards/${c.n}/after.jpg?t=${doneT(c)}" alt=""><div><b>${T("이렇게 되면 돼요", "It should look like this")}</b><span>${esc(hint)}</span></div>
     <button onclick="this.parentElement.hidden=true" aria-label="${T("닫기", "Close")}">${icon("x")}</button>`;

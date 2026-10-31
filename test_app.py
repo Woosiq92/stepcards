@@ -397,3 +397,22 @@ def test_stuck_cards():
     rid, d = make_run()
     (d / "records.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n")
     assert [s["n"] for s in client.get(f"/api/runs/{rid}/stuck").json()] == [2, 4]
+
+
+# 만든 사람 부르기: 키 없이(안경) 부르고, 같은 카드에 있는 동안 유지, 카드를 넘기면 꺼짐, '갈게요'로 끔, 현황판은 키가 있어야
+def test_call_maker_and_live(monkeypatch):
+    rid, d = make_run()
+    client.post(f"/api/runs/{rid}/now", json={"i": 0, "by": "coach", "lv": 4, "s": "zz01"})
+    r = client.post(f"/api/runs/{rid}/call", json={"s": "zz01", "call": True, "why": "glasses"}).json()
+    assert r["call"] and r["why"] == "glasses"
+    assert client.post(f"/api/runs/{rid}/now", json={"i": 0, "by": "coach", "lv": 4, "s": "zz01"}).json()["call"]  # 같은 카드: 유지
+    live = client.get(f"/api/runs/{rid}/live").json()
+    assert live[0]["s"] == "zz01" and live[0]["call"]
+    r = client.post(f"/api/runs/{rid}/call", json={"s": "zz01", "ack": True}).json()
+    assert r["call"] == 0 and r["ack"]
+    client.post(f"/api/runs/{rid}/call", json={"s": "zz01", "call": True})
+    assert client.post(f"/api/runs/{rid}/now", json={"i": 1, "by": "coach", "s": "zz01"}).json()["call"] == 0  # 다음 카드: 꺼짐
+    assert client.post(f"/api/runs/{rid}/call", json={"s": "nope", "call": True}).status_code == 404
+    monkeypatch.setattr(A, "APP_KEY", "k")
+    assert client.get(f"/api/runs/{rid}/live").status_code == 401
+    assert client.post(f"/api/runs/{rid}/call", json={"s": "zz01", "call": True}).status_code == 200  # 안경은 키 없이

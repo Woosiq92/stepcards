@@ -52,12 +52,14 @@ function draw(again) {
   }
   document.getElementById("m").innerHTML = `
     <div class="top"><span>${cur.i + 1} / ${n}</span>${n > 12 ? "" : `<div class="dots">${cards.map((_, j) => `<i class="${j === cur.i ? "on" : j < cur.i ? "done" : ""}"></i>`).join("")}</div>`}</div>
-    ${again ? `<div class="again">${K ? "Start with this card" : "이 카드부터 해요"}</div>` : ""}
+    ${cur.ack && Date.now() / 1000 - cur.ack < 20 ? `<div class="again">${K ? "Help is on the way" : "도와주러 오고 있어요"}</div>`
+      : again ? `<div class="again">${K ? "Start with this card" : "이 카드부터 해요"}</div>` : ""}
     <div class="pic">${cur.lv === 1 ? `<div class="msg">${K ? "Need help? Press Help" : "도움이 필요하면 '도움'을 눌러요"}</div>` : (cur.lv === 4 || (!cur.lv && c.view === "clip")) && !arch ? `<video src="/api/runs/${run}/clip/${c.n}.mp4?g=1&t=${c.frame_t ?? c.rep}" autoplay muted loop playsinline></video>`
       : `<img src="/api/runs/${run}/glass/${cur.i}.jpg?v=${cards[cur.i].v || 0}" alt="${esc(c.ko)}">`}</div>
     <div class="say">${say(c)}</div>
     <div class="bar"><button id="b" onclick="act(() => flip(-1))" ${cur.i ? "" : "disabled"}>${K ? "◀ Previous" : "◀ 이전"}</button>
-      ${cur.lv && cur.lv < (arch ? 3 : 4) ? `<button id="h" onclick="act(help)">${K ? "Help" : "도움"}</button>` : ""}
+      ${cur.lv && cur.lv < (arch ? 3 : 4) ? `<button id="h" onclick="act(help)">${K ? "Help" : "도움"}</button>`
+        : `<button id="h" onclick="act(callMaker)" ${cur.call ? "disabled" : ""}>${cur.call ? (K ? "Called" : "불렀어요") : (K ? "Ask for help" : "도와줘요")}</button>`}
       ${arch ? "" : `<button id="v" onclick="act(check)">${K ? "Check" : "확인"}</button>`}
       ${cur.i < n - 1 ? `<button id="f" onclick="act(() => flip(1))">${K ? "Next ▶" : "다음 ▶"}</button>` : `<button id="f" onclick="act(finish)">${K ? "Done ✓" : "다 했어요 ✓"}</button>`}</div>`;
   if (shown !== `${cur.i}|${cur.fin}`) { shown = `${cur.i}|${cur.fin}`; lockUntil = Date.now() + 600; }
@@ -105,6 +107,10 @@ async function finish() { await send({ i: cur.i, by: "glasses", fin: true }); }
 async function restart() { await send({ i: 0, by: "glasses", lv: cur.lv ? 1 : 0 }); }
 async function send(body) {
   const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, s: pair }) });
+  if (r.ok) { cur = await r.json(); draw(false); }
+}
+async function callMaker() {  // 도움을 다 봐도 안 되면 사람을 부른다(카드 번호만 간다)
+  const r = await fetch(`/api/runs/${run}/call`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ s: pair, call: true, why: "glasses" }) });
   if (r.ok) { cur = await r.json(); draw(false); }
 }
 async function help() {  // 도움 단계 한 칸 올리기(따라 하기 화면이 받아서 그림·소리·움직임을 더 보여 준다)

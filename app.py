@@ -56,7 +56,7 @@ JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 
 JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "coach": 900, "frame": 60, "retry": 6, "verify": 300}  # 하루 횟수. 따라 하기 900번 ≈ 30분
 JUDGE_USE = {"day": "", "n": {}}
 TEACHERS = dict(x.strip().split(":", 1) for x in os.environ.get("TEACHER_KEYS", "").split(",") if ":" in x)  # 교사별 키 "이름:키,이름:키"
-NOW_PATH = re.compile(r"/api/runs/\w+/now$")
+NOW_PATH = re.compile(r"/api/runs/\w+/(now|call)$")  # 안경은 키(쿠키)가 없다: 지금 카드 맞추기와 '도와줘요'는 키 없이
 RUN_PATH = re.compile(r"/api/runs/(\w+)(?=/|$)")
 STATE = DATA / "state.json"  # 안경·따라 하기 맞추기 상태와 심사용 키 사용량: 서버를 다시 켜도 이어지게
 
@@ -460,13 +460,45 @@ def now_key(run_id, s):
 def now_set(run_id: str, body: dict):
     n = len(read(run_dir(run_id), "cards.json")["cards"])
     key = now_key(run_id, body.get("s", ""))
-    v = NOW.get(key, {}).get("v", 0) + 1
-    NOW[key] = {"i": max(0, min(n - 1, int(body.get("i", 0)))), "again": bool(body.get("again")), "by": str(body.get("by", ""))[:10], "v": v,
+    prev = NOW.get(key, {})
+    v = prev.get("v", 0) + 1
+    i = max(0, min(n - 1, int(body.get("i", 0))))
+    keep = prev.get("i") == i and not body.get("fin")  # '도와줘요'는 그 카드에 있는 동안만 켜 둔다(다음 카드로 가면 저절로 꺼짐)
+    NOW[key] = {"call": prev.get("call", 0) if keep else 0, "why": prev.get("why", "") if keep else "","i": max(0, min(n - 1, int(body.get("i", 0)))), "again": bool(body.get("again")), "by": str(body.get("by", ""))[:10], "v": v,
                    "lv": max(0, min(4, int(body.get("lv") or 0))), "fin": bool(body.get("fin")), "t": round(time.time()),
                  # 안경 '확인' → 따라 하기 화면이 휴대폰 카메라로 찍어 확인(vreq), 결과를 안경에 돌려준다(vres)
                  "vreq": int(body.get("vreq") or 0), "vres": {k: str(v)[:80] for k, v in (body.get("vres") or {}).items()} if isinstance(body.get("vres"), dict) else None}  # fin = 마지막 단계까지 마침  # 도움 단계(0=끔, 1 글 → 4 움직임)
     save_state()
     return NOW[key]
+
+
+@app.post("/api/runs/{run_id}/call")
+def call_set(run_id: str, body: dict):
+    """만든 사람 부르기: 따라 하는 사람(안경·휴대폰)이 누르거나, 도움이 끝까지 가도 안 될 때 화면이 저절로. 만든 사람이 '갔어요'로 끈다.
+    카드 번호·도움 단계만 오가고 사진·이름은 없다"""
+    key = now_key(run_id, body.get("s", ""))
+    if key not in NOW:
+        raise HTTPException(404, "따라 하는 화면이 없습니다")
+    on = bool(body.get("call"))
+    if body.get("ack"):  # 만든 사람이 현황판에서 '갈게요': 부름은 끄고, 따라 하는 화면·안경에 '오고 있어요'
+        NOW[key] = {**NOW[key], "call": 0, "why": "", "ack": round(time.time()), "v": NOW[key].get("v", 0) + 1}
+        save_state()
+        return NOW[key]
+    NOW[key] = {**NOW[key], "call": round(time.time()) if on else 0, "why": str(body.get("why", ""))[:10] if on else "", "v": NOW[key].get("v", 0) + 1, "t": round(time.time())}
+    save_state()
+    return NOW[key]
+
+
+@app.get("/api/runs/{run_id}/live")
+def live(run_id: str, request: Request):
+    """만든 사람의 현황판: 이 카드 묶음을 지금(10분 안) 따라 하는 화면들. 기록처럼 키가 있는 사람만"""
+    if not has_key(request):
+        raise HTTPException(401, "key required")
+    now, out = time.time(), []
+    for k, st in NOW.items():
+        if k.split("|")[0] == run_id and (now - st.get("t", 0) < 600 or st.get("call")) and not st.get("fin"):
+            out.append({"s": k.split("|")[1] if "|" in k else "", "i": st.get("i", 0), "lv": st.get("lv", 0), "call": st.get("call", 0), "why": st.get("why", ""), "t": st.get("t", 0)})
+    return sorted(out, key=lambda x: (-bool(x["call"]), x["call"] or 0, -x["t"]))
 
 
 @app.get("/api/runs/{run_id}/glass/{i}.jpg")
