@@ -534,7 +534,7 @@ async function verifyNow(glassesReq) {
       ${d.result !== "done" ? `<button class="btn primary" onclick="closeVerify();verifyNow()">${icon("camera")} ${T("다시 확인", "Check again")}</button>` : ""}
       <button class="btn" onclick="closeVerify()">${d.result === "done" ? T("닫기", "Close") : T("계속해요", "Keep going")}</button></div></div>`;
   const say = [look[1], hint].filter(Boolean).join(". ");
-  if (window.speechSynthesis && (S.view !== "coach" || C.voice)) { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(say); u.lang = ui === "en" ? "en-US" : "ko-KR"; u.rate = 0.9; speechSynthesis.speak(u); }
+  if (window.speechSynthesis && (S.view !== "coach" || C.voice)) { speechSynthesis.cancel(); speechSynthesis.speak(utter(say, ui === "en" ? "en-US" : "ko-KR")); }
   if (S.view === "coach" && d.result === "different" && C.help) helpUp();  // 다르면 도움 한 칸
   if (S.view === "coach") { C.lastMove = Date.now(); glassesResult(d, glassesReq); }
 }
@@ -1221,12 +1221,31 @@ function speak(force, again, only) {
   if (!only && lang !== "en") parts.push([c.ko, "ko-KR"]);
   if (!only && lang !== "ko") parts.push([c.en, "en-US"]);
   speechSynthesis.cancel();
-  for (const [t, l] of parts) { const u = new SpeechSynthesisUtterance(t); u.lang = l; u.rate = 0.9; speechSynthesis.speak(u); }
+  for (const [t, l] of parts) { speechSynthesis.speak(utter(t, l)); }
 }
 function sayCard(c) {  // 태블릿: 문장을 누르면 읽어 준다(누를 때만)
   if (!window.speechSynthesis) return;
   speechSynthesis.cancel();
-  for (const [t, l] of [[lang !== "en" && c.ko, "ko-KR"], [lang !== "ko" && c.en, "en-US"]]) if (t) { const u = new SpeechSynthesisUtterance(t); u.lang = l; u.rate = 0.9; speechSynthesis.speak(u); }
+  for (const [t, l] of [[lang !== "en" && c.ko, "ko-KR"], [lang !== "ko" && c.en, "en-US"]]) if (t) { speechSynthesis.speak(utter(t, l)); }
+}
+/* 읽어 주는 목소리: 브라우저 기본값은 기기에 따라 로봇·장난용 음성이 걸린다 → 기기에 있는 자연스러운 음성을 고른다 */
+const ODD_VOICES = /Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Fred|Junior|Ralph|Kathy|Princess|Grandma|Grandpa|Eddy|Flo|Reed|Rocko|Sandy|Shelley|Novelty/i;
+const GOOD_VOICES = { en: [/Premium/i, /Enhanced/i, /Natural|Neural/i, /^Samantha|^Ava|^Allison|^Susan|^Zoe|^Evan|^Nathan|^Karen|^Daniel|^Moira/i, /Google US English/i, /Microsoft (Aria|Jenny|Guy)/i],
+                      ko: [/Premium/i, /Enhanced/i, /Natural|Neural/i, /^Yuna|^유나|^Jian|^Suhyun|^Minsu/i, /Google 한국/i, /Microsoft (SunHi|InJoon)/i] };
+let voices = [];
+const loadVoices = () => { voices = window.speechSynthesis?.getVoices() || []; };
+loadVoices(); if (window.speechSynthesis) speechSynthesis.onvoiceschanged = loadVoices;
+function bestVoice(langCode) {
+  const pre = langCode.slice(0, 2), want = langCode.toLowerCase(), norm = v => v.lang.replace("_", "-").toLowerCase();
+  const list = voices.filter(v => norm(v).startsWith(pre) && !ODD_VOICES.test(v.name))
+    .sort((a, b) => (norm(b) === want) - (norm(a) === want));  // 같은 지역(en-US·ko-KR) 음성 먼저
+  for (const re of GOOD_VOICES[pre] || []) { const v = list.find(v => re.test(v.name)); if (v) return v; }
+  return list.find(v => v.localService) || list[0] || null;
+}
+function utter(text, langCode) {
+  const u = new SpeechSynthesisUtterance(text), v = bestVoice(langCode);
+  u.lang = langCode; if (v) u.voice = v; u.rate = 0.95; u.pitch = 1;
+  return u;
 }
 // 안경 화면(/glasses)에 지금 카드를 알린다
 function glassesSync(again) {
@@ -1429,7 +1448,7 @@ function liveCheck(d) {
   box.innerHTML = `<img src="/api/runs/${S.run}/cards/${c.n}/after.jpg?t=${c.done_t ?? c.end}" alt=""><div><b>${T("이렇게 되면 돼요", "It should look like this")}</b><span>${esc(hint)}</span></div>
     <button onclick="this.parentElement.hidden=true" aria-label="${T("닫기", "Close")}">${icon("x")}</button>`;
   box.hidden = false;
-  if (C.voice && window.speechSynthesis) { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(hint); u.lang = ui === "en" ? "en-US" : "ko-KR"; u.rate = 0.9; speechSynthesis.speak(u); }
+  if (C.voice && window.speechSynthesis) { speechSynthesis.cancel(); speechSynthesis.speak(utter(hint, ui === "en" ? "en-US" : "ko-KR")); }
   if (C.help) helpUp();
   glassesResult({ result: "different", hint_ko: d.hint_ko, hint_en: d.hint_en });
 }
