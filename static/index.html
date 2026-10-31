@@ -418,14 +418,23 @@ function setUi(v) { ui = v; if (!langChosen) lang = v; try { localStorage.setIte
 function go(p) { location.hash = p.run ? new URLSearchParams(p).toString() : ""; }
 window.addEventListener("hashchange", route);
 
+const VIEWS = ["making", "edit", "use", "tablet", "coach"];
 async function route() {
+  const me = S.nav = (S.nav || 0) + 1;  // 빨리 연달아 옮기면 늦게 온 옛 응답은 버린다
   clearInterval(S.poll);
   stopCoach();
+  if ($("#vbox")) closeVerify();  // 확인하기 카메라가 켜진 채 다른 화면으로 가지 않게
   const p = new URLSearchParams(location.hash.slice(1));
-  const run = p.get("run");
+  const run = p.get("run"), was = `${S.run}|${S.view}`;
   if (run !== S.run) { S.run = run; S.data = null; S.undo = null; S.framesOk = false; S.idx = 0; S.open.clear(); S.strip.clear(); }
-  S.view = run ? (p.get("view") || "making") : p.get("view") === "admin" ? "admin" : "home";
-  if (run && !S.data) { const r = await fetch(`/api/runs/${run}/cards`); if (r.ok) S.data = await r.json(); else if (r.status === 404 && (await fetch(`/api/runs/${run}/progress`)).status === 404) S.view = "missing"; }
+  S.view = run ? (VIEWS.includes(p.get("view")) ? p.get("view") : "making") : p.get("view") === "admin" ? "admin" : "home";  // 모르는 화면 이름이면 기본 화면
+  if (run && !S.data) {
+    const r = await fetch(`/api/runs/${run}/cards`), data = r.ok ? await r.json() : null;
+    const gone = !r.ok && r.status === 404 && (await fetch(`/api/runs/${run}/progress`)).status === 404;
+    if (me !== S.nav) return;
+    if (data) S.data = data; else if (gone) S.view = "missing";
+  }
+  if (`${S.run}|${S.view}` !== was) scrollTo(0, 0);  // 다른 화면으로 가면 맨 위부터
   if (["edit", "use", "tablet", "coach"].includes(S.view) && !S.data) S.view = "making";
   document.body.classList.toggle("tabmode", S.view === "tablet" || S.view === "coach");
   document.body.classList.toggle("homepage", S.view === "home");  // 첫 화면은 흰 바탕(이야기형)
@@ -441,7 +450,7 @@ function header() {
   const items = [["making", T("영상 넣기", "Add video"), T("영상", "Video")], ["edit", T("카드 확인·고치기", "Check & edit"), T("고치기", "Edit")], ["use", T("따라 하며 확인", "Follow & check"), T("확인", "Check")]];  // 세 번째는 휴대폰용 짧은 이름
   $("#steps").innerHTML = items.map(([v, l, short], i) => {
     const ok = (v === "making" && done) || (v === "edit" && done && cur === "use" && !(S.data.problems || []).length);
-    const off = !S.run || (v !== "making" && !done);
+    const off = !S.run || S.view === "missing" || (v !== "making" && !done);
     return `${i ? '<span class="arrow">›</span>' : ""}<button class="step ${cur === v ? "on" : ""} ${ok ? "done" : ""}" ${off && cur !== v ? "disabled" : ""}
       onclick="${S.run ? `go({run:S.run,view:'${v}'})` : ""}"><span class="dot">${ok ? "✓" : i + 1}</span><span class="long">${l}</span><span class="short">${short}</span></button>`;
   }).join("");
