@@ -335,3 +335,27 @@ def test_health_and_export():
     import zipfile, io as _io
     names = zipfile.ZipFile(_io.BytesIO(r.content)).namelist()
     assert "cards.json" in names and "cards/01.jpg" in names
+
+
+# 기능 검수 6: 완료 기준 시각은 카드 끝 뒤 빈 시간(다음 카드 전)에서, 시작·끝이 비슷하면 알려 준다
+def test_after_time_and_similar():
+    import verify
+    rid, d = make_run([{"n": 1, "start": 0, "end": 2, "ko": "가.", "en": "A.", "object": "cup", "image": "cards/01.jpg"},
+                       {"n": 2, "start": 6, "end": 8, "ko": "나.", "en": "B.", "object": "cup", "image": "cards/02.jpg"}])
+    data = json.loads((d / "cards.json").read_text()); data["duration"] = 10
+    (d / "cards.json").write_text(json.dumps(data))
+    c1, c2 = data["cards"]
+    assert verify.after_t(d, c1) == 4          # min(end+2, 다음 시작-1)
+    assert verify.after_t(d, c2) == 9          # 마지막 카드: min(end+2, 길이-1)
+    assert verify.after_t(d, {**c1, "done_t": 1}) == 1
+    r = client.get(f"/api/runs/{rid}/cards/1/similar").json()
+    assert set(r) == {"diff", "similar"} and 0 <= r["diff"] <= 1
+
+
+# 기능 검수 8: 따라 하는 동안 카드가 고쳐지면 화면에 새로 받으라고 알린다
+def test_coach_reload_after_edit():
+    rid, d = make_run()
+    data = json.loads((d / "cards.json").read_text()); data["edited_at"] = 2.0
+    (d / "cards.json").write_text(json.dumps(data))
+    f = "data:image/jpeg;base64,AAAA"
+    assert client.post(f"/api/runs/{rid}/coach", json={"cur": 1, "frames": [f, f], "ver": 1.0}).json()["decision"] == "reload"

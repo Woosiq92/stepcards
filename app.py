@@ -339,7 +339,7 @@ def cards(run_id: str):
     caught = splits[0]["problems"] if len(splits) > 1 and splits[0].get("problems") else []
     storage.touch_used(d)
     vk = voice.kinds(d, data["cards"])
-    data = {**data, "cards": [{**c, "voice": vk.get(c["n"])} for c in data["cards"]]}
+    data = {**data, "cards": [{**c, "voice": vk.get(c["n"]), "done_auto": verify.after_t(d, {**c, "done_t": None})} for c in data["cards"]]}
     return {**data, "caught": caught, "tries": len(splits), "title_en": SEED_INDEX.get(run_id, {}).get("title_en", ""),
             "stage": storage.stage(d), "delete_on": storage.delete_on(d) if run_id not in SEED_INDEX else None}
 
@@ -424,6 +424,9 @@ def coach_check(run_id: str, body: dict):
     data = read(run_dir(run_id), "cards.json")
     frames = [f for f in body.get("frames", [])[-6:] if isinstance(f, str) and f.startswith("data:image/jpeg;base64,")]
     cur = int(body.get("cur", 1))
+    ver = body.get("ver")
+    if ver is not None and data.get("edited_at") and ver != data["edited_at"]:  # 따라 하는 동안 교사가 카드를 고쳤다 → 화면이 새 카드를 받게
+        return {"decision": "reload", "seen": 0}
     if len(frames) < 2 or not 1 <= cur <= len(data["cards"]):
         raise HTTPException(400, "사진이 부족하거나 카드 번호가 틀렸습니다")
     ref = None
@@ -651,6 +654,14 @@ def delete_voice(run_id: str, n: int):
         old.unlink()
     c = card_by_n(d, n)
     return {"ok": True, "voice": voice.kinds(d, [c]).get(n)}
+
+
+@app.get("/api/runs/{run_id}/cards/{n}/similar")
+def card_similar(run_id: str, n: int):
+    """시작과 완료 기준 장면이 비슷한지(고치기 화면이 '기준 문장을 써 주세요'를 띄우는 데 씀)"""
+    d = run_dir(run_id)
+    diff = verify.similarity(d, card_by_n(d, n))
+    return {"diff": round(diff, 3), "similar": diff < verify.SIMILAR}
 
 
 @app.get("/api/runs/{run_id}/cards/{n}/after.jpg")

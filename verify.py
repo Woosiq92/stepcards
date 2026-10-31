@@ -81,9 +81,30 @@ def ask(card, before, after, photo, local=False):
     return parse(r.output_text), u.input_tokens * pipeline.PRICE_IN + u.output_tokens * pipeline.PRICE_OUT
 
 
+def after_t(d, card):
+    """완료 기준 시각: 교사가 고른 시각, 없으면 카드가 끝난 뒤 다음 카드 전의 빈 시간(손이 결과를 가리지 않는 때가 많다)"""
+    if card.get("done_t") is not None:
+        return card["done_t"]
+    data = json.loads((d / "cards.json").read_text())
+    cs = data["cards"]
+    i = next((k for k, c in enumerate(cs) if c["n"] == card["n"]), None)
+    nxt = cs[i + 1]["start"] if i is not None and i + 1 < len(cs) else data.get("duration", card["end"])
+    return min(card["end"] + 2, nxt - 1) if nxt - card["end"] >= 2 else card["end"]
+
+
+SIMILAR = 0.05  # 시작·끝 장면의 평균 밝기 차이가 이보다 작으면 '결과가 비슷해 보이는 단계'(냅킨: 뒤집기 0.045, 끝 넣기 0.012)
+
+
+def similarity(d, card):
+    """시작·완료 기준 장면이 얼마나 다른지(0~1). 작으면 사진만으로는 됐는지 가르기 어렵다 → 기준 문장을 쓰게 한다"""
+    from PIL import Image, ImageChops, ImageStat
+    a, b = (Image.open(reference(d, card, w)).convert("L").resize((48, 27)) for w in ("before", "after"))
+    return ImageStat.Stat(ImageChops.difference(a, b)).mean[0] / 255
+
+
 def reference(d, card, which):
-    """카드의 시작(before)·끝(after) 장면 사진. 영상에서 한 번 뽑아 두고, 영상이 없으면(보관됨) 카드 사진으로 대신한다"""
-    t = card.get("done_t", card["end"]) if which == "after" else card["start"]
+    """카드의 시작(before)·완료 기준(after) 장면 사진. 영상에서 한 번 뽑아 두고, 영상이 없으면(보관됨) 카드 사진으로 대신한다"""
+    t = after_t(d, card) if which == "after" else max(0, card["start"] - 1)
     out = d / "cards" / f"{card['n']:02d}_{which}_{t}.jpg"
     if not out.exists():
         v = Path(json.loads((d / "progress.json").read_text()).get("video_path") or "")

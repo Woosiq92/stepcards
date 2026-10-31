@@ -89,10 +89,11 @@ document.addEventListener("keydown", e => {
   }
 });
 // 확인: 안경에는 카메라가 없어 따라 하기 화면(휴대폰)이 찍어서 확인하고, 결과 한 줄을 돌려준다
-let shownRes = null;
+let shownRes = undefined, pending = 0;
 async function check() {
+  pending = Date.now();
   await send({ i: cur.i, by: "glasses", lv: cur.lv || 0, vreq: Date.now() % 1e9 });
-  overlay("📷", K ? "Hold still — the phone is taking a photo" : "휴대폰 카메라로 찍어요. 잠깐 그대로", 20000);
+  overlay("📷", K ? "Hold still, the phone is taking a photo" : "휴대폰 카메라로 찍어요. 잠깐 그대로", 9000);
 }
 function overlay(head, text, ms) {
   document.getElementById("ov")?.remove();
@@ -118,10 +119,15 @@ async function flip(d) {
 async function poll() {
   try {
     const d = await (await fetch(`/api/runs/${run}/now?s=${pair}`)).json();
+    if (shownRes === undefined) shownRes = d.vres ? d.vres.id : null;  // 열 때 남아 있던 옛 결과는 띄우지 않는다
+    if (pending && Date.now() - pending > 9000) {  // 휴대폰이 답하지 않으면(따라 하기 화면이 안 열려 있음)
+      pending = 0;
+      overlay("!", K ? "Open Coach mode on the phone to check" : "휴대폰에서 따라 하기 화면을 열어 두면 확인할 수 있어요", 5000);
+    }
     if (d.vres && d.vres.id !== shownRes) {  // 확인 결과
-      shownRes = d.vres.id;
-      const head = { done: "✓", not_yet: "…", different: "↺", unclear: "?" }[d.vres.result] || "?";
-      const word = { done: K ? "Done" : "됐어요", not_yet: K ? "Not yet" : "아직이에요", different: K ? "Different" : "달라요", unclear: K ? "Can't see well" : "잘 안 보여요" }[d.vres.result] || "";
+      shownRes = d.vres.id; pending = 0;
+      const head = { done: "✓", not_yet: "…", different: "↺", unclear: "?", error: "!" }[d.vres.result] || "?";
+      const word = { done: K ? "Done" : "됐어요", not_yet: K ? "Not yet" : "아직이에요", different: K ? "Different" : "달라요", unclear: K ? "Can't see well" : "잘 안 보여요", error: "" }[d.vres.result] || "";
       overlay(head, [word, K ? d.vres.en : d.vres.ko].filter(Boolean).join(" · "), 5000);
     }
     if (d.v !== cur.v) {  // 교사가 사진·그림·움직임을 바꿨을 수 있다(처음 한 번은 이미 받았다)
