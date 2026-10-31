@@ -303,7 +303,8 @@ def teacher_agent(run_id: str, body: dict):
     instruction = str(body.get("instruction", "")).strip()[:300]
     if not data or not instruction:
         raise HTTPException(400, "부탁할 내용이 없습니다")
-    return agent.run(data["cards"], data.get("duration", len(list((d / "frames").glob("*.jpg")))), instruction)
+    return agent.run(data["cards"], data.get("duration", len(list((d / "frames").glob("*.jpg")))), instruction,
+                     "en" if body.get("lang") == "en" else "ko")  # 메모는 교사 화면 언어로
 
 
 @app.post("/api/runs/{run_id}/retry")

@@ -974,7 +974,7 @@ async function askAgent(e) {
   await saveNow();
   box.innerHTML = `<div class="askbox muted">${T("Muse Spark가 고치고, 검사기로 확인하는 중…", "Muse Spark is revising and running the checker…")}</div>`;
   let d = null;
-  try { const r = await fetch(`/api/runs/${S.run}/agent`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ instruction: q }) }); if (r.ok) d = await r.json(); } catch {}
+  try { const r = await fetch(`/api/runs/${S.run}/agent`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ instruction: q, lang: ui }) }); if (r.ok) d = await r.json(); } catch {}
   if (!d) { box.innerHTML = ""; return toast(T("답을 받지 못했어요. 다시 해 주세요.", "No answer. Please try again.")); }
   S.ask = d;
   box.innerHTML = `<div class="askbox"><b>${esc(d.note || T("고칠 안", "Proposed changes"))}</b>

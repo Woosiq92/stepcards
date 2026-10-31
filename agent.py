@@ -30,7 +30,7 @@ Rules:
 - Never drop words for direction, side, place or amount (위로, 아래로, 오른쪽, 18g ...): the learner needs them to do the step.
 - Include only the cards you change.
 Before answering, call check_cards with your changes and fix anything it reports.
-Answer with JSON only: {{"changes":[{{"n":1,"ko":"...","en":"..."}}],"note":"one short Korean sentence saying what you changed"}}"""
+Answer with JSON only: {{"changes":[{{"n":1,"ko":"...","en":"..."}}],"note":"one short {note_lang} sentence saying what you changed"}}"""
 
 
 def apply(cards, changes):
@@ -38,9 +38,9 @@ def apply(cards, changes):
     return [{**c, **{k: by[c["n"]][k] for k in ("ko", "en") if isinstance(by.get(c["n"], {}).get(k), str)}} for c in cards]
 
 
-def run(cards, duration, instruction):
+def run(cards, duration, instruction, lang="ko"):
     listing = "\n".join(f'{c["n"]}. ko: {c.get("ko", "")} | en: {c.get("en", "")} | in hand: {c.get("object", "")}' for c in cards)
-    messages = [{"role": "user", "content": [{"type": "input_text", "text": PROMPT.format(instruction=instruction, cards=listing)}]}]
+    messages = [{"role": "user", "content": [{"type": "input_text", "text": PROMPT.format(instruction=instruction, cards=listing, note_lang="English" if lang == "en" else "Korean")}]}]
     cost, checks = 0.0, 0
     for _ in range(MAX_CHECKS + 3):  # Meta API는 tool_choice "auto"만 받아서, 한도를 넘으면 도구 대신 "지금 답하라"를 돌려준다
         r = client.responses.create(model=STEP_MODEL, input=messages, store=False, tools=[TOOL])
