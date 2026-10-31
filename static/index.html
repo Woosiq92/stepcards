@@ -91,6 +91,19 @@
   .keyask form { background:var(--paper); color:var(--ink); border-radius:var(--r-l); padding:24px; width:min(380px,100%); display:grid; gap:10px; box-shadow:var(--sh-3); }
   .keyask input { font:inherit; padding:12px; border:1px solid var(--line2); border-radius:12px; } .keyask input:focus { outline:none; border-color:var(--accent); box-shadow:var(--focus); }
   .pastcard { position:relative; }
+  .vrow { display:flex; justify-content:center; padding:2px 0 4px; }
+  .verifybtn { display:inline-flex; align-items:center; gap:8px; border:2px solid rgba(255,255,255,.35); background:transparent; color:#fff; border-radius:999px; padding:10px 22px; font-size:18px; font-weight:700; min-height:48px; }
+  .verifybtn:hover { background:rgba(255,255,255,.1); }
+  .vbox { position:fixed; inset:0; z-index:40; background:rgba(11,16,21,.85); display:grid; place-items:center; padding:16px; }
+  .vcard { background:var(--paper); color:var(--ink); border-radius:var(--r-l); padding:20px; width:min(720px,100%); display:grid; gap:12px; justify-items:center; text-align:center; box-shadow:var(--sh-3); }
+  .vcard video { width:100%; max-height:52vh; border-radius:var(--r); background:#000; object-fit:cover; }
+  .vcount { font-size:64px; font-weight:800; line-height:1; color:var(--accent); min-height:64px; } .vmsg { font-weight:600; }
+  .vhead { display:flex; align-items:center; gap:8px; font-size:28px; font-weight:800; } .vhead .ico { width:30px; height:30px; }
+  .vcard.ok .vhead { color:var(--ok); } .vcard.diff .vhead { color:var(--warn); } .vcard.wait .vhead { color:var(--ink2); }
+  .vpair { display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; } .vpair figure { margin:0; } .vpair img { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:12px; background:var(--line); }
+  .vpair figcaption { font-size:13px; color:var(--muted); margin-top:4px; } .vhint { font-size:22px; font-weight:700; } .vbtns { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .afterimg { width:96px; aspect-ratio:16/9; object-fit:cover; border-radius:6px; vertical-align:middle; } .more input.wide { flex:1; min-width:200px; }
+  .recrow { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:0 0 12px; } .recrow label { display:flex; align-items:center; gap:6px; font-weight:600; } .recrow input { accent-color:var(--accent); width:18px; height:18px; }
   .adminlink { margin-top:28px; } .adminlink a { color:var(--muted); font-weight:500; }
   .adminrow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 14px; }
   .admintable { width:100%; border-collapse:collapse; background:var(--paper); border-radius:var(--r); overflow:hidden; box-shadow:var(--sh-1); font-size:13px; }
@@ -338,6 +351,7 @@ const IC = { plus:'<path d="M12 5v14M5 12h14"/>', video:'<rect x="3" y="6" width
   tablet:'<rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M11 18h2"/>', glasses:'<rect x="2.5" y="9.5" width="8" height="6.5" rx="3"/><rect x="13.5" y="9.5" width="8" height="6.5" rx="3"/><path d="M10.5 12c1-.9 2-.9 3 0M2.5 11 1.8 8.5M21.5 11l.7-2.5"/>',
   draw:'<path d="M12 3 13.6 8.4 19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6z"/><path d="M19 16v4M17 18h4"/>', x:'<path d="M6 6l12 12M18 6 6 18"/>',
   share:'<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',
+  camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
   sound:'<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.5 4.5 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/>', mute:'<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>' };
 const icon = n => `<svg class="ico" viewBox="0 0 24 24">${IC[n]}</svg>`;
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -434,6 +448,62 @@ async function adminDo(id, action) {
   toast(T("처리하는 중…", "Working…"));
   const r = await fetch(`/api/admin/runs/${id}/${action}`, { method: "POST" });
   toast(r.ok ? T("끝났어요.", "Done.") : T("하지 못했어요.", "Could not do that.")); admin();
+}
+/* 확인하기: 버튼을 누르면 3초 뒤 사진 한 장 → 그 카드의 완료 기준과 비교. 칭찬·점수 없이 결과와 할 일 한 줄만 */
+S.rec = (() => { try { return localStorage.getItem("rec") === "on"; } catch { return false; } })();
+function setRec(on) { S.rec = on; try { localStorage.setItem("rec", on ? "on" : "off"); } catch {} }
+async function showRecords() {
+  const r = await fetch(`/api/runs/${S.run}/records`);
+  if (r.status === 401) { if (await askKey()) return showRecords(); return; }
+  const rows = (await r.json()).slice(-60).reverse(), name = { done: T("됐어요", "done"), not_yet: T("아직", "not yet"), different: T("달라요", "different"), unclear: T("안 보임", "unclear") };
+  $("#records").innerHTML = rows.length ? `<table class="admintable"><thead><tr><th>${T("때", "When")}</th><th>${T("카드", "Card")}</th><th>${T("확인", "Check")}</th><th>${T("도움", "Help")}</th></tr></thead><tbody>${rows.map(x =>
+    `<tr><td>${new Date(x.t * 1000).toLocaleString()}</td><td>${S.data.cards.findIndex(c => c.n === x.n) + 1}</td><td>${x.kind === "verify" ? name[x.result] || x.result : "–"}</td><td>${x.lv ? lvName(x.lv) : "–"}</td></tr>`).join("")}</tbody></table>`
+    : `<p class="muted">${T("아직 기록이 없어요.", "No records yet.")}</p>`;
+}
+async function grabPhoto(video) {
+  const cv = document.createElement("canvas"); cv.width = 640; cv.height = Math.round(640 * video.videoHeight / video.videoWidth);
+  cv.getContext("2d").drawImage(video, 0, 0, cv.width, cv.height); return cv.toDataURL("image/jpeg", 0.8);
+}
+async function verifyNow(glassesReq) {
+  if ($("#vbox")) return;
+  const idx = S.idx, c = S.data.cards[idx], box = document.createElement("div");
+  box.id = "vbox"; box.className = "vbox";
+  box.innerHTML = `<div class="vcard"><video playsinline muted></video><div class="vcount"></div><div class="vmsg">${T("손과 물건이 보이게 들어 주세요", "Show your hands and the objects")}</div>
+    <button class="btn" onclick="closeVerify()">${T("닫기", "Close")}</button></div>`;
+  document.body.append(box);
+  const v = box.querySelector("video"), useCoach = S.view === "coach" && C.stream;
+  try {  // 따라 하기 중이면 켜져 있는 카메라를, 아니면 이 기기 카메라를 잠깐 켠다
+    v.srcObject = useCoach ? C.stream : (box.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 1280 }, audio: false }));
+    await v.play();
+  } catch { box.querySelector(".vmsg").textContent = T("카메라를 켤 수 없어요.", "Camera unavailable."); return; }
+  for (const n of [3, 2, 1]) { if (!$("#vbox")) return; box.querySelector(".vcount").textContent = n; await new Promise(r => setTimeout(r, 800)); }
+  const photo = await grabPhoto(v);
+  box.querySelector(".vcount").textContent = ""; box.querySelector(".vmsg").textContent = T("확인하는 중…", "Checking…");
+  if (!useCoach) box.stream?.getTracks().forEach(t => t.stop());
+  let d = null;
+  try { const r = await fetch(`/api/runs/${S.run}/cards/${c.n}/verify`, { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ photo, record: S.rec, lv: S.view === "coach" ? C.lv || 0 : 0, s: C.pair, local: S.view === "coach" && C.local }) }); if (r.ok) d = await r.json(); } catch {}
+  if (!$("#vbox")) return;
+  if (!d) { box.querySelector(".vmsg").textContent = T("확인하지 못했어요. 다시 해 주세요.", "Could not check. Please try again."); return; }
+  const look = { done: ["ok", T("됐어요", "Done"), "check"], not_yet: ["wait", T("아직이에요", "Not yet"), "camera"], different: ["diff", T("달라요", "Different"), "camera"], unclear: ["wait", T("잘 안 보여요", "Can't see well"), "camera"] }[d.result];
+  const hint = ui === "en" ? d.hint_en : d.hint_ko, last = idx === S.data.cards.length - 1;
+  box.innerHTML = `<div class="vcard ${look[0]}"><div class="vhead">${icon(look[2])} ${look[1]}</div>
+    ${d.result === "unclear" ? "" : `<div class="vpair"><figure><img src="/api/runs/${S.run}/cards/${c.n}/after.jpg?t=${c.done_t ?? c.end}" alt=""><figcaption>${T("이렇게 되면 돼요", "Should look like")}</figcaption></figure>
+      <figure><img src="${photo}" alt=""><figcaption>${T("지금", "Now")}</figcaption></figure></div>`}
+    ${hint ? `<div class="vhint">${esc(hint)}</div>` : ""}
+    <div class="vbtns">${d.result === "done" && !last ? `<button class="btn primary" onclick="closeVerify();${S.view === "coach" ? "coachFlip(1)" : "flip(1)"}">${T("다음 카드로", "Next card")} ▶</button>` : ""}
+      ${d.result !== "done" ? `<button class="btn primary" onclick="closeVerify();verifyNow()">${icon("camera")} ${T("다시 확인", "Check again")}</button>` : ""}
+      <button class="btn" onclick="closeVerify()">${d.result === "done" ? T("닫기", "Close") : T("계속해요", "Keep going")}</button></div></div>`;
+  const say = [look[1], hint].filter(Boolean).join(". ");
+  if (window.speechSynthesis && (S.view !== "coach" || C.voice)) { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(say); u.lang = ui === "en" ? "en-US" : "ko-KR"; u.rate = 0.9; speechSynthesis.speak(u); }
+  if (S.view === "coach" && d.result === "different" && C.help) helpUp();  // 다르면 도움 한 칸
+  if (S.view === "coach") { C.lastMove = Date.now(); glassesResult(d, glassesReq); }
+}
+function closeVerify() { const b = $("#vbox"); b?.stream?.getTracks().forEach(t => t.stop()); b?.remove(); }
+function glassesResult(d, req) {  // 안경 화면에도 결과 한 줄
+  fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ i: S.idx, by: "coach", s: C.pair, lv: C.help ? C.lv : 0, vres: { result: d.result, ko: d.hint_ko, en: d.hint_en, id: req || Date.now() } }) })
+    .then(r => r.json()).then(x => { C.v = x.v; }).catch(() => {});
 }
 function missing() {
   $("#main").innerHTML = `<h2>${T("이 카드 묶음이 없어요", "This card set doesn't exist")}</h2>
@@ -699,6 +769,9 @@ function rowHtml(c, i, iss = []) {
       ${open ? `<div class="more">
         <label>${T("영상", "Video from")} <input type="number" min="0" value="${c.start}" onchange="setTime(${i},'start',this.value)">${T("초부터", "s to")}
           <input type="number" min="0" value="${c.end}" onchange="setTime(${i},'end',this.value)">${T("초까지", "s")}</label>
+        <label>${T("완료 기준 사진", "Done photo")} <img class="afterimg" src="/api/runs/${S.run}/cards/${c.n}/after.jpg?t=${c.done_t ?? c.end}" alt="" loading="lazy"> ${T("영상", "at")}
+          <input type="number" min="0" value="${c.done_t ?? c.end}" onchange="setCheck(${i},'done_t',this.value)">${T("초", "s")}</label>
+        <label>${T("완료 기준 문장(선택)", "Done when (optional)")} <input type="text" class="wide" maxlength="80" value="${esc(c.check || "")}" placeholder="${T("예: 냅킨이 반으로 접혀 직사각형이에요", "e.g. the napkin is folded in half into a rectangle")}" onchange="setCheck(${i},'check',this.value)"></label>
         <label>${T("손에 든 것(영어로)", "Object in hand (English)")} <input type="text" value="${esc(c.object)}" placeholder="${T("예: glass cup", "e.g. glass cup")}" onchange="setObject(${i},this.value)">
           <span class="muted">${T("바꾸면 사진에서 다시 찾아요", "Changing it searches the photo again")}</span></label>
         ${c.box ? `<label><input type="checkbox" ${c.hl_off ? "" : "checked"} onchange="setHl(${i},this.checked)"> ${T("사진에 주황 테두리 보이기", "Show the orange outline")}</label>`
@@ -815,6 +888,12 @@ function setTime(i, k, v) {
   changed();
 }
 function setHl(i, on) { S.data.cards[i].hl_off = !on; changed(); }
+function setCheck(i, k, v) {  // 확인하기의 완료 기준: 기준 사진 시각(done_t, 카드 구간 안) 또는 기준 문장
+  const c = S.data.cards[i];
+  if (k === "done_t") { const t = Math.round(+v); if (!(t >= c.start && t <= c.end)) return toast(T(`카드 구간(${c.start}~${c.end}초) 안에서 골라 주세요.`, `Pick a time within this card (${c.start}–${c.end} s).`)); c.done_t = t; }
+  else c.check = v.trim().slice(0, 80);
+  changed();
+}
 function setObject(i, v) {
   const c = S.data.cards[i];
   c.object = v.trim(); c.look = "";  // 예전 생김새 설명은 새 이름과 맞지 않을 수 있다
@@ -908,6 +987,10 @@ function use() {
           <button class="btn" onclick="shareLink('${to}')">${icon("share")} ${T("링크 보내기", "Send link")}</button></div>`).join("")}
         <p class="muted">${/^(127\.|localhost|\[::1\])/.test(location.hostname) ? T("지금은 이 맥 안에서만 열리는 주소예요. 배포한 주소에서 열면 다른 기기에서도 열려요.", "This address only works on this Mac. Open StepCards from your deployed address to use it on other devices.")
           : T("보기는 키 없이 열려요. 학생 기기에서 카드를 만들거나 고치려면 접속 키가 필요해요.", "Viewing needs no key. Making or editing cards on a learner device needs the access key.")}</p></div>
+      <div class="recrow"><label><input type="checkbox" ${S.rec ? "checked" : ""} onchange="setRec(this.checked)"> ${T("이 기기에서 학습 기록 남기기", "Keep learning records on this device")}</label>
+        <span class="muted">${T("이름 없이 날짜·카드·확인 결과·도움 단계만. 사진은 남기지 않아요.", "No names: date, card, check result and help level only. No photos.")}</span>
+        <button class="btn" onclick="showRecords()">${T("기록 보기", "View records")}</button></div>
+      <div id="records"></div>
       <div class="langrow"><span class="muted">${T("카드 글자", "Card language")}</span> ${segHtml()}
         <span style="flex:1"></span><button class="btn" onclick="printWhat('record')">${icon("print")} ${T("기록지 인쇄", "Print record sheet")}</button><a class="btn" href="/api/runs/${S.run}/export.zip" download>${icon("share")} ${T("백업(.zip)", "Backup (.zip)")}</a><button class="btn" onclick="shareCards(this)">${icon("share")} ${navigator.canShare ? T("이미지로 보내기", "Send as images") : T("이미지로 저장", "Save as image")}</button></div>
       <h3>${T("인쇄 미리보기", "Print preview")}</h3>
@@ -975,6 +1058,7 @@ function tablet() {
     <button class="exit" onclick="go({run:S.run,view:'use'})">${icon("x")}${T("나가기", "Exit")}</button>
     <div class="imgwrap">${media(c)}<div class="zone l" onclick="flip(-1)" role="button" aria-label="${T("이전 카드", "Previous card")}"></div><div class="zone r" onclick="flip(1)" role="button" aria-label="${T("다음 카드", "Next card")}"></div></div>
     <div class="txt" onclick="sayCard(S.data.cards[S.idx])" title="${T("눌러서 듣기", "Tap to hear")}">${text(c)} <span class="hear">${icon("sound")}</span></div>
+    <div class="vrow"><button class="verifybtn" onclick="verifyNow()">${icon("camera")} ${T("확인하기", "Check")}</button></div>
     <div class="bar">
       <button class="navb" onclick="flip(-1)" ${S.idx ? "" : "disabled"}>${T("◀ 이전", "◀ Back")}</button>
       <div class="mid">${dotsHtml(cs.length, S.idx)}${S.idx + 1} / ${cs.length}</div>
@@ -998,6 +1082,7 @@ function coach() {
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
     <div class="imgwrap" id="cwrap"></div>
     <div class="txt" id="ctxt" onclick="speak(true)" title="${T("다시 듣기", "Hear again")}"></div>
+    <div class="vrow"><button class="verifybtn" onclick="verifyNow()">${icon("camera")} ${T("확인하기", "Check")}</button></div>
     <div class="bar">
       <button class="navb" id="cprev" onclick="coachFlip(-1)">${T("◀ 이전", "◀ Back")}</button>
       <div class="mid" id="cmid"></div>
@@ -1030,6 +1115,7 @@ function coach() {
     const d = await fetch(`/api/runs/${S.run}/now?s=${C.pair}`).then(r => r.json()).catch(() => null);
     if (d && d.by === "glasses" && d.v > (C.v || 0) && d.fin) { C.v = d.v; coachEnd(true); }  // 안경에서 '다 했어요'
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.i !== S.idx) { C.v = d.v; S.idx = d.i; C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); }
+    else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.vreq && d.vreq !== C.vreqDone) { C.v = d.v; C.vreqDone = d.vreq; verifyNow(d.vreq); }
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && C.help && d.lv > C.lv) { C.v = d.v; helpUp(); }  // 안경에서 '도움'을 눌렀다
   }, 1000);
   C.local = false;
@@ -1102,6 +1188,8 @@ function coachEnd(finished) {
   if ($("#csum")) return;
   const rec = Object.entries(C.max || {});
   const by = [1, 2, 3, 4].map(l => rec.filter(([, m]) => m === l).map(([i]) => +i + 1));
+  if (S.rec && Object.keys(C.max || {}).length)
+    fetch(`/api/runs/${S.run}/records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ s: C.pair, rows: Object.entries(C.max).map(([i, lv]) => ({ n: S.data.cards[+i].n, lv })) }) }).catch(() => {});
   if (finished) fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: S.idx, by: "coach", fin: true, s: C.pair }) }).catch(() => {});
   if (finished) speak(false, false, T("다 했어요.", "All steps done."));
   $(".coachv").insertAdjacentHTML("beforeend", `<div class="cstart" id="csum"><div class="glyph">${icon("check")}</div><div class="t">${finished ? T("다 했어요", "All steps done") : T("오늘 따라 하기", "Today's run")}</div>

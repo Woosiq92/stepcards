@@ -58,6 +58,7 @@ function draw(again) {
     <div class="say">${say(c)}</div>
     <div class="bar"><button id="b" onclick="act(() => flip(-1))" ${cur.i ? "" : "disabled"}>${K ? "◀ Previous" : "◀ 이전"}</button>
       ${cur.lv && cur.lv < 4 ? `<button id="h" onclick="act(help)">${K ? "Help" : "도움"}</button>` : ""}
+      <button id="v" onclick="act(check)">${K ? "Check" : "확인"}</button>
       ${cur.i < n - 1 ? `<button id="f" onclick="act(() => flip(1))">${K ? "Next ▶" : "다음 ▶"}</button>` : `<button id="f" onclick="act(finish)">${K ? "Done ✓" : "다 했어요 ✓"}</button>`}</div>`;
   if (shown !== `${cur.i}|${cur.fin}`) { shown = `${cur.i}|${cur.fin}`; lockUntil = Date.now() + 600; }
   const keep = document.getElementById(had);
@@ -80,13 +81,25 @@ addEventListener("popstate", () => {
 document.addEventListener("keydown", e => {
   const b = document.getElementById("b"), f = document.getElementById("f");
   if (!b) return;
-  const h = document.getElementById("h");
-  const pick = e.key === "ArrowLeft" ? b : e.key === "ArrowRight" ? f : (e.key === "ArrowUp" || e.key === "ArrowDown") ? h : null;
+  const h = document.getElementById("h"), v = document.getElementById("v");
+  const pick = e.key === "ArrowLeft" ? b : e.key === "ArrowRight" ? f : e.key === "ArrowUp" ? (h || v) : e.key === "ArrowDown" ? v : null;
   if (pick && !pick.disabled) { pick.focus(); e.preventDefault(); return; }
-  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"].includes(e.key) && ![b, f, h].includes(document.activeElement)) {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"].includes(e.key) && ![b, f, h, v].includes(document.activeElement)) {
     (f.disabled ? b : f).focus(); e.preventDefault();
   }
 });
+// 확인: 안경에는 카메라가 없어 따라 하기 화면(휴대폰)이 찍어서 확인하고, 결과 한 줄을 돌려준다
+let shownRes = null;
+async function check() {
+  await send({ i: cur.i, by: "glasses", lv: cur.lv || 0, vreq: Date.now() % 1e9 });
+  overlay("📷", K ? "Hold still — the phone is taking a photo" : "휴대폰 카메라로 찍어요. 잠깐 그대로", 20000);
+}
+function overlay(head, text, ms) {
+  document.getElementById("ov")?.remove();
+  const o = document.createElement("div"); o.id = "ov"; o.className = "ask";
+  o.innerHTML = `<div class="msg" style="margin:0;font-size:44px">${head}</div><div class="msg" style="margin:0">${esc(text)}</div>`;
+  document.body.append(o); setTimeout(() => o.remove(), ms);
+}
 async function finish() { await send({ i: cur.i, by: "glasses", fin: true }); }
 async function restart() { await send({ i: 0, by: "glasses", lv: cur.lv ? 1 : 0 }); }
 async function send(body) {
@@ -105,6 +118,12 @@ async function flip(d) {
 async function poll() {
   try {
     const d = await (await fetch(`/api/runs/${run}/now?s=${pair}`)).json();
+    if (d.vres && d.vres.id !== shownRes) {  // 확인 결과
+      shownRes = d.vres.id;
+      const head = { done: "✓", not_yet: "…", different: "↺", unclear: "?" }[d.vres.result] || "?";
+      const word = { done: K ? "Done" : "됐어요", not_yet: K ? "Not yet" : "아직이에요", different: K ? "Different" : "달라요", unclear: K ? "Can't see well" : "잘 안 보여요" }[d.vres.result] || "";
+      overlay(head, [word, K ? d.vres.en : d.vres.ko].filter(Boolean).join(" · "), 5000);
+    }
     if (d.v !== cur.v) {  // 교사가 사진·그림·움직임을 바꿨을 수 있다(처음 한 번은 이미 받았다)
       if (cur.v !== -1) cards = (await (await fetch(`/api/runs/${run}/cards`)).json()).cards;
       if (!cards.length) { document.getElementById("m").innerHTML = `<div class="msg" id="msg">${K ? "No card set" : "카드 묶음이 없어요"}</div>`; cur = d; }

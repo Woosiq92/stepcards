@@ -149,7 +149,7 @@ def backup(runs, out_dir, seeds):
         for d in sorted(runs.iterdir()):
             if not d.is_dir() or d.name in seeds or not (d / "cards.json").exists():
                 continue
-            for f in ["cards.json", "owner.txt", "audit.jsonl"] + [f"cards/{c.name}" for c in sorted((d / "cards").glob("*"))]:
+            for f in ["cards.json", "owner.txt", "audit.jsonl", "records.jsonl"] + [f"cards/{c.name}" for c in sorted((d / "cards").glob("*"))]:
                 if (d / f).exists():
                     z.write(d / f, f"{d.name}/{f}")
     os.replace(tmp, out)

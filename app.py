@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw
 import coach
 import pipeline
 import storage
+import verify
 from check import check
 
 ROOT = Path(__file__).parent
@@ -50,7 +51,7 @@ mark_interrupted()
 
 APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정: 키를 아는 사람만 크레딧을 쓰고 카드를 바꾸게
 JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 수 있지만 하루 한도가 있다(제출 설명에 적는 키)
-JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "coach": 900, "frame": 60, "retry": 6}  # 하루 횟수. 따라 하기 900번 ≈ 30분
+JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "coach": 900, "frame": 60, "retry": 6, "verify": 300}  # 하루 횟수. 따라 하기 900번 ≈ 30분
 JUDGE_USE = {"day": "", "n": {}}
 TEACHERS = dict(x.strip().split(":", 1) for x in os.environ.get("TEACHER_KEYS", "").split(",") if ":" in x)  # 교사별 키 "이름:키,이름:키"
 NOW_PATH = re.compile(r"/api/runs/\w+/now$")
@@ -121,7 +122,8 @@ async def need_key(request: Request, call_next):
     if not role:
         return JSONResponse({"error": "key required"}, 401)
     m = RUN_PATH.match(path)
-    if m and role.startswith("teacher:") and not path.endswith("/coach") and owner_of(m.group(1)) != role:
+    use_only = path.endswith(("/coach", "/verify", "/records"))  # 따라 하기·확인하기·기록은 누구 카드 묶음이든(고치기가 아님)
+    if m and role.startswith("teacher:") and not use_only and owner_of(m.group(1)) != role:
         return JSONResponse({"error": "another teacher's card set"}, 403)
     if role == "judge":
         kind = next((k for k in JUDGE_LIMITS if path.rstrip("/").endswith(k)), None)
@@ -134,7 +136,7 @@ async def need_key(request: Request, call_next):
             JUDGE_USE["n"][kind] = JUDGE_USE["n"].get(kind, 0) + 1
             save_state()
     request.state.who = role
-    if m and not path.endswith("/coach") and (RUNS / m.group(1)).is_dir():  # 누가 무엇을 바꿨는지(따라 하기 판단은 너무 잦아서 뺀다)
+    if m and not use_only and (RUNS / m.group(1)).is_dir():  # 누가 무엇을 바꿨는지(따라 하기 판단은 너무 잦아서 뺀다)
         with (RUNS / m.group(1) / "audit.jsonl").open("a") as f:
             f.write(json.dumps({"t": round(time.time()), "who": role, "do": f"{request.method} {path[len(m.group(0)):] or '/'}"}, ensure_ascii=False) + "\n")
     return await call_next(request)
@@ -448,7 +450,9 @@ def now_set(run_id: str, body: dict):
     key = now_key(run_id, body.get("s", ""))
     v = NOW.get(key, {}).get("v", 0) + 1
     NOW[key] = {"i": max(0, min(n - 1, int(body.get("i", 0)))), "again": bool(body.get("again")), "by": str(body.get("by", ""))[:10], "v": v,
-                   "lv": max(0, min(4, int(body.get("lv") or 0))), "fin": bool(body.get("fin")), "t": round(time.time())}  # fin = 마지막 단계까지 마침  # 도움 단계(0=끔, 1 글 → 4 움직임)
+                   "lv": max(0, min(4, int(body.get("lv") or 0))), "fin": bool(body.get("fin")), "t": round(time.time()),
+                 # 안경 '확인' → 따라 하기 화면이 휴대폰 카메라로 찍어 확인(vreq), 결과를 안경에 돌려준다(vres)
+                 "vreq": int(body.get("vreq") or 0), "vres": {k: str(v)[:80] for k, v in (body.get("vres") or {}).items()} if isinstance(body.get("vres"), dict) else None}  # fin = 마지막 단계까지 마침  # 도움 단계(0=끔, 1 글 → 4 움직임)
     save_state()
     return NOW[key]
 
@@ -576,6 +580,61 @@ def frames(run_id: str):
     if storage.stage(d) == "archived":
         raise HTTPException(409, "보관된 카드 묶음입니다")
     return {"ok": storage.ensure_frames(d)}
+
+
+def card_by_n(d, n):
+    c = next((c for c in card_list(d) if c["n"] == n), None)
+    if c is None:
+        raise HTTPException(404, "없는 카드입니다")
+    return c
+
+
+@app.post("/api/runs/{run_id}/cards/{n}/verify")
+def verify_card(run_id: str, n: int, body: dict):
+    """확인하기: 학생 사진 한 장을 그 카드의 완료 기준과 비교. 사진은 저장하지 않는다"""
+    d = run_dir(run_id)
+    c = card_by_n(d, n)
+    photo = body.get("photo", "")
+    if not (isinstance(photo, str) and photo.startswith("data:image/jpeg;base64,")) or len(photo) > 3_000_000:
+        raise HTTPException(400, "사진이 없거나 너무 큽니다")
+    before, after = (pipeline.data_url(verify.reference(d, c, w)) for w in ("before", "after"))
+    t0 = time.time()
+    ans, cost = verify.ask(c, before, after, photo, bool(body.get("local")))
+    out = {**verify.tidy(ans, c), "latency": round(time.time() - t0, 2), "cost": round(cost, 4)}
+    if body.get("record"):
+        add_record(d, {"kind": "verify", "n": n, "result": out["result"], "lv": int(body.get("lv") or 0), "s": str(body.get("s", ""))[:8]})
+    return out
+
+
+@app.get("/api/runs/{run_id}/cards/{n}/after.jpg")
+def card_after(run_id: str, n: int):
+    """완료 기준 사진(시범 영상에서 그 단계가 끝난 순간)"""
+    d = run_dir(run_id)
+    return FileResponse(inside(d, str(verify.reference(d, card_by_n(d, n), "after").relative_to(d))))
+
+
+def add_record(d, row):
+    """교사가 '기록 남기기'를 켰을 때만: 이름 없이 날짜·카드·결과·도움 단계"""
+    with (d / "records.jsonl").open("a") as f:
+        f.write(json.dumps({"t": round(time.time()), **row}, ensure_ascii=False) + "\n")
+
+
+@app.post("/api/runs/{run_id}/records")
+def post_records(run_id: str, body: dict):
+    """따라 하기 끝 화면의 카드별 도움 단계(기록 켰을 때)"""
+    d = run_dir(run_id)
+    for r in (body.get("rows") or [])[:200]:
+        add_record(d, {"kind": "coach", "n": int(r.get("n", 0)), "lv": int(r.get("lv", 0)), "s": str(body.get("s", ""))[:8]})
+    return {"ok": True}
+
+
+@app.get("/api/runs/{run_id}/records")
+def get_records(run_id: str, request: Request):
+    """학습 기록은 키가 있는 사람만(보기 공개와 달리)"""
+    if not has_key(request):
+        raise HTTPException(401, "key required")
+    f = run_dir(run_id) / "records.jsonl"
+    return [json.loads(x) for x in f.read_text().splitlines() if x.strip()] if f.exists() else []
 
 
 @app.get("/api/health")
