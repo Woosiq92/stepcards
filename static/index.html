@@ -46,7 +46,6 @@
   h2 { margin:0 0 6px; font-size:28px; line-height:1.25; font-weight:700; letter-spacing:-.025em; } h3 { margin:40px 0 14px; font-size:18px; font-weight:700; letter-spacing:-.015em; }
   .sub { color:var(--muted); margin:0 0 24px; font-size:16px; max-width:680px; }
   .muted { color:var(--muted); font-size:14px; } .red { color:var(--bad); font-weight:600; }
-  .eyebrow { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--accent-ink); background:var(--accent-soft); padding:4px 10px; border-radius:999px; margin-bottom:14px; }
   .btn { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line2); background:var(--paper); padding:8px 16px; border-radius:999px; font-size:14px; font-weight:600; color:var(--ink); transition:background .15s, border-color .15s; }
   .btn:hover:not(:disabled) { background:var(--raised); border-color:var(--muted); }
   .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
@@ -57,9 +56,6 @@
   .issue::before { content:"!"; flex:none; width:18px; height:18px; border-radius:50%; background:var(--bad); color:#fff; font-size:12px; font-weight:800; display:grid; place-items:center; margin-top:1px; }
 
   /* 처음 화면 */
-  .hero > div { min-width:0; }
-  .hero { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); gap:32px; align-items:center; margin-bottom:8px; }
-  .hero h2 { font-size:40px; letter-spacing:-.035em; }
   .drop { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; border:1.5px dashed var(--line2); border-radius:var(--r-l); background:var(--paper); padding:48px 24px; text-align:center; cursor:pointer; transition:.15s; box-shadow:var(--sh-1); min-height:280px; }
   .drop:hover, .drop.over { border-color:var(--accent); background:var(--accent-soft); }
   .drop .big { font-size:18px; font-weight:700; }
@@ -67,11 +63,49 @@
   .drop .plus svg { width:28px; height:28px; stroke-width:2.2; }
   .drop .btn { margin-top:10px; pointer-events:none; }
   .drop .makewhere { margin-top:6px; } .drop #mkwhered { max-width:360px; font-size:13px; }
-  .flow { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:40px 0 8px; }
-  .flow div { background:var(--paper); border-radius:var(--r); padding:20px; box-shadow:var(--sh-1); }
-  .flow .fi { width:40px; height:40px; border-radius:12px; background:var(--accent-soft); color:var(--accent); display:grid; place-items:center; margin-bottom:12px; }
-  .flow .fi .ico { width:22px; height:22px; }
-  .flow strong { display:block; font-size:16px; margin-bottom:2px; }
+  /* 첫 화면: 큰 영상 한 장면과 한 문장씩 이어지는 이야기형(넓은 여백, 굵기 500의 큰 제목, 파란 알약 단추) */
+  body.homepage { background:#fff; } body.homepage .drop { border-color:var(--line2); }
+  .full { width:100vw; margin-left:calc(50% - 50vw); }
+  .center { text-align:center; margin-left:auto; margin-right:auto; }
+  h2.sect { font-size:40px; font-weight:500; letter-spacing:-.02em; margin:88px auto 28px; max-width:760px; }
+  .pill { display:inline-flex; align-items:center; gap:6px; background:var(--accent); color:#fff; border-radius:100px; padding:12px 22px; font-size:16px; font-weight:700; }
+  .pill:hover { background:var(--accent-h); text-decoration:none; } .pill.ghost { background:rgba(255,255,255,.16); backdrop-filter:blur(8px); } .pill.ghost:hover { background:rgba(255,255,255,.26); }
+  .mhero { position:relative; height:min(78vh,720px); min-height:460px; margin-top:-32px; display:grid; place-items:center; overflow:hidden; background:var(--dark); }
+  .mbg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:saturate(1.05); }
+  .mshade { position:absolute; inset:0; background:linear-gradient(180deg, rgba(11,16,21,.25), rgba(11,16,21,.55)); }
+  .mcopy { position:relative; text-align:center; color:#fff; max-width:820px; padding:0 20px; }
+  .mcopy h2 { font-size:clamp(32px,4.4vw,52px); font-weight:500; line-height:1.18; letter-spacing:-.02em; margin:0 0 14px; }
+  .mcopy p { font-size:18px; opacity:.9; margin:0 auto 24px; max-width:620px; } .mbtns { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .mpause { position:absolute; right:24px; bottom:24px; width:52px; height:52px; border-radius:50%; border:2px solid rgba(255,255,255,.6); background:rgba(11,16,21,.35); color:#fff; font-size:14px; }
+  .mstory { padding:96px 20px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:18px; }
+  .mstory.dark { background:#000; color:#fff; } .mstory h2 { font-size:clamp(30px,4vw,48px); font-weight:500; letter-spacing:-.02em; margin:0; }
+  .mstory p { max-width:620px; margin:0; font-size:17px; color:var(--muted); } .mstory.dark p { color:#a9b8c6; }
+  .mframe { width:min(720px,100%); border-radius:28px; overflow:hidden; position:relative; box-shadow:0 30px 80px rgba(0,0,0,.5); }
+  .mframe video { width:100%; display:block; }
+  .ladder { position:absolute; left:50%; bottom:16px; transform:translateX(-50%); display:flex; gap:6px; background:rgba(11,16,21,.6); backdrop-filter:blur(10px); padding:6px; border-radius:999px; }
+  .ladder span { padding:6px 14px; border-radius:999px; font-size:14px; font-weight:700; color:#a9b8c6; animation:lad 8s infinite; animation-delay:calc(var(--i) * 2s); }
+  @keyframes lad { 0%, 24% { background:var(--accent); color:#fff; } 25%, 100% { background:transparent; color:#a9b8c6; } }
+  @media (prefers-reduced-motion: reduce) { .ladder span { animation:none; } }
+  .mpair { display:grid; grid-template-columns:1fr 1fr; gap:16px; width:min(820px,100%); } .mpair figure { margin:0; position:relative; }
+  .mpair img { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:24px; box-shadow:var(--sh-2); } .mpair figcaption { margin-top:8px; color:var(--muted); font-size:14px; }
+  .okbadge { position:absolute; top:14px; right:14px; display:inline-flex; align-items:center; gap:6px; background:var(--ok); color:#fff; padding:8px 14px; border-radius:999px; font-size:15px; }
+  .okbadge .ico { width:18px; height:18px; }
+  .mstart { padding:88px 0 8px; } .mstart h2 { font-size:clamp(30px,4vw,44px); font-weight:500; margin:0 0 10px; } .mstart .sub { margin-bottom:28px; }
+  .mstart .drop { max-width:760px; margin:0 auto; } .mstart .trust { justify-content:center; margin-top:16px; }
+  .news { display:grid; grid-template-columns:repeat(6,1fr); gap:28px 24px; } .newscard { grid-column:span 2; } .newscard:nth-child(4) { grid-column:2 / span 2; }
+  .newscard { color:var(--ink); font-weight:400; display:flex; flex-direction:column; gap:6px; } .newscard:hover { text-decoration:none; }
+  .newscard img { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:24px; transition:transform .2s; } .newscard:hover img { transform:scale(1.015); }
+  .newscard .kicker { font-size:13px; color:var(--muted); font-weight:600; margin-top:6px; } .newscard strong { font-size:18px; font-weight:500; line-height:1.35; }
+  .newscard .seemore { display:inline-flex; align-items:center; gap:8px; font-size:14px; } .newscard .seemore .ico { width:26px; height:26px; padding:5px; border:1px solid var(--line2); border-radius:50%; }
+  @media (max-width:860px) { .news { grid-template-columns:1fr 1fr; } .newscard, .newscard:nth-child(4) { grid-column:auto; } }
+  @media (max-width:560px) { .news, .mpair { grid-template-columns:1fr; } h2.sect { font-size:30px; margin-top:64px; } .mstory { padding:64px 16px; } }
+  .trust { display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:10px; font-size:13px; color:var(--ink2); font-weight:600; }
+  .trust span { display:inline-flex; align-items:center; gap:4px; } .trust .ico { width:15px; height:15px; color:var(--ok); }
+  .where { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .where > div { background:var(--paper); border-radius:var(--r); padding:16px 18px; box-shadow:var(--sh-1); display:flex; flex-direction:column; gap:4px; border-top:4px solid var(--accent); }
+  .where > div:nth-child(2) { border-top-color:var(--ok); } .where > div:nth-child(3) { border-top-color:var(--ink); }
+  .where .m { font-size:12px; font-weight:700; color:var(--muted); } .where .muted { font-size:13px; }
+  @media (max-width:720px) { .where { grid-template-columns:1fr; } }
   .uses { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
   .uses div { background:var(--paper); border-radius:var(--r); padding:16px; box-shadow:var(--sh-1); display:flex; flex-direction:column; gap:4px; }
  
@@ -80,11 +114,6 @@
   .uses .exs { margin-top:auto; padding-top:10px; display:flex; flex-direction:column; gap:6px; } .uses .ex { font-size:13px; } .uses .muted { font-size:13px; }
   @media (max-width:1000px) { .uses { grid-template-columns:repeat(2,1fr); } }
   @media (max-width:560px) { .uses { grid-template-columns:1fr; } }
-  .heroex { margin:4px 0 14px; } .heroex > div { display:flex; flex-wrap:wrap; gap:8px; padding:6px 0 4px; }
-  @media (max-width:720px) { .heroex > div { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; } }
-  .heroex a { flex:none; display:flex; align-items:center; gap:8px; background:var(--paper); border-radius:999px; padding:4px 14px 4px 4px; box-shadow:var(--sh-1); color:var(--ink); font-size:13px; font-weight:600; max-width:240px; }
-  .heroex a:hover { text-decoration:none; box-shadow:var(--sh-2); } .heroex img { width:44px; height:32px; object-fit:cover; border-radius:999px; } .heroex span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .models { font-size:13px; color:var(--muted); margin:0; line-height:1.7; } .models b { color:var(--ink2); font-weight:700; }
   .past { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
   .pastcard { background:var(--paper); border-radius:var(--r); overflow:hidden; color:inherit; font-weight:400; box-shadow:var(--sh-1); transition:box-shadow .15s, transform .15s; }
   .keyask { position:fixed; inset:0; z-index:50; background:rgba(11,16,21,.55); display:grid; place-items:center; padding:16px; }
@@ -289,11 +318,10 @@
   .cstart .seg { background:var(--dark2); } .cstart .seg button { color:#a9b8c6; } .cstart .seg button.on { background:var(--accent); color:#fff; box-shadow:none; }
   .cstart .linkbtn { color:#7fb6ff; }
   [hidden] { display:none !important; }
-  @media (max-width:860px) { .hero { grid-template-columns:1fr; } .hero h2 { font-size:32px; } }
   @media (max-width:720px) {
     header { padding:0 16px; gap:10px; } .logo span:last-child { display:none; } .step { padding:6px 8px; font-size:0; gap:0; } .step .dot { font-size:12px; } .step.on { font-size:13px; gap:6px; padding-right:12px; }
     .choices.three { grid-template-columns:1fr; } .coachv .cam { width:130px; }
-    main { padding:20px 16px 48px; } .flow, .choices { grid-template-columns:1fr; }
+    main { padding:20px 16px 48px; } .choices { grid-template-columns:1fr; }
     .row { grid-template-columns:1fr; } .row .n { position:absolute; top:26px; left:26px; z-index:2; }
     .tab .navb { padding:14px 18px; min-width:0; font-size:17px; white-space:nowrap; }
     .tab .mid { flex:1; min-width:0; } .dots i { flex:1; max-width:22px; min-width:4px; } .dots { flex-wrap:nowrap; }
@@ -356,6 +384,7 @@ const IC = { plus:'<path d="M12 5v14M5 12h14"/>', video:'<rect x="3" y="6" width
   draw:'<path d="M12 3 13.6 8.4 19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6z"/><path d="M19 16v4M17 18h4"/>', x:'<path d="M6 6l12 12M18 6 6 18"/>',
   share:'<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',
   camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
   sound:'<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.5 4.5 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/>', mute:'<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>' };
 const icon = n => `<svg class="ico" viewBox="0 0 24 24">${IC[n]}</svg>`;
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -388,6 +417,7 @@ async function route() {
   if (run && !S.data) { const r = await fetch(`/api/runs/${run}/cards`); if (r.ok) S.data = await r.json(); else if (r.status === 404 && (await fetch(`/api/runs/${run}/progress`)).status === 404) S.view = "missing"; }
   if (["edit", "use", "tablet", "coach"].includes(S.view) && !S.data) S.view = "making";
   document.body.classList.toggle("tabmode", S.view === "tablet" || S.view === "coach");
+  document.body.classList.toggle("homepage", S.view === "home");  // 첫 화면은 흰 바탕(이야기형)
   document.documentElement.lang = ui;
   $("#uiseg").innerHTML = [["ko", "한국어"], ["en", "English"]].map(([v, l]) => `<button class="${ui === v ? "on" : ""}" onclick="setUi('${v}')">${l}</button>`).join("");
   header();
@@ -518,45 +548,67 @@ function missing() {
 async function home() {
   const runs = await (await fetch("/api/runs")).json();
   $("#main").innerHTML = `
-    <div class="hero"><div>
-    <span class="eyebrow">${T("Meta 모델로 만들어요", "Built with Meta models")}</span>
-    <h2>${T("영상 하나로 따라 하기 카드 만들기", "Turn one demonstration video into step cards")}</h2>
-    <p class="sub">${T("손으로 하는 일을 한 번 보여 주는 영상을 넣으면, 동작마다 사진 한 장과 짧은 문장이 붙은 카드가 만들어져요.",
-      "Add a video of someone doing a hands-on task once. You get one card per action, each with a photo and a short sentence.")}</p>
-    ${(() => {  // 처음 온 사람(심사위원 포함)이 스크롤 없이 예시를 열게
+    ${(() => {  // 첫 화면은 이야기 순서로: 큰 영상 한 장면 → 도움 → 확인 → 시작하기 → 쓰임새 → 판단 위치
+      const has = id => runs.some(r => r.id === id && r.done), L = "807dcf4d2be2", N = "8e1456e529ca";
       const ex = ["special", "staff", "creator", "assembly", "family"].map(u => runs.find(r => r.use === u && r.done)).filter(Boolean);
-      return ex.length ? `<div class="heroex"><span class="muted">${T("예시 열어 보기", "Open an example")}</span><div>${ex.map(r =>
-        `<a href="#run=${r.id}&view=use">${r.thumb ? `<img src="/runs/${r.id}/${r.thumb}" alt="">` : ""}<span>${esc(runTitle(r).replace(/ \((견본|sample)\)$/, ""))}</span></a>`).join("")}</div></div>` : "";
+      const name = r => esc(runTitle(r).replace(/ \((견본|sample)\)$/, ""));
+      return `
+    <section class="mhero full">
+      ${has(L) ? `<video class="mbg" src="/api/runs/${L}/clip/9.mp4" poster="/runs/${L}/cards/09.jpg" autoplay muted loop playsinline aria-hidden="true"></video>` : ""}
+      <div class="mshade"></div>
+      <div class="mcopy">
+        <h2>${T("영상 하나로, 처음 하는 일도 혼자 해내게", "One video, and a first-time task becomes something they can do on their own")}</h2>
+        <p>${T("시범 영상이 검증된 카드가 되고, 카메라가 따라가며 막힌 만큼만 도와요.", "A demonstration becomes checked step cards, and the camera follows along with just enough help.")}</p>
+        <div class="mbtns"><a class="pill" href="#" onclick="event.preventDefault();document.getElementById('start').scrollIntoView({behavior:'smooth'})">${T("영상 넣기", "Add a video")}</a>${ex[0] ? `<a class="pill ghost" href="#run=${ex[0].id}&view=use">${T("예시 보기", "See an example")}</a>` : ""}</div>
+      </div>
+      ${has(L) ? `<button class="mpause" onclick="const v=this.parentElement.querySelector('video');v.paused?v.play():v.pause();this.innerHTML=v.paused?'▶':'❚❚'" aria-label="${T("영상 멈추기", "Pause video")}">❚❚</button>` : ""}
+    </section>
+
+    ${has(N) ? `<section class="mstory full dark">
+      <h2>${T("막힌 만큼만 도와줍니다", "Help only as much as needed")}</h2>
+      <p>${T("처음엔 글만. 멈추면 그림, 소리, 움직임 순으로 한 칸씩. 특수교육에서 도움을 줄여 가는 방식 그대로예요.", "Text first. If the learner stops: a picture, then sound, then motion — the way special-education teachers fade prompts.")}</p>
+      <div class="mframe"><video src="/api/runs/${N}/clip/3.mp4" autoplay muted loop playsinline></video>
+        <div class="ladder">${[T("글", "Text"), T("그림", "Picture"), T("소리", "Sound"), T("움직임", "Motion")].map((t, i) => `<span style="--i:${i}">${t}</span>`).join("")}</div></div>
+      <a class="pill" href="#run=${N}&view=coach">${T("따라 하기 열어 보기", "Open Coach mode")}</a>
+    </section>
+    <section class="mstory full">
+      <h2>${T("해냈는지 확인합니다", "And checks that it's done")}</h2>
+      <p>${T("버튼 한 번, 또는 따라 하는 동안 계속. 그 단계가 끝난 모습과 비교해 됐어요 · 아직 · 달라요를 알려 줘요.", "One tap, or continuously while following. Compared with how the step should look: done · not yet · different.")}</p>
+      <div class="mpair"><figure><img src="/api/runs/${N}/cards/1/after.jpg" alt=""><figcaption>${T("이렇게 되면 돼요", "Should look like")}</figcaption></figure>
+        <figure><img src="/runs/${N}/cards/01.jpg" alt=""><figcaption>${T("지금", "Now")}</figcaption><b class="okbadge">${icon("check")} ${T("됐어요", "Done")}</b></figure></div>
+    </section>` : ""}
+
+    <section class="mstart" id="start">
+      <h2 class="center">${T("영상 하나로 시작하세요", "Start with one video")}</h2>
+      <p class="center sub">${T("손으로 하는 일을 한 번 보여 주는 1~10분 영상이면 돼요. 동작마다 카드가 나오고, 코드가 모든 카드를 검사해요.", "A 1–10 minute video of someone doing the task once. You get one card per action, each checked by code.")}</p>
+      <label class="drop" id="drop">
+        <input type="file" accept="video/*" id="file" hidden>
+        <div class="plus">${icon("plus")}</div>
+        <div class="big">${T("영상을 여기에 끌어다 놓거나, 눌러서 고르세요", "Drop a video here, or click to choose one")}</div>
+        <div class="muted">${T("손과 물건이 잘 보이게 · 학생이 나오는 영상은 넣지 마세요", "Hands and objects clearly visible · no videos of students")}</div>
+        <span class="btn primary">${T("영상 고르기", "Choose a video")}</span>
+        <span class="seg makewhere" id="mkwhere" hidden onclick="event.preventDefault();event.stopPropagation()">
+          <button class="on" onclick="makeWhere(false)">${T("Meta API", "Meta API")}</button><button onclick="makeWhere(true)">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button></span>
+        <span class="muted" id="mkwhered" hidden></span>
+      </label>
+      <div class="trust center">${[T("칭찬·점수 없음", "No praise or scores"), T("사진 저장 안 함", "No photos stored"), T("사람을 알아보지 않음", "No face or voice ID"), T("마지막 결정은 교사", "Teacher has the last word")].map(t => `<span>${icon("check")}${t}</span>`).join("")}</div>
+    </section>
+
+    <h2 class="center sect">${T("어디서든 같은 방식으로", "The same structure, wherever it's needed")}</h2>
+    <div class="news">${[
+      ["special", T("특수교육 직무 훈련", "Special-education job training")], ["staff", T("신입 직원 교육", "New staff training")], ["family", T("가족 손기술 남기기", "Family know-how")],
+      ["creator", T("크리에이터 따라 하기", "Follow-along for creators")], ["assembly", T("조립·설치 안내", "Assembly and setup")],
+    ].map(([u, t]) => { const r = runs.find(x => x.use === u && x.done); return r ? `<a class="newscard" href="#run=${r.id}&view=use">
+        <img src="/runs/${r.id}/${r.thumb}" alt=""><span class="kicker">${t}</span><strong>${name(r)}</strong><span class="seemore">${icon("arrow")}<b>${T("예시 보기", "See example")}</b></span></a>` : ""; }).join("")}</div>
+
+    <h2 class="center sect">${T("판단은 필요한 곳에서", "Decisions run where they should")}</h2>
+    <div class="where">${[
+      [T("Meta API", "Meta API"), "Muse Spark · SAM 3.1 · Muse Image · Voice", T("가장 정확해요. 카드 만들기, 결과 확인, 에이전트.", "Most accurate: making cards, result checks, the agent.")],
+      [T("이 기기", "This device"), "MediaPipe · 4 MB", T("휴대폰 브라우저 안. 한 장 약 22ms, 비용 0, 영상이 기기 밖으로 안 나가요.", "In the phone's browser: about 22 ms per frame, no cost, video stays on the device.")],
+      [T("학교 컴퓨터", "School computer"), T("Muse Glimmer 30B · 공개 가중치", "Muse Glimmer 30B · open weights"), T("학생 영상이 학교 밖으로 나가지 않아요.", "Student video never leaves the school.")],
+    ].map(([t, m, d]) => `<div><strong>${t}</strong><span class="m">${m}</span><span class="muted">${d}</span></div>`).join("")}</div>
+`;
     })()}
-    <p class="models">${T("쓰는 Meta 모델", "Meta models used")}: <b>Muse Spark</b> ${T("단계·문장·따라 하기 판단·에이전트", "steps, sentences, Coach, agent")} · <b>SAM 3.1</b> ${T("손에 든 물건", "object in hand")} · <b>Muse Voice Transcribe</b> ${T("말 받아쓰기", "speech")} · <b>Muse Image</b> ${T("그림 카드", "drawings")} · <b>Muse Glimmer</b> ${T("이 맥에서 따라 하기", "Coach on this Mac")}</p>
-    </div>
-    <label class="drop" id="drop">
-      <input type="file" accept="video/*" id="file" hidden>
-      <div class="plus">${icon("plus")}</div>
-      <div class="big">${T("영상을 여기에 끌어다 놓거나, 눌러서 고르세요", "Drop a video here, or click to choose one")}</div>
-      <div class="muted">${T("1~5분 · 손과 물건이 잘 보이게 · 학생이 나오는 영상은 넣지 마세요", "1–5 minutes · hands and objects clearly visible · no videos of students")}</div>
-      <span class="btn primary">${T("영상 고르기", "Choose a video")}</span>
-      <span class="seg makewhere" id="mkwhere" hidden onclick="event.preventDefault();event.stopPropagation()">
-        <button class="on" onclick="makeWhere(false)">${T("Meta API", "Meta API")}</button><button onclick="makeWhere(true)">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button></span>
-      <span class="muted" id="mkwhered" hidden></span>
-    </label></div>
-    <div class="flow">
-      <div><span class="fi">${icon("video")}</span><strong>${T("1. 영상 넣기", "1. Add video")}</strong><span class="muted">${T("몇 분 뒤 카드가 나와요.", "Cards are ready in a few minutes.")}</span></div>
-      <div><span class="fi">${icon("check")}</span><strong>${T("2. 확인·고치기", "2. Check & edit")}</strong><span class="muted">${T("문장을 누르면 바로 고쳐지고, 저장은 저절로 돼요.", "Click a sentence to edit it. Saving is automatic.")}</span></div>
-      <div><span class="fi">${icon("glasses")}</span><strong>${T("3. 인쇄·태블릿", "3. Use")}</strong><span class="muted">${T("A4에 6장씩 뽑거나, 한 장씩 넘겨 보거나, 카메라로 따라 해요.", "Print six per A4 page, flip through on a tablet, or follow along with the camera.")}</span></div>
-    </div>
-    <h3>${T("이런 곳에 써요", "Where it helps")}</h3>
-    <div class="uses">${[
-      ["special", "check", T("특수교육 직무 훈련", "Special-education job training"), T("음료 만들기, 빨래, 포장을 한 동작씩. 교사가 확인한 카드로 따라 해요.", "Drinks, laundry, packing — one action at a time, from cards the teacher checked.")],
-      ["staff", "glasses", T("신입 직원 교육", "New staff training"), T("숙련자가 한 번 해 보이면 매장 방식 그대로. 한국어·영어 카드로 이주 노동자도.", "A senior shows it once; new staff follow the store's own way, in Korean or English.")],
-      ["creator", "video", T("크리에이터 따라 하기", "Follow-along for creators"), T("요리·공예 영상을 올린 사람이 따라 하기 판도 함께 내요.", "Creators publish a step-by-step version of their own video.")],
-      ["assembly", "tablet", T("조립·설치 안내", "Assembly and setup"), T("처음 하는 조립을 지금 몇 번째인지 맞춰 가며.", "First-time assembly, with the current step tracked.")],
-      ["family", "draw", T("가족 손기술 남기기", "Family know-how"), T("부모님 요리법을 한 번 찍어 카드로 남겨요.", "Film a parent's recipe once and keep it as cards.")],
-    ].map(([use, i, t, d]) => {  // 견본이 있는 칸은 눌러서 예시 카드 묶음을 연다
-      const ex = runs.filter(r => r.use === use && r.done);
-      return `<div><span class="fi">${icon(i)}</span><strong>${t}</strong><span class="muted">${d}</span>
-        <span class="exs">${ex.map(r => `<a class="ex" href="#run=${r.id}&view=use">${T("예시", "Example")}: ${esc(runTitle(r).replace(/ \((견본|sample)\)$/, ""))} →</a>`).join("")}</span></div>`;
-    }).join("")}</div>
     ${runs.length ? `<h3>${T("지난 카드 묶음", "Previous card sets")}</h3><div class="past">${runs.map(r => `
       <a class="pastcard" href="#run=${r.id}&view=${r.done ? "edit" : "making"}">
         ${r.thumb ? `<img src="/runs/${r.id}/${r.thumb}" alt="">` : '<div class="ph"></div>'}
