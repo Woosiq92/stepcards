@@ -45,20 +45,28 @@ def ask_local(cards, cur, frames, ref=None):
         content += [{"type": "text", "text": "REFERENCE"}, {"type": "image_url", "image_url": {"url": ref}}]
     content.append({"type": "text", "text": PROMPT.format(steps=steps, cur=cur) + (REF_PROMPT.format(cur=cur) if ref else "")})
     head = '{"seen": '
-    r = local_client.chat.completions.create(model="glimmer", max_tokens=100 if ref else 40, temperature=0,
+    r = local_client.chat.completions.create(model="glimmer", max_tokens=140 if ref else 80, temperature=0,
                                              messages=[{"role": "user", "content": content}, {"role": "assistant", "content": head}])
     out = head + (r.choices[0].message.content or "")
     seen, done = re.search(r'"seen"\s*:\s*(\d+)', out), re.search(r'"current_done"\s*:\s*(true|false)', out)
-    hands = re.search(r'"hands"\s*:\s*(true|false)', out)
-    return int(seen.group(1)) if seen else 0, bool(done and done.group(1) == "true"), 0.0, extras(out) if ref else {}, (hands.group(1) == "true") if hands else None
+    iv = re.search(r'"in_view"\s*:\s*(true|false)', out)
+    need = {k: (m.group(1) if (m := re.search(rf'"{k}"\s*:\s*"([^"]*)"', out)) else "") for k in ("need_ko", "need_en")}
+    return int(seen.group(1)) if seen else 0, bool(done and done.group(1) == "true"), 0.0, extras(out) if ref else {}, view({"in_view": (iv.group(1) == "true") if iv else None, **need})
 
 PROMPT = """A learner is doing a task while watching step cards. The steps are:
 {steps}
 The learner is now on step {cur}. The images are camera frames from the last few seconds, oldest first.
-Look at the latest frames. Answer only JSON: {{"seen": n, "current_done": true/false, "hands": true/false}}
+Look at the latest frames. Answer only JSON: {{"seen": n, "current_done": true/false, "in_view": true/false, "need_ko": "", "need_en": ""}}
 - "seen": the step number the learner is doing in the latest frame, or 0 if you cannot tell (hands not visible, no action).
 - "current_done": true only if step {cur} looks finished.
-- "hands": true if the learner's hands and the object they work on are clearly inside the latest frame; false if they are out of view, cut off at the edge, too far away or blurred."""
+- "in_view": true if everything needed to judge step {cur} is clearly inside the latest frame (for a hand task the hands and the object; for helping someone into a car the whole person, the helper and the car door; for signing the upper body, both hands and the face); false if part of it is out of view, cut off at the edge, too far away or blurred.
+- "need_ko", "need_en": only when in_view is false, what must come into view for step {cur}, as a short noun phrase in Korean and in English (e.g. "냅킨과 두 손" / "the napkin and both hands"); otherwise empty."""
+
+
+def view(d):
+    """화면에 보여야 할 것: in_view(모르면 None)와, 안 보일 때 무엇을 보이게 할지(짧은 말, 한국어·영어)"""
+    iv = d.get("in_view") if isinstance(d.get("in_view"), bool) else None
+    return {"in_view": iv, **{k: (str(d.get(k) or "").strip()[:40] if iv is False else "") for k in ("need_ko", "need_en")}}
 
 
 def ask(cards, cur, frames, ref=None):
@@ -76,7 +84,7 @@ def ask(cards, cur, frames, ref=None):
     cost = u.input_tokens * pipeline.PRICE_IN + u.output_tokens * pipeline.PRICE_OUT
     try:
         d = json.loads(r.output_text.strip().removeprefix("```json").removeprefix("```").removesuffix("```"))
-        return int(d.get("seen") or 0), bool(d.get("current_done")), cost, extras(r.output_text) if ref else {}, d.get("hands") if isinstance(d.get("hands"), bool) else None
+        return int(d.get("seen") or 0), bool(d.get("current_done")), cost, extras(r.output_text) if ref else {}, view(d)
     except (ValueError, TypeError, AttributeError):
         return 0, False, cost, {}
 
@@ -97,7 +105,7 @@ def check(cards, cur, frames, prev_seen=0, local=False, ref=None):
     t0 = time.time()
     res = (ask_local if local else ask)(cards, cur, frames, ref) if ref else (ask_local if local else ask)(cards, cur, frames)
     seen, done, cost = res[:3]
-    hands = res[4] if len(res) > 4 else None  # 손·물건이 화면 안에 보이는가(안 보이면 화면이 카메라 맞추기를 돕는다)
+    seen_view = res[4] if len(res) > 4 else view({})  # 이 카드를 판단할 것이 화면 안에 다 보이는가(안 보이면 화면이 무엇을 보이게 할지 알려 준다)
     live = live_state(res[3] if len(res) > 3 else {}, cards[cur - 1]) if ref else None
     if live and live["state"] == "done":  # 기준 사진과 같은 결과면 '지금 단계 마침'으로 본다
         done = True
@@ -117,7 +125,7 @@ def check(cards, cur, frames, prev_seen=0, local=False, ref=None):
     elif seen > cur + 1:
         decision, target = ("jump", seen) if prev_seen == seen else ("again", None)
     return {"decision": decision, "target": target, "seen": seen, "current_done": done, "sam": sam,
-            "latency": round(time.time() - t0, 2), "cost": round(cost, 4), "local": local, "hands": hands, **(live or {})}
+            "latency": round(time.time() - t0, 2), "cost": round(cost, 4), "local": local, **seen_view, **(live or {})}
 
 
 def live_state(x, card):

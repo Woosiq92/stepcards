@@ -552,9 +552,16 @@ async function showRecords() {
     `<tr><td>${new Date(x.t * 1000).toLocaleTimeString()}</td><td>${S.data.cards.findIndex(c => c.n === x.n) + 1}</td><td>${x.kind === "verify" ? name[x.result] || x.result : "–"}</td><td>${x.lv ? lvName(x.lv) : "–"}</td></tr>`; }).join("")}</tbody></table>`
     : `<p class="muted">${T("아직 기록이 없어요.", "No records yet.")}</p>`;
 }
+// 앞 카메라(맞은편에서 하는 사람을 봄)는 180도 돌리면 하는 사람 눈 방향(먼 쪽이 위, 왼손이 왼쪽)에 가까워진다. 화면 미리보기는 그대로
+const isFront = track => { const st = track?.getSettings?.() || {}; return !!track && (st.facingMode ? st.facingMode === "user" : !/Android|iPhone|iPad/i.test(navigator.userAgent)); };  // 맥 FaceTime 은 facingMode 를 안 알려 준다
+function drawFrame(cv, video) {
+  const g = cv.getContext("2d");
+  if (isFront(video.srcObject?.getVideoTracks?.()[0])) { g.save(); g.translate(cv.width, cv.height); g.rotate(Math.PI); g.drawImage(video, 0, 0, cv.width, cv.height); g.restore(); }
+  else g.drawImage(video, 0, 0, cv.width, cv.height);
+}
 async function grabPhoto(video) {
   const cv = document.createElement("canvas"); cv.width = 640; cv.height = Math.round(640 * video.videoHeight / video.videoWidth);
-  cv.getContext("2d").drawImage(video, 0, 0, cv.width, cv.height); return cv.toDataURL("image/jpeg", 0.8);
+  drawFrame(cv, video); return cv.toDataURL("image/jpeg", 0.8);
 }
 async function verifyNow(glassesReq) {
   const fail = why => { if (S.view === "coach") glassesResult({ result: "error", hint_ko: why[0], hint_en: why[1] }, glassesReq); };
@@ -1444,7 +1451,7 @@ function coach() {
   $("#main").innerHTML = `<div class="tab coachv">
     <button class="exit" onclick="coachExit()">${icon("x")}${T("나가기", "Exit")}</button>
     <button class="exit voice" id="cvoice" onclick="setVoice(!C.voice)"></button>
-    <div class="cam"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimqr" id="caimqr" hidden><img src="/api/runs/${S.run}/qr.svg?to=coach&lang=${ui}&log=${new URLSearchParams(location.search).get("log") === "1" ? 1 : ""}" alt="QR" width="104" height="104"><span>${T("휴대폰으로 열기", "Open on a phone")}</span></div><div class="aimtxt" id="caimtxt">${T("손과 물건이 네모 안에 들어오게 카메라를 맞춰요", "Point the camera so hands and the object are inside the box")}</div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
+    <div class="cam"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimqr" id="caimqr" hidden><img src="/api/runs/${S.run}/qr.svg?to=coach&lang=${ui}&log=${new URLSearchParams(location.search).get("log") === "1" ? 1 : ""}" alt="QR" width="104" height="104"><span>${T("또는 휴대폰 뒤 카메라로", "Or use a phone's back camera")}</span></div><div class="aimtxt" id="caimtxt">${T("손과 물건이 네모 안에 들어오게 카메라를 맞춰요", "Point the camera so hands and the object are inside the box")}</div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
     <div class="lvtag" id="clv" hidden></div>
     <div class="livehint" id="clive" hidden></div>
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
@@ -1677,19 +1684,23 @@ function aim(on, text) {
   $(".coachv")?.classList.toggle("aim", on);
   if (on && text) $("#caimtxt").textContent = text;
 }
-function handsSeen(h) {
-  if (h === true) { if ($(".coachv")?.classList.contains("aim")) { aim(false); pill(T("손이 잘 보여요", "Hands in view")); } C.noHands = 0; return; }
-  if (h !== false) return;  // 모름(이 맥 모델이 답을 못 줌 등)은 그대로 둔다
-  C.noHands = (C.noHands || 0) + 1;
-  if (C.noHands === 2) { aim(true, T("손이 안 보여요 · 카메라를 손 쪽으로 맞춰 주세요", "Can't see your hands · point the camera at them")); clog("aim", { cur: S.idx + 1 }); }
+// 카드마다 보여야 할 것이 다르다(손과 냅킨, 사람과 차 문, 상반신과 얼굴…): 모델이 이 카드에 필요한 것이 안 보인다고 하면 그것을 보이게 해 달라고
+function viewSeen(d) {
+  if (d.in_view === true) { if ($(".coachv")?.classList.contains("aim")) { aim(false); pill(T("잘 보여요", "In view")); } C.noView = 0; return; }
+  if (d.in_view !== false) return;  // 모름(이 맥 모델이 답을 못 줌 등)은 그대로 둔다
+  C.noView = (C.noView || 0) + 1;
+  if (C.noView >= 2) {  // 한 번은 잘못 볼 수 있어서 두 번 연속부터. 커진 뒤에도 무엇을 보일지는 새로 받은 말로
+    const need = ui === "en" ? d.need_en : d.need_ko;
+    aim(true, need ? T(`보이게 해 주세요: ${need}`, `Bring into view: ${need}`) : T("이 카드의 동작이 보이게 카메라를 맞춰 주세요", "Point the camera so this card's action is in view"));
+    if (C.noView === 2) clog("aim", { cur: S.idx + 1, need: d.need_en || "" });
+  }
 }
 async function coachCamera() {
   try {
     C.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 1280 }, audio: false });
     $("#cvid").srcObject = C.stream; await $("#cvid").play();
-    // 노트북 앞 카메라는 얼굴을 비춘다(맥 FaceTime 은 facingMode 를 안 알려 준다): 휴대폰 뒤 카메라로 열게 안내
-    const st = C.stream.getVideoTracks()[0]?.getSettings?.() || {};
-    C.front = st.facingMode ? st.facingMode === "user" : !/Android|iPhone|iPad/i.test(navigator.userAgent);
+    // 노트북 앞 카메라는 맞은편에서 비춘다: 화면을 젖히라고 안내하고, 보내는 사진은 180도 돌린다
+    C.front = isFront(C.stream.getVideoTracks()[0]);
     coachStart();
   } catch { pill(T("카메라를 켤 수 없어요", "Camera unavailable")); toast(T("카메라 사용을 허락해 주세요.", "Please allow camera access.")); }
 }
@@ -1700,7 +1711,7 @@ function coachFile(f) {
 }
 function coachStart() {
   $("#cstart").hidden = true; C.buf = []; C.running = true; pill(T("지켜보는 중", "Watching"));
-  aim(true, C.front ? T("이 카메라는 얼굴 쪽을 봐요 · 휴대폰 뒤 카메라로 하면 손이 잘 보여요", "This camera faces you · a phone's back camera sees your hands better")
+  aim(true, C.front ? T("하는 손과 물건이 네모 안에 보이게 화면을 뒤로 젖히거나 물건을 카메라 앞에 두세요", "Tilt the screen back or put the object in front of the camera so your hands and it are inside the box")
                     : T("손과 물건이 네모 안에 들어오게 카메라를 맞춰요", "Point the camera so hands and the object are inside the box"));  // 처음엔 크게: 손이 보이면 저절로 작아진다
   $("#caimqr").hidden = !C.front;
   C.started = true; C.since = Date.now(); coachCard(); clog("start", { cur: S.idx + 1, n: S.data.cards.length });
@@ -1716,7 +1727,7 @@ function coachStart() {
   C.timer = setInterval(() => {  // 1초에 한 장, 최근 4장만 둔다
     if (v.readyState < 2) return;
     cv.width = 480; cv.height = Math.round(480 * v.videoHeight / v.videoWidth);
-    cv.getContext("2d").drawImage(v, 0, 0, cv.width, cv.height);
+    drawFrame(cv, v);
     C.buf.push(cv.toDataURL("image/jpeg", 0.7)); if (C.buf.length > 4) C.buf.shift();
   }, 1000);
   coachLoop();
@@ -1793,7 +1804,7 @@ async function coachLoop() {
       let d = null; const t0 = Date.now();  // 네트워크 오류도 '판단 못 함'으로 보고 계속 본다
       try { const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev, local: C.local, live: C.live, ver: S.data.edited_at ?? null }) }); if (r.ok) d = await r.json();
         if (r.status === 401 || r.status === 429) { C.manual = true; pill(T("자동 넘김은 접속 키가 필요해요 · 이전·다음으로 넘겨요", "Auto-advance needs the access key · use Back and Next")); continue; } } catch { d = null; }
-      clog("decision", { cur, decision: d?.decision || "none", target: d?.target ?? "", ms: Date.now() - t0, hands: d?.hands ?? "" });
+      clog("decision", { cur, decision: d?.decision || "none", target: d?.target ?? "", ms: Date.now() - t0, in_view: d?.in_view ?? "" });
       if (!C.running || S.idx + 1 !== cur) continue;  // 그 사이 사람이 직접 넘겼으면 결과는 버린다
       if (!d) { pill(T("판단하지 못했어요 · 다시 보는 중", "No answer · watching again")); }
       else if (d.decision === "reload") {  // 선생님이 카드를 고쳤다: 새 카드를 받고, 보던 카드(번호 n)에서 이어 간다
@@ -1802,7 +1813,7 @@ async function coachLoop() {
       }
       else {
         C.prev = d.seen;
-        handsSeen(d.hands);
+        viewSeen(d);
         liveCheck(d);
         C.fin = d.decision === "finished" ? (C.fin || 0) + 1 : 0;
         if (C.fin >= 2) { coachEnd(true); break; }  // 마지막 단계를 마쳤다는 판단이 두 번 연속
