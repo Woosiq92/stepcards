@@ -15,6 +15,7 @@
   .dots { display:flex; gap:5px; flex:1; } .dots i { height:6px; flex:1; border-radius:3px; background:#30333A; } .dots i.done { background:#7d8794; } .dots i.on { background:#fff; }
   .pic { width:100%; flex:1; min-height:0; display:flex; align-items:center; justify-content:center; }
   .pic img, .pic video { max-width:100%; max-height:100%; border-radius:18px; }
+  .pic .lit { filter:brightness(.62) saturate(.9); }  /* 사진·움직임은 밝은 바탕이 렌즈에서 눈부시다: 낮춘다(그림은 서버가 이미 어둡게) */
   .pic video { width:100%; }
   .say { font-size:clamp(26px,6vw,38px); font-weight:800; line-height:1.25; text-align:center; letter-spacing:-.02em; min-height:1.25em; }
   .say small { display:block; font-size:28px; line-height:36px; font-weight:600; color:#CFD3D9; letter-spacing:0; margin-top:2px; }
@@ -55,13 +56,13 @@ function draw(again) {
     <div class="top"><span>${cur.i + 1} / ${n}</span>${n > 12 ? "" : `<div class="dots">${cards.map((_, j) => `<i class="${j === cur.i ? "on" : j < cur.i ? "done" : ""}"></i>`).join("")}</div>`}</div>
     ${cur.ack && Date.now() / 1000 - cur.ack < 20 ? `<div class="again">${K ? "Help is on the way" : "도와주러 오고 있어요"}</div>`
       : again ? `<div class="again">${K ? "Start with this card" : "이 카드부터 해요"}</div>` : ""}
-    <div class="pic">${cur.lv === 1 ? `<div class="msg">${K ? "Need help? Press Help" : "도움이 필요하면 '도움'을 눌러요"}</div>` : (cur.lv === 4 || (!cur.lv && c.view === "clip")) && !arch ? `<video src="/api/runs/${run}/clip/${c.n}.mp4?g=1&t=${c.frame_t ?? c.rep}" autoplay muted loop playsinline></video>`
-      : `<img src="/api/runs/${run}/glass/${cur.i}.jpg?v=${cards[cur.i].v || 0}" alt="${esc(K ? c.en : c.ko)}">`}</div>
+    <div class="pic">${cur.lv === 1 ? `<div class="msg">${K ? "Need help? Press Help" : "도움이 필요하면 '도움'을 눌러요"}</div>` : (cur.lv === 4 || (!cur.lv && c.view === "clip")) && !arch ? `<video src="/api/runs/${run}/clip/${c.n}.mp4?g=1&t=${c.frame_t ?? c.rep}" class="lit" autoplay muted loop playsinline></video>`
+      : `<img ${c.view === "ill" ? "" : 'class="lit"'} src="/api/runs/${run}/glass/${cur.i}.jpg?v=${cards[cur.i].v || 0}" alt="${esc(K ? c.en : c.ko)}">`}</div>
     <div class="say">${say(c)}</div>
-    <div class="bar"><button id="b" onclick="act(() => flip(-1))" ${cur.i ? "" : "disabled"}>${K ? "◀ Previous" : "◀ 이전"}</button>
+    <div class="bar"><button id="b" onclick="act(() => flip(-1))" ${cur.i ? "" : "disabled"}>${K ? "◀ Back" : "◀ 이전"}</button>
       ${cur.lv && cur.lv < (arch ? 3 : 4) ? `<button id="h" onclick="act(help)">${K ? "Help" : "도움"}</button>`
-        : alone ? `<button id="h" onclick="act(markStuck)" ${marked.has(c.n) ? "disabled" : ""}>${marked.has(c.n) ? (K ? "Sent" : "알렸어요") : (K ? "Stuck here" : "막혔어요")}</button>`
-        : `<button id="h" onclick="act(callMaker)" ${cur.call ? "disabled" : ""}>${cur.call ? (K ? "Called" : "불렀어요") : (K ? "Ask for help" : "도와줘요")}</button>`}
+        : alone ? `<button id="h" onclick="act(markStuck)" ${marked.has(c.n) ? "disabled" : ""}>${marked.has(c.n) ? (K ? "Sent" : "알렸어요") : (K ? "Stuck" : "막혔어요")}</button>`
+        : `<button id="h" onclick="act(callMaker)" ${cur.call ? "disabled" : ""}>${cur.call ? (K ? "Called" : "불렀어요") : (K ? "Call" : "도와줘요")}</button>`}
       ${arch || noDone ? "" : `<button id="v" onclick="act(check)">${K ? "Check" : "확인"}</button>`}
       ${cur.i < n - 1 ? `<button id="f" onclick="act(() => flip(1))">${K ? "Next ▶" : "다음 ▶"}</button>` : `<button id="f" onclick="act(finish)">${K ? "Done ✓" : "다 했어요 ✓"}</button>`}</div>`;
   if (shown !== `${cur.i}|${cur.fin}`) { shown = `${cur.i}|${cur.fin}`; lockUntil = Date.now() + 600; }
