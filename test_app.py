@@ -200,7 +200,7 @@ def test_view_open_actions_need_key(monkeypatch):
     for u in ("/", f"/glasses?run={rid}", "/api/runs", f"/api/runs/{rid}/cards", f"/api/runs/{rid}/qr.svg?to=glasses"):
         assert c.get(u).status_code == 200, u
     assert c.post(f"/api/runs/{rid}/now", json={"i": 1}).status_code == 200
-    for m, u in (("put", f"/api/runs/{rid}/cards"), ("post", f"/api/runs/{rid}/coach"), ("post", f"/api/runs/{rid}/agent"),
+    for m, u in (("put", f"/api/runs/{rid}/cards"), ("post", f"/api/runs/{rid}/agent"),  # 따라 하기 판단은 키 없는 학습자 기기도 된다(하루 한도, 11-01 A안)
                  ("post", "/api/upload"), ("delete", f"/api/runs/{rid}"), ("post", f"/api/runs/{rid}/cards/1/illustrate")):
         assert getattr(c, m)(u).status_code == 401, u
     assert c.post("/login", data={"k": "teach-1"}).status_code == 200 and "sc_key" in c.cookies
@@ -434,3 +434,28 @@ def test_alone_mode_marks_and_no_done(monkeypatch):
     assert [(x["n"], x["marks"]) for x in st] == [(2, 2)]
     assert client.post(f"/api/runs/{rid}/coach", json={"cur": 1, "frames": []}).status_code == 409
     assert client.post(f"/api/runs/{rid}/cards/1/verify", json={"photo": "data:image/jpeg;base64,AA"}).status_code == 409
+
+
+# 키 없는 학습자 기기(A안)와 크레딧 상한(11-01)
+def test_learner_without_key_limited_and_credit_cap(monkeypatch, tmp_path):
+    import spend
+    rid, d = make_run()
+    monkeypatch.setattr(A, "APP_KEY", "secret")
+    monkeypatch.setitem(A.PUBLIC_LIMITS, "records", 2)
+    A.PUBLIC_USE.update(day="", n={})
+    rows = {"s": "abc", "rows": [{"n": 1, "lv": 2}]}
+    assert client.post(f"/api/runs/{rid}/records", json=rows).status_code == 200  # 키 없이
+    assert client.post(f"/api/runs/{rid}/records", json=rows).status_code == 200
+    assert client.post(f"/api/runs/{rid}/records", json=rows).status_code == 429  # 하루 한도
+    assert client.post(f"/api/runs/{rid}/translate", json={"lang": "x"}).status_code == 401  # 만드는 쪽 기능은 여전히 키
+    monkeypatch.setattr(spend, "FILE", tmp_path / "spend.json")
+    monkeypatch.setattr(spend, "CAP", 1.0)
+    spend.add(0.4)
+    assert not spend.over()
+    spend.add(0.7)
+    assert spend.over() and abs(spend.total() - 1.1) < 1e-9
+    assert client.post(f"/api/runs/{rid}/cards/1/verify", json={}).status_code == 402  # 상한: Meta 를 부르는 요청은 거절
+    assert client.get(f"/api/runs/{rid}/cards").status_code == 200  # 보기는 그대로
+    import pytest as _p
+    with _p.raises(spend.CapReached):
+        spend.guard()

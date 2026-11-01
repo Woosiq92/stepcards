@@ -7,6 +7,7 @@ from openai import OpenAI
 import requests
 from PIL import Image, ImageDraw
 from check import check
+import spend
 
 load_dotenv(Path(__file__).parent / ".env")
 API_KEY = os.environ.get("MODEL_API_KEY", "")  # 없으면(대회 뒤 키 삭제 등) 보기와 이 맥에서 만들기만 된다
@@ -16,6 +17,19 @@ STEP_MODEL = os.environ.get("STEP_MODEL", "muse-spark-1.3")
 SAM_MODEL = os.environ.get("SAM_MODEL", "sam-3.1")
 ASR_MODEL = os.environ.get("ASR_MODEL", "muse-voice-transcribe-1.0")
 ASR_PRICE = 0.18 / 3600  # 달러/초
+_create = client.responses.create
+
+
+def _metered(*a, **k):
+    """Meta 모델 응답 호출마다: 상한을 넘었으면 부르지 않고, 부르면 쓴 만큼 장부에(SAM 은 장당 $0.0025 를 더한다)"""
+    spend.guard()
+    r = _create(*a, **k)
+    u = getattr(r, "usage", None)
+    spend.add((u.input_tokens * PRICE_IN + u.output_tokens * PRICE_OUT if u else 0) + (0.0025 if k.get("model") == SAM_MODEL else 0))
+    return r
+
+
+client.responses.create = _metered
 PRICE_IN, PRICE_OUT = 1.25 / 1e6, 4.25 / 1e6
 MAX_RETRY = 2
 BOX = re.compile(r"<\|box;x1=(\d+);y1=(\d+);x2=(\d+);y2=(\d+)")
@@ -87,6 +101,7 @@ def listen(run):
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(run.video), "-vn", "-ac", "1", "-ar", "24000", "-c:a", "pcm_s16le",
                         "-map_metadata", "-1", "-t", "600", str(wav)], check=True)  # API는 10분까지
         req = {"mode": "ENDPOINTING", "model": ASR_MODEL, "audioEncoding": "WAV", "languageBias": ["Korean", "English"]}
+        spend.guard()
         r = requests.post("https://api.meta.ai/v1/asr/transcribe", headers={"Authorization": f"Bearer {API_KEY}"},
                           files={"request": (None, json.dumps(req), "application/json"), "audio": ("audio.wav", wav.open("rb"), "audio/wav")},
                           timeout=300)
@@ -95,6 +110,7 @@ def listen(run):
         turns = [{"start": t["startMs"] / 1000, "end": t["endMs"] / 1000, "text": t["transcript"].strip()}
                  for t in data.get("turns", []) if t.get("transcript", "").strip()]
         cost = data.get("audioDurationMs", 0) / 1000 * ASR_PRICE
+        spend.add(cost)
         run.log("listen", f"말 {len(turns)}구간 받아씀" if turns else "영상에 말소리가 없음", n=len(turns), cost=round(cost, 4))
     else:
         run.log("listen", "영상에 소리가 없음", n=0)
@@ -236,6 +252,7 @@ ILL_PROMPT = ("Redraw this photo as a simple picture-instruction card illustrati
 
 def illustrate(image, obj=""):
     """카드 사진 → 그림(jpeg 바이트). $0.01/장, 8~9초(runs/exp6)."""
+    spend.guard()
     r = requests.post("https://api.meta.ai/v1/images/edits", timeout=300,
                       headers={"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"},
                       json={"model": "muse-image-1.0", "n": 1, "output_format": "jpeg", "reasoning_strength": "low",
@@ -243,6 +260,7 @@ def illustrate(image, obj=""):
                             "images": [{"image_url": data_url(image)}],
                             "tool_enablement": {"enable_image_search": False, "enable_web_search": False, "enable_shell": False}})
     r.raise_for_status()
+    spend.add(0.01)
     return base64.b64decode(r.json()["data"][0]["b64_json"])
 
 

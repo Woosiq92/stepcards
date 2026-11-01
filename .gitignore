@@ -11,3 +11,4 @@ demo/out/
 *.log
 demo/tts/
 !seed/*/video.mp4
+spend.json

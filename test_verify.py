@@ -47,7 +47,8 @@ def test_records_need_key(monkeypatch):
     monkeypatch.setattr(A, "APP_KEY", "admin-1")
     c = T.TestClient(A.app, base_url="https://testserver")
     assert c.get(f"/api/runs/{rid}/records").status_code == 401
-    assert c.post(f"/api/runs/{rid}/cards/1/verify", json={"photo": photo()}).status_code == 401    # 확인은 크레딧이 든다
+    monkeypatch.setitem(A.PUBLIC_LIMITS, "verify", 0)  # 확인은 크레딧이 든다: 키 없는 학습자 기기는 카드 묶음별 하루 한도 안에서만(11-01 A안)
+    assert c.post(f"/api/runs/{rid}/cards/1/verify", json={"photo": photo()}).status_code == 429
 
 
 def test_glasses_relay():

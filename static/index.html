@@ -435,7 +435,8 @@ const rawFetch = window.fetch.bind(window);
 let keyAsk = null;
 window.fetch = async (u, o = {}) => {
   const r = await rawFetch(u, o);
-  if (r.status === 429) toast(T("심사용 키의 오늘 한도를 다 썼어요. 보기는 계속 돼요.", "The judge key has reached today's limit. Viewing still works."));
+  if (r.status === 402) toast(T("크레딧 상한에 닿아 지금은 AI 기능을 쓸 수 없어요. 보기와 손으로 넘기기는 계속 돼요.", "The credit cap is reached, so AI features are paused. Viewing and turning cards by hand still work."));
+  if (r.status === 429) toast(T("오늘 쓸 수 있는 횟수를 다 썼어요. 보기와 손으로 넘기기는 계속 돼요.", "Today's limit is used up. Viewing and turning cards by hand still work."));
   if (r.status !== 401 || !o.method || o.method === "GET" || String(u) === "/login") return r;
   if (Date.now() - keyDeclined < 60000) return r;  // 방금 '취소'했으면 1분 동안은 다시 묻지 않는다(자동 저장·따라 하기가 창을 계속 띄우지 않게)
   return (await askKey()) ? rawFetch(u, o) : r;
@@ -576,6 +577,7 @@ async function admin() {
   $("#main").innerHTML = `<h2>${T("저장 공간 관리", "Storage")}</h2>
     <p class="sub">${T(`전체 ${mb(d.total)} 중 ${mb(used)} 사용 (${Math.round(used / d.total * 100)}%) · 정리 ${d.policy.compact_days}일 · 보관 ${d.policy.archive_days}일 · 삭제 ${d.policy.retain_days || "끔"}${d.policy.retain_days ? "일" : ""} · 교사 한도 ${d.policy.max_sets}묶음·${d.policy.quota_mb}MB`,
       `${mb(used)} of ${mb(d.total)} used (${Math.round(used / d.total * 100)}%) · compact after ${d.policy.compact_days} d · archive after ${d.policy.archive_days} d · delete ${d.policy.retain_days ? "after " + d.policy.retain_days + " d" : "off"} · per teacher ${d.policy.max_sets} sets, ${d.policy.quota_mb} MB`)}</p>
+    ${d.spend ? `<p class="${d.spend.usd >= d.spend.cap ? "red" : "muted"}">${T(`Meta API 사용 $${d.spend.usd} / 상한 $${d.spend.cap} (넘으면 AI 기능을 멈춰요)`, `Meta API spend $${d.spend.usd} / cap $${d.spend.cap} (AI features stop at the cap)`)}</p>` : ""}
     <div class="adminrow">${Object.entries(d.owners).map(([o, v]) => `<span class="chip ok">${esc(o)} · ${v.sets} · ${mb(v.bytes)}</span>`).join("")}
       <a class="btn" href="/api/admin/backup.zip">${icon("share")} ${T("교사 자료 백업 받기", "Download teacher backup")}</a></div>
     <div class="tablewrap"><table class="admintable"><thead><tr><th>${T("카드 묶음", "Card set")}</th><th>${T("주인", "Owner")}</th><th>${T("단계", "Stage")}</th><th>${T("마지막 사용", "Last used")}</th><th>${T("영상", "Video")}</th><th>${T("사진·소리", "Frames·audio")}</th><th>${T("카드", "Cards")}</th><th>${T("합계", "Total")}</th><th></th></tr></thead>

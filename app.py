@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageDraw
 import coach
 import pipeline
+import spend
 import storage
 import verify
 import voice
@@ -56,6 +57,9 @@ APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정
 JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 수 있지만 하루 한도가 있다(제출 설명에 적는 키)
 JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "translate": 10, "step": 400, "compare": 400, "coach": 900, "frame": 60, "retry": 6, "verify": 300}  # 하루 횟수. 따라 하기 900번 ≈ 30분
 JUDGE_USE = {"day": "", "n": {}}
+PUBLIC_LIMITS = {"coach": 900, "verify": 300, "records": 2000, "log": 2000}  # 키 없는 학습자 기기: 카드 묶음마다 하루(판단 약 $0.003·확인 약 $0.005 → 묶음당 하루 최대 약 $4)
+PUBLIC_USE = {"day": "", "n": {}}
+PAID_PATHS = ("/upload", "/retry", "/illustrate", "/agent", "/coach", "/verify", "/translate", "/step", "/compare", "/frame")  # Meta 를 부르는 요청
 TEACHERS = dict(x.strip().split(":", 1) for x in os.environ.get("TEACHER_KEYS", "").split(",") if ":" in x)  # 교사별 키 "이름:키,이름:키"
 NOW_PATH = re.compile(r"/api/runs/\w+/(now|call|mark)$")  # 안경은 키(쿠키)가 없다: 지금 카드 맞추기와 '도와줘요'·'여기서 막혔어요'는 키 없이
 MARKS = {}  # 혼자 하기 '여기서 막혔어요': 카드 묶음별 1분 안 횟수(장난 방지)
@@ -66,7 +70,7 @@ STATE = DATA / "state.json"  # 안경·따라 하기 맞추기 상태와 심사�
 def load_state():
     try:
         st = json.loads(STATE.read_text())
-        NOW.update(st.get("now", {})); JUDGE_USE.update(st.get("judge", {}))
+        NOW.update(st.get("now", {})); JUDGE_USE.update(st.get("judge", {})); PUBLIC_USE.update(st.get("public", {}))
     except (OSError, ValueError):
         pass
 
@@ -77,7 +81,7 @@ STATE_LOCK = threading.Lock()
 def save_state():
     with STATE_LOCK:  # 동시에 들어온 요청이 같은 임시 파일을 바꿔치기하다 500 이 났다(11-01 진단)
         tmp = STATE.with_suffix(f".{threading.get_ident()}.tmp")
-        tmp.write_text(json.dumps({"now": NOW, "judge": JUDGE_USE}, ensure_ascii=False))
+        tmp.write_text(json.dumps({"now": NOW, "judge": JUDGE_USE, "public": PUBLIC_USE}, ensure_ascii=False))
         os.replace(tmp, STATE)
 NOW = {}
 load_state()
@@ -118,6 +122,8 @@ async def need_key(request: Request, call_next):
     path = request.url.path
     if not APP_KEY or request.method in ("GET", "HEAD") or NOW_PATH.match(path):
         return await call_next(request)
+    if path.endswith(PAID_PATHS) and spend.over():  # 누적 비용 상한: Meta 를 부르는 요청은 모두 거절(보기·손으로 넘기기는 그대로)
+        return JSONResponse({"error": "credit cap reached", "cap": spend.CAP}, 402)
     if path == "/login" and request.method == "POST":
         k = str((await request.form()).get("k", ""))
         for name, key in [("sc_key", APP_KEY), ("sc_judge", JUDGE_KEY)] + [("sc_teacher", tk) for tk in TEACHERS.values()]:
@@ -127,9 +133,21 @@ async def need_key(request: Request, call_next):
                 return r
         return JSONResponse({"error": "wrong key"}, 401)
     role = who(request)
+    m = RUN_PATH.match(path)
+    kind = next((k for k in PUBLIC_LIMITS if path.endswith("/" + k)), None) if m else None
+    if not role and kind:  # 학습자 기기(키 없음): 따라 하기 판단·확인하기·기록만, 카드 묶음마다 하루 한도(크레딧 보호)
+        today = time.strftime("%Y-%m-%d")
+        if PUBLIC_USE["day"] != today:
+            PUBLIC_USE.update(day=today, n={})
+        used = PUBLIC_USE["n"].setdefault(m.group(1), {})
+        if used.get(kind, 0) >= PUBLIC_LIMITS[kind]:
+            return JSONResponse({"error": "daily limit for this card set"}, 429)
+        used[kind] = used.get(kind, 0) + 1
+        save_state()
+        request.state.who = "learner"
+        return await call_next(request)
     if not role:
         return JSONResponse({"error": "key required"}, 401)
-    m = RUN_PATH.match(path)
     use_only = path.endswith(("/coach", "/verify", "/records", "/log"))  # 따라 하기·확인하기·기록은 누구 카드 묶음이든(고치기가 아님)
     if m and role.startswith("teacher:") and not use_only and owner_of(m.group(1)) != role:
         return JSONResponse({"error": "another teacher's card set"}, 403)
@@ -703,7 +721,7 @@ def admin_storage(request: Request):
     owners = {}
     for r in rows:
         o = owners.setdefault(r["owner"], {"sets": 0, "bytes": 0}); o["sets"] += 1; o["bytes"] += r["size"]["total"]
-    return {"runs": rows, "owners": owners, "free": du.free, "total": du.total,
+    return {"runs": rows, "owners": owners, "free": du.free, "total": du.total, "spend": {"usd": round(spend.total(), 2), "cap": spend.CAP},
             "policy": {"compact_days": storage.COMPACT_DAYS, "archive_days": storage.ARCHIVE_DAYS, "retain_days": storage.RETAIN_DAYS,
                        "quota_mb": storage.TEACHER_QUOTA_MB, "max_sets": storage.TEACHER_MAX_SETS},
             "backups": [f.name for f in sorted(BACKUPS.glob("teacher-*.zip"))]}
@@ -900,7 +918,7 @@ def health():
     """상태 점검(Railway healthcheck·바깥 감시용): 저장 공간, 도는 작업, 키 여부"""
     du = shutil.disk_usage(RUNS)
     return {"ok": du.free > MIN_FREE_GB << 30 and du.used / du.total < 0.9, "free_gb": round(du.free / 2**30, 1), "used_pct": round(du.used / du.total * 100),
-            "card_sets": sum(1 for d in RUNS.iterdir() if d.is_dir()), "making": len(RUNNING), "api_key": bool(pipeline.API_KEY)}
+            "card_sets": sum(1 for d in RUNS.iterdir() if d.is_dir()), "making": len(RUNNING), "api_key": bool(pipeline.API_KEY), "spend_capped": spend.over()}
 
 
 @app.get("/api/runs/{run_id}/export.zip")
