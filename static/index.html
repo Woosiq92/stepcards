@@ -322,6 +322,10 @@
 
   .coachv .cam { position:absolute; top:16px; left:16px; width:240px; border-radius:var(--r); overflow:hidden; background:#000; box-shadow:0 0 0 1px rgba(255,255,255,.12), 0 10px 30px rgba(0,0,0,.5); z-index:3; }
   .coachv .cam video { width:100%; display:block; min-height:135px; }
+  .coachv .cam .guide, .coachv .cam .aimtxt { display:none; }
+  .coachv.aim .cam { width:min(78vw, 620px); left:50%; top:72px; transform:translateX(-50%); z-index:6; box-shadow:0 0 0 3px var(--accent), 0 20px 60px rgba(0,0,0,.6); transition:width .25s; }
+  .coachv.aim .cam .guide { display:block; position:absolute; inset:14% 12%; border:3px dashed rgba(255,255,255,.9); border-radius:18px; pointer-events:none; }
+  .coachv.aim .cam .aimtxt { display:block; position:absolute; left:0; right:0; bottom:44px; text-align:center; color:#fff; font-weight:700; font-size:17px; text-shadow:0 1px 4px #000; padding:0 12px; word-break:keep-all; }
   .coachv .pill { position:absolute; left:8px; top:8px; display:flex; align-items:center; gap:6px; background:rgba(11,16,21,.7); backdrop-filter:blur(8px); font-size:12px; font-weight:600; padding:3px 10px 3px 8px; border-radius:99px; }
   .coachv .pill::before { content:""; width:7px; height:7px; border-radius:50%; background:#ff4d5e; }
   .againtag { position:absolute; top:18px; left:50%; transform:translateX(-50%); background:var(--accent); color:#fff; padding:10px 22px; border-radius:99px; font-weight:800; font-size:19px; z-index:3; box-shadow:0 8px 24px rgba(0,100,224,.45); }
@@ -1438,7 +1442,7 @@ function coach() {
   $("#main").innerHTML = `<div class="tab coachv">
     <button class="exit" onclick="coachExit()">${icon("x")}${T("나가기", "Exit")}</button>
     <button class="exit voice" id="cvoice" onclick="setVoice(!C.voice)"></button>
-    <div class="cam"><video id="cvid" muted playsinline></video><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
+    <div class="cam"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimtxt" id="caimtxt">${T("손과 물건이 네모 안에 들어오게 카메라를 맞춰요", "Point the camera so hands and the object are inside the box")}</div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
     <div class="lvtag" id="clv" hidden></div>
     <div class="livehint" id="clive" hidden></div>
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
@@ -1666,6 +1670,17 @@ function watching(d) {  // 학생 화면에는 '지켜보는 중'만. 판단 시
   const el = $("#cpill"); if (el) el.title = `${d.latency} s`;
 }
 function pill(t) { const el = $("#cpill"); if (el) el.textContent = t; }
+/* 카메라 맞추기: 모델이 손·물건을 못 보면(두 번 연속) 미리보기를 크게 띄우고 점선 네모로 안내, 보이면 다시 작게 */
+function aim(on, text) {
+  $(".coachv")?.classList.toggle("aim", on);
+  if (on && text) $("#caimtxt").textContent = text;
+}
+function handsSeen(h) {
+  if (h === true) { if ($(".coachv")?.classList.contains("aim")) { aim(false); pill(T("손이 잘 보여요", "Hands in view")); } C.noHands = 0; return; }
+  if (h !== false) return;  // 모름(이 맥 모델이 답을 못 줌 등)은 그대로 둔다
+  C.noHands = (C.noHands || 0) + 1;
+  if (C.noHands === 2) { aim(true, T("손이 안 보여요 · 카메라를 손 쪽으로 맞춰 주세요", "Can't see your hands · point the camera at them")); clog("aim", { cur: S.idx + 1 }); }
+}
 async function coachCamera() {
   try {
     C.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 1280 }, audio: false });
@@ -1679,6 +1694,7 @@ function coachFile(f) {
 }
 function coachStart() {
   $("#cstart").hidden = true; C.buf = []; C.running = true; pill(T("지켜보는 중", "Watching"));
+  aim(true, T("손과 물건이 네모 안에 들어오게 카메라를 맞춰요", "Point the camera so hands and the object are inside the box"));  // 처음엔 크게: 손이 보이면 저절로 작아진다
   C.started = true; C.since = Date.now(); coachCard(); clog("start", { cur: S.idx + 1, n: S.data.cards.length });
   clearInterval(C.helpTimer);
   C.helpTimer = setInterval(() => {
@@ -1769,7 +1785,7 @@ async function coachLoop() {
       let d = null; const t0 = Date.now();  // 네트워크 오류도 '판단 못 함'으로 보고 계속 본다
       try { const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev, local: C.local, live: C.live, ver: S.data.edited_at ?? null }) }); if (r.ok) d = await r.json();
         if (r.status === 401 || r.status === 429) { C.manual = true; pill(T("자동 넘김은 접속 키가 필요해요 · 이전·다음으로 넘겨요", "Auto-advance needs the access key · use Back and Next")); continue; } } catch { d = null; }
-      clog("decision", { cur, decision: d?.decision || "none", target: d?.target ?? "", ms: Date.now() - t0 });
+      clog("decision", { cur, decision: d?.decision || "none", target: d?.target ?? "", ms: Date.now() - t0, hands: d?.hands ?? "" });
       if (!C.running || S.idx + 1 !== cur) continue;  // 그 사이 사람이 직접 넘겼으면 결과는 버린다
       if (!d) { pill(T("판단하지 못했어요 · 다시 보는 중", "No answer · watching again")); }
       else if (d.decision === "reload") {  // 선생님이 카드를 고쳤다: 새 카드를 받고, 보던 카드(번호 n)에서 이어 간다
@@ -1778,6 +1794,7 @@ async function coachLoop() {
       }
       else {
         C.prev = d.seen;
+        handsSeen(d.hands);
         liveCheck(d);
         C.fin = d.decision === "finished" ? (C.fin || 0) + 1 : 0;
         if (C.fin >= 2) { coachEnd(true); break; }  // 마지막 단계를 마쳤다는 판단이 두 번 연속
@@ -1824,6 +1841,7 @@ function coachPause() {  // 카메라와 판단만 멈춘다(카드·안경 맞�
   pill(T("멈춤", "Paused"));
 }
 function stopCoach(keepSync) {  // keepSync: 끝 화면에서도 안경의 '처음으로'를 받는다
+  aim(false);
   C.running = false; clearInterval(C.timer); if (!keepSync) clearInterval(C.sync); clearInterval(C.helpTimer); C.started = false;
   window.speechSynthesis?.cancel(); C.lock?.release().catch(() => {}); C.lock = null; clearTimeout(C.againTimer);
   C.stream?.getTracks().forEach(t => t.stop()); C.stream = null;

@@ -52,3 +52,11 @@ def test_live_state(monkeypatch):
     monkeypatch.setattr(coach, "ask", lambda c, n, f, ref=None: (2, False, 0.0, {"state": "???"}))
     assert coach.check(CARDS2, 2, ["f"], 0, False, "data:ref")["state"] == "unclear"
     assert "state" not in run(monkeypatch, 3, 2)   # 기준 사진이 없으면 예전과 같다
+
+
+def test_hands_visibility_passes_through(monkeypatch):
+    # 손·물건이 안 보이면 화면이 카메라 맞추기를 돕는다. 모르면 None(옛 답 형식도 그대로 된다)
+    monkeypatch.setattr(coach, "ask", lambda c, n, f: (0, False, 0.0, {}, False))
+    assert coach.check(CARDS, 2, ["f"])["hands"] is False
+    monkeypatch.setattr(coach, "ask", lambda c, n, f: (0, False, 0.0))
+    assert coach.check(CARDS, 2, ["f"])["hands"] is None

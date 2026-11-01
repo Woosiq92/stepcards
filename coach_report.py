@@ -73,6 +73,9 @@ def main():
     if ms:
         print(f"따라 하기 판단 {len(ms)}번 · 걸린 시간 중앙값 {statistics.median(ms) / 1000:.1f}초 · 평균 {statistics.mean(ms) / 1000:.1f}초")
     print(f"판단 못 함(네트워크·응답 없음) {sum(r['decision'] == 'none' for r in dec)}번")
+    hs = [r["hands"] for r in dec if isinstance(r.get("hands"), bool)]
+    if hs:  # 손·물건이 화면에 보였는지(11-01부터 기록)
+        print(f"손·물건이 보인 판단 {sum(hs)} / {len(hs)}번 · 카메라 맞추기 안내 {sum(1 for r in rows if r.get('kind') == 'aim')}번")
     print()
     if ver:
         print(f"확인하기 {len(ver)}번: " + ", ".join(f"{r['n']}번 {r['result']}" for r in ver))
