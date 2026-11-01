@@ -53,7 +53,7 @@ mark_interrupted()
 
 APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정: 키를 아는 사람만 크레딧을 쓰고 카드를 바꾸게
 JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 수 있지만 하루 한도가 있다(제출 설명에 적는 키)
-JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "translate": 10, "coach": 900, "frame": 60, "retry": 6, "verify": 300}  # 하루 횟수. 따라 하기 900번 ≈ 30분
+JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "translate": 10, "fold": 20, "compare": 20, "coach": 900, "frame": 60, "retry": 6, "verify": 300}  # 하루 횟수. 따라 하기 900번 ≈ 30분
 JUDGE_USE = {"day": "", "n": {}}
 TEACHERS = dict(x.strip().split(":", 1) for x in os.environ.get("TEACHER_KEYS", "").split(",") if ":" in x)  # 교사별 키 "이름:키,이름:키"
 NOW_PATH = re.compile(r"/api/runs/\w+/(now|call)$")  # 안경은 키(쿠키)가 없다: 지금 카드 맞추기와 '도와줘요'는 키 없이
@@ -191,6 +191,14 @@ def atomic(out, make):
 @app.get("/")
 def index():
     return FileResponse(ROOT / "static" / "index.html")
+
+
+@app.get("/static/{name}")
+def static_js(name: str):
+    """3D 접기 카드 스크립트만 내보낸다(리포의 다른 파일은 열지 않는다)"""
+    if name not in ("fold.js", "fold3d.js"):
+        raise HTTPException(404)
+    return FileResponse(ROOT / "static" / name, media_type="text/javascript")
 
 
 @app.get("/api/runs")
@@ -331,6 +339,34 @@ def translate_cards(run_id: str, body: dict):
     return {**data, "translate": {"problems": t["problems"], "cost": t["cost"]}}
 
 
+@app.post("/api/runs/{run_id}/fold")
+def fold_write(run_id: str, body: dict):
+    """3D 접기 프로그램을 Muse Spark 에게 받는다(저장 안 함: 브라우저가 검사·대조한 뒤 저장). previous+problems/notes 면 고쳐 쓰기"""
+    import fold_gen
+    d = run_dir(run_id)
+    data = read(d, "cards.json")
+    if not data:
+        raise HTTPException(400, "카드가 없습니다")
+    prev = body.get("previous") if isinstance(body.get("previous"), dict) else None
+    lines = lambda k: [str(x)[:300] for x in body.get(k, [])][:30] if isinstance(body.get(k), list) else []
+    out = fold_gen.write(d, data["cards"], prev, lines("problems"), lines("notes"))
+    if not out["program"]:
+        raise HTTPException(502, "접기 프로그램을 받지 못했습니다. 다시 해 보세요")
+    return out
+
+
+@app.post("/api/runs/{run_id}/fold/compare")
+def fold_compare(run_id: str, body: dict):
+    """3D 끝 모양과 시범 끝 장면을 Muse Spark 가 비교"""
+    import fold_gen
+    d = run_dir(run_id)
+    data = read(d, "cards.json")
+    stills = body.get("stills") if isinstance(body.get("stills"), dict) else {}
+    if not data or not stills:
+        raise HTTPException(400, "비교할 그림이 없습니다")
+    return fold_gen.compare(d, data["cards"], stills)
+
+
 @app.post("/api/runs/{run_id}/retry")
 def retry(run_id: str):
     """멈춘 실행을 같은 영상으로 다시 돌린다(영상을 다시 올리지 않아도 되게)"""
@@ -385,6 +421,9 @@ def _save(d, body):
     data["cards"] = body["cards"]
     if isinstance(body.get("title"), str):
         data["title"] = body["title"].strip()[:60]
+    if "fold" in body:  # 3D 접기 프로그램(브라우저가 검사한 것). 끄기는 None
+        f = body["fold"]
+        data["fold"] = f if isinstance(f, dict) and isinstance(f.get("steps"), list) and len(json.dumps(f)) < 50_000 else None
     if "extra" in body:  # 한 언어 더: 끄기(None) 또는 확인 표시만 받는다. 번역 글은 카드의 x
         e = body["extra"]
         data["extra"] = {"lang": str(e.get("lang", ""))[:40], "name": str(e.get("name", ""))[:40], "ok": e.get("ok") is True} if isinstance(e, dict) else None
