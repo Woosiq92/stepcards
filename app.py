@@ -611,7 +611,7 @@ def card_clip(run_id: str, n: int, g: int = 0):
 
 
 @app.get("/api/runs/{run_id}/qr.svg")
-def qr(run_id: str, request: Request, to: str = "tablet", lang: str = "ko", s: str = "", m: str = "ko"):
+def qr(run_id: str, request: Request, to: str = "tablet", lang: str = "ko", s: str = "", m: str = "ko", log: str = ""):
     """학생 기기로 넘기는 QR: 태블릿 보기나 안경 화면 주소(보기는 키 없이 된다)"""
     import segno
     run_dir(run_id)
@@ -619,6 +619,8 @@ def qr(run_id: str, request: Request, to: str = "tablet", lang: str = "ko", s: s
     lang = lang if lang in ("ko", "en", "both", "x") else "ko"
     m = "en" if m == "en" else "ko"  # lang=x(한 언어 더)일 때 위 줄 언어
     url = f"{base}/glasses?run={run_id}&lang={lang}" + ("&m=en" if lang == "x" and m == "en" else "") + (f"&s={re.sub(r'[^a-z0-9]', '', s.lower())[:8]}" if s else "") if to == "glasses" else f"{base}/?ui={lang if lang in ('ko', 'en') else m}#run={run_id}&view=tablet"
+    if to == "coach":  # 노트북 앞 카메라 대신 휴대폰 뒤 카메라로 따라 하기(시험 기록 켬은 그대로 넘긴다)
+        url = f"{base}/?ui={lang if lang in ('ko', 'en') else m}" + ("&log=1" if log == "1" else "") + f"#run={run_id}&view=coach"
     buf = io.BytesIO()
     segno.make(url, error="m").save(buf, kind="svg", scale=6, border=2, dark="#1c2b33")
     return Response(buf.getvalue(), media_type="image/svg+xml", headers={"Cache-Control": "no-store"})

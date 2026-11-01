@@ -325,7 +325,9 @@
   .coachv .cam .guide, .coachv .cam .aimtxt { display:none; }
   .coachv.aim .cam { width:min(78vw, 620px); left:50%; top:72px; transform:translateX(-50%); z-index:6; box-shadow:0 0 0 3px var(--accent), 0 20px 60px rgba(0,0,0,.6); transition:width .25s; }
   .coachv.aim .cam .guide { display:block; position:absolute; inset:14% 12%; border:3px dashed rgba(255,255,255,.9); border-radius:18px; pointer-events:none; }
-  .coachv.aim .cam .aimtxt { display:block; position:absolute; left:0; right:0; bottom:44px; text-align:center; color:#fff; font-weight:700; font-size:17px; text-shadow:0 1px 4px #000; padding:0 12px; word-break:keep-all; }
+  .coachv.aim .cam .aimqr:not([hidden]) { display:flex; position:absolute; top:10px; right:10px; flex-direction:column; align-items:center; gap:4px; background:#fff; color:#1c2b33; border-radius:12px; padding:8px; font-size:12px; font-weight:700; }
+  .coachv .cam .aimqr { display:none; }
+  .coachv.aim .cam .aimtxt { display:block; position:absolute; left:0; right:0; bottom:3%; text-align:center; color:#fff; font-weight:700; font-size:17px; text-shadow:0 1px 4px #000; padding:0 12px; word-break:keep-all; }
   .coachv .pill { position:absolute; left:8px; top:8px; display:flex; align-items:center; gap:6px; background:rgba(11,16,21,.7); backdrop-filter:blur(8px); font-size:12px; font-weight:600; padding:3px 10px 3px 8px; border-radius:99px; }
   .coachv .pill::before { content:""; width:7px; height:7px; border-radius:50%; background:#ff4d5e; }
   .againtag { position:absolute; top:18px; left:50%; transform:translateX(-50%); background:var(--accent); color:#fff; padding:10px 22px; border-radius:99px; font-weight:800; font-size:19px; z-index:3; box-shadow:0 8px 24px rgba(0,100,224,.45); }
@@ -1442,7 +1444,7 @@ function coach() {
   $("#main").innerHTML = `<div class="tab coachv">
     <button class="exit" onclick="coachExit()">${icon("x")}${T("나가기", "Exit")}</button>
     <button class="exit voice" id="cvoice" onclick="setVoice(!C.voice)"></button>
-    <div class="cam"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimtxt" id="caimtxt">${T("손과 물건이 네모 안에 들어오게 카메라를 맞춰요", "Point the camera so hands and the object are inside the box")}</div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
+    <div class="cam"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimqr" id="caimqr" hidden><img src="/api/runs/${S.run}/qr.svg?to=coach&lang=${ui}&log=${new URLSearchParams(location.search).get("log") === "1" ? 1 : ""}" alt="QR" width="104" height="104"><span>${T("휴대폰으로 열기", "Open on a phone")}</span></div><div class="aimtxt" id="caimtxt">${T("손과 물건이 네모 안에 들어오게 카메라를 맞춰요", "Point the camera so hands and the object are inside the box")}</div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
     <div class="lvtag" id="clv" hidden></div>
     <div class="livehint" id="clive" hidden></div>
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
@@ -1684,7 +1686,11 @@ function handsSeen(h) {
 async function coachCamera() {
   try {
     C.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 1280 }, audio: false });
-    $("#cvid").srcObject = C.stream; await $("#cvid").play(); coachStart();
+    $("#cvid").srcObject = C.stream; await $("#cvid").play();
+    // 노트북 앞 카메라는 얼굴을 비춘다(맥 FaceTime 은 facingMode 를 안 알려 준다): 휴대폰 뒤 카메라로 열게 안내
+    const st = C.stream.getVideoTracks()[0]?.getSettings?.() || {};
+    C.front = st.facingMode ? st.facingMode === "user" : !/Android|iPhone|iPad/i.test(navigator.userAgent);
+    coachStart();
   } catch { pill(T("카메라를 켤 수 없어요", "Camera unavailable")); toast(T("카메라 사용을 허락해 주세요.", "Please allow camera access.")); }
 }
 function coachFile(f) {
@@ -1694,7 +1700,9 @@ function coachFile(f) {
 }
 function coachStart() {
   $("#cstart").hidden = true; C.buf = []; C.running = true; pill(T("지켜보는 중", "Watching"));
-  aim(true, T("손과 물건이 네모 안에 들어오게 카메라를 맞춰요", "Point the camera so hands and the object are inside the box"));  // 처음엔 크게: 손이 보이면 저절로 작아진다
+  aim(true, C.front ? T("이 카메라는 얼굴 쪽을 봐요 · 휴대폰 뒤 카메라로 하면 손이 잘 보여요", "This camera faces you · a phone's back camera sees your hands better")
+                    : T("손과 물건이 네모 안에 들어오게 카메라를 맞춰요", "Point the camera so hands and the object are inside the box"));  // 처음엔 크게: 손이 보이면 저절로 작아진다
+  $("#caimqr").hidden = !C.front;
   C.started = true; C.since = Date.now(); coachCard(); clog("start", { cur: S.idx + 1, n: S.data.cards.length });
   clearInterval(C.helpTimer);
   C.helpTimer = setInterval(() => {
