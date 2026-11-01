@@ -158,6 +158,7 @@ def ask_steps(run, content, look):
 # ②-2 이 맥에서 만들기(Muse Glimmer, llama.cpp -c 32768): 같은 질문·검사·재시도, 영상이 맥 밖으로 나가지 않는다
 LOCAL_URL = os.environ.get("GLIMMER_URL", "http://127.0.0.1:8791/v1")
 local_client = OpenAI(base_url=LOCAL_URL, api_key="local", timeout=1800)
+API_MAX_FRAMES = 400
 LOCAL_MAX_FRAMES = 60  # 32K 문맥에 들어가는 사진 수(실험: 48~55장이 1.5~1.8만 토큰)
 LOCAL_PREFILL = '{"steps":[{"start":'  # 답 머리말을 주면 긴 생각 글을 건너뛰고 바로 JSON
 
@@ -176,6 +177,8 @@ def split_steps(run, duration, frames, speech=(), look=False, every=1, local=Fal
     local이면 이 맥의 Glimmer 에 묻는다(사진은 문맥에 맞게 간격을 넓히고, look_closer 는 쓰지 않는다)."""
     if local:
         every, look = max(1, -(-len(frames) // LOCAL_MAX_FRAMES)), False
+    else:  # Meta API 는 한 요청에 사진 500장까지: 개관 사진은 400장 안으로(나머지는 look_closer 확대 몫, 6번×16장)
+        every = max(every, -(-len(frames) // API_MAX_FRAMES))
     content = []
     for i, p in enumerate(frames[::every]):
         content += [{"type": "input_text", "text": f"t={i * every}s"}, {"type": "input_image", "image_url": data_url(p)}]

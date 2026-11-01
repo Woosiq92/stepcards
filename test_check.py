@@ -83,3 +83,27 @@ def test_retry_feeds_problems_back(tmp_path, monkeypatch):
     result = pipeline.split_steps(run, 20, [])
     assert result["status"] == "ok" and len(sent) == 2
     assert "겹칩니다" in sent[1] and "동작이 둘" in sent[1]
+
+
+def test_long_video_stays_under_api_image_limit(tmp_path, monkeypatch):
+    # Meta API 는 한 요청에 사진 500장까지. 559초 영상(사진 559장)이 400장 안으로 들어가야 한다(11-01 실제 실패: 525·559·595장)
+    import types
+    import pipeline
+    from PIL import Image
+    good = json.dumps({"steps": [{"start": 0, "end": 500, "rep": 10, "ko": "닦으세요.", "en": "Wipe.", "object": "cloth", "look": "cloth"}]})
+    counts = []
+
+    def create(**kw):
+        counts.append(sum(1 for m in kw["input"] for x in m.get("content", []) if isinstance(x, dict) and x.get("type") == "input_image"))
+        return types.SimpleNamespace(output_text=good, output=[], usage=types.SimpleNamespace(input_tokens=1, output_tokens=1))
+
+    monkeypatch.setattr(pipeline, "client", types.SimpleNamespace(responses=types.SimpleNamespace(create=create)))
+    frame = tmp_path / "f.jpg"
+    Image.new("RGB", (8, 8)).save(frame)
+    video = tmp_path / "v.mp4"
+    video.write_bytes(b"x")
+    run = pipeline.Run(video)
+    run.dir = tmp_path
+    run.progress = tmp_path / "progress.json"
+    pipeline.split_steps(run, 559, [frame] * 559)
+    assert counts and max(counts) <= pipeline.API_MAX_FRAMES

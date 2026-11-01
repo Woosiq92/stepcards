@@ -24,7 +24,7 @@
    "box_prompt": "red napkin",
    "box_touches_hand": true,
    "ill": "cards/01_ill.jpg",
-   "view": "ill"
+   "view": "fold"
   },
   {
    "start": 26,
@@ -46,7 +46,7 @@
    "box_prompt": "red napkin",
    "box_touches_hand": true,
    "ill": "cards/02_ill.jpg",
-   "view": "ill"
+   "view": "fold"
   },
   {
    "start": 32,
@@ -68,7 +68,7 @@
    "box_prompt": "red napkin",
    "box_touches_hand": true,
    "ill": "cards/03_ill.jpg",
-   "view": "ill"
+   "view": "fold"
   },
   {
    "start": 41,
@@ -90,7 +90,7 @@
    "box_prompt": "red napkin",
    "box_touches_hand": true,
    "ill": "cards/04_ill.jpg",
-   "view": "ill"
+   "view": "fold"
   },
   {
    "start": 53,
@@ -112,7 +112,7 @@
    "box_prompt": "red napkin",
    "box_touches_hand": true,
    "ill": "cards/05_ill.jpg",
-   "view": "ill"
+   "view": "fold"
   },
   {
    "start": 60,
@@ -134,7 +134,7 @@
    "box_prompt": "red napkin",
    "box_touches_hand": true,
    "ill": "cards/06_ill.jpg",
-   "view": "ill"
+   "view": "fold"
   },
   {
    "start": 73,
@@ -156,7 +156,7 @@
    "box_prompt": "red napkin",
    "box_touches_hand": true,
    "ill": "cards/07_ill.jpg",
-   "view": "ill"
+   "view": "fold"
   },
   {
    "start": 78,
@@ -178,7 +178,7 @@
    "box_prompt": "red napkin",
    "box_touches_hand": true,
    "ill": "cards/08_ill.jpg",
-   "view": "ill"
+   "view": "clip"
   },
   {
    "start": 86,
@@ -200,7 +200,7 @@
    "box_prompt": "red napkin",
    "box_touches_hand": true,
    "ill": "cards/09_ill.jpg",
-   "view": "ill"
+   "view": "clip"
   },
   {
    "start": 97,
@@ -222,7 +222,7 @@
    "box_prompt": "red napkin",
    "box_touches_hand": true,
    "ill": "cards/10_ill.jpg",
-   "view": "ill"
+   "view": "clip"
   },
   {
    "start": 110,
@@ -244,7 +244,7 @@
    "box_prompt": "red napkin",
    "box_touches_hand": true,
    "ill": "cards/11_ill.jpg",
-   "view": "ill"
+   "view": "clip"
   },
   {
    "start": 130,
@@ -266,9 +266,166 @@
    "box_prompt": "red napkin",
    "box_touches_hand": true,
    "ill": "cards/12_ill.jpg",
-   "view": "ill"
+   "view": "clip"
   }
  ],
  "edited_at": 1793333539.705502,
- "title": "냅킨 나비 접기 (견본)"
+ "title": "냅킨 나비 접기 (견본)",
+ "fold": {
+  "shape": {
+   "w": 1,
+   "h": 1,
+   "color": "#a5001f"
+  },
+  "steps": [
+   {
+    "n": 1,
+    "ops": [
+     {
+      "op": "fold",
+      "from": "bottom",
+      "to": "top",
+      "dir": "valley",
+      "layers": "all"
+     }
+    ]
+   },
+   {
+    "n": 2,
+    "ops": [
+     {
+      "op": "fold",
+      "from": "top-right",
+      "to": "bottom",
+      "dir": "valley",
+      "layers": "all"
+     }
+    ]
+   },
+   {
+    "n": 3,
+    "ops": [
+     {
+      "op": "fold",
+      "from": "top-left",
+      "to": "bottom",
+      "dir": "valley",
+      "layers": "all"
+     }
+    ]
+   },
+   {
+    "n": 4,
+    "ops": [
+     {
+      "op": "flip",
+      "axis": "vertical"
+     }
+    ]
+   },
+   {
+    "n": 5,
+    "ops": [
+     {
+      "op": "fold",
+      "from": "bottom-left",
+      "to": "center",
+      "dir": "valley",
+      "layers": "all"
+     }
+    ]
+   },
+   {
+    "n": 6,
+    "ops": [
+     {
+      "op": "fold",
+      "from": "bottom-right",
+      "to": "center",
+      "dir": "valley",
+      "layers": "all"
+     }
+    ]
+   },
+   {
+    "n": 7,
+    "ops": [
+     {
+      "op": "fold",
+      "from": "center",
+      "to": "right",
+      "dir": "mountain",
+      "layers": "bottom"
+     }
+    ]
+   },
+   {
+    "n": 8,
+    "ops": [
+     {
+      "op": "fold",
+      "from": "center",
+      "to": "left",
+      "dir": "mountain",
+      "layers": "bottom"
+     }
+    ]
+   },
+   {
+    "n": 9,
+    "ops": [
+     {
+      "op": "flip",
+      "axis": "vertical"
+     }
+    ]
+   },
+   {
+    "n": 10,
+    "ops": [
+     {
+      "op": "fold",
+      "from": "top",
+      "to": "bottom",
+      "dir": "valley",
+      "layers": "all"
+     }
+    ]
+   },
+   {
+    "n": 11,
+    "ops": [
+     {
+      "op": "tuck",
+      "from": "bottom",
+      "to": "center"
+     }
+    ]
+   },
+   {
+    "n": 12,
+    "ops": [
+     {
+      "op": "pinch",
+      "axis": "vertical"
+     }
+    ]
+   }
+  ],
+  "report": {
+   "1": "yes",
+   "2": "yes",
+   "3": "yes",
+   "4": "yes",
+   "5": "yes",
+   "6": "unclear",
+   "7": "yes",
+   "8": "no",
+   "9": "no",
+   "10": "no",
+   "11": "no",
+   "12": "no"
+  }
+ },
+ "seed_v": 2
 }
