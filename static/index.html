@@ -1451,7 +1451,7 @@ function coach() {
   $("#main").innerHTML = `<div class="tab coachv">
     <button class="exit" onclick="coachExit()">${icon("x")}${T("나가기", "Exit")}</button>
     <button class="exit voice" id="cvoice" onclick="setVoice(!C.voice)"></button>
-    <div class="cam"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimqr" id="caimqr" hidden><img src="/api/runs/${S.run}/qr.svg?to=coach&lang=${ui}&log=${new URLSearchParams(location.search).get("log") === "1" ? 1 : ""}" alt="QR" width="104" height="104"><span>${T("또는 휴대폰 뒤 카메라로", "Or use a phone's back camera")}</span></div><div class="aimtxt" id="caimtxt">${T("손과 물건이 네모 안에 들어오게 카메라를 맞춰요", "Point the camera so hands and the object are inside the box")}</div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
+    <div class="cam"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimqr" id="caimqr" hidden><img src="/api/runs/${S.run}/qr.svg?to=coach&lang=${ui}&log=${new URLSearchParams(location.search).get("log") === "1" ? 1 : ""}" alt="QR" width="104" height="104"><span>${T("또는 휴대폰을 눈높이로", "Or a phone at eye level")}</span></div><div class="aimtxt" id="caimtxt">${T("휴대폰을 눈높이(안경 자리)에 두고, 하는 손과 물건이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with your hands and the object inside the box")}</div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
     <div class="lvtag" id="clv" hidden></div>
     <div class="livehint" id="clive" hidden></div>
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
@@ -1712,7 +1712,7 @@ function coachFile(f) {
 function coachStart() {
   $("#cstart").hidden = true; C.buf = []; C.running = true; pill(T("지켜보는 중", "Watching"));
   aim(true, C.front ? T("하는 손과 물건이 네모 안에 보이게 화면을 뒤로 젖히거나 물건을 카메라 앞에 두세요", "Tilt the screen back or put the object in front of the camera so your hands and it are inside the box")
-                    : T("손과 물건이 네모 안에 들어오게 카메라를 맞춰요", "Point the camera so hands and the object are inside the box"));  // 처음엔 크게: 손이 보이면 저절로 작아진다
+                    : T("휴대폰을 눈높이(안경 자리)에 두고, 하는 손과 물건이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with your hands and the object inside the box"));  // 처음엔 크게: 손이 보이면 저절로 작아진다
   $("#caimqr").hidden = !C.front;
   C.started = true; C.since = Date.now(); coachCard(); clog("start", { cur: S.idx + 1, n: S.data.cards.length });
   clearInterval(C.helpTimer);

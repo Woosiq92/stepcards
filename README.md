@@ -2,6 +2,15 @@
 
 Turn one demonstration video into checked picture step cards — then let a camera show the learner the right card at the right time.
 
+Same eyes on both ends: the person who knows the task films it once through Ray-Ban Meta glasses (first-person, hands free), and the person learning it follows the cards on Ray-Ban Display from the same point of view — so the card photos, the "done" reference and the live camera all look the same way. Without glasses, a phone's back camera held at eye level (or a fixed phone) stands in.
+
+| Meta device / app | What it does in StepCards | Status |
+|---|---|---|
+| Ray-Ban Meta (camera) | records the demonstration from the doer's eyes | any video file works; tested with first-person videos, not yet with glasses footage |
+| Ray-Ban Display | shows the current card, Help / Ask for help / Done, Check result | web app built to Meta's guidance, checked in the simulator, not on physical glasses |
+| Glasses camera while following | sees the learner's hands | not built: needs the Wearables Device Access Toolkit (native phone app); a phone camera does this today |
+| WhatsApp, Messenger, Instagram | send cards, today's run and follow-along links | through the phone's share sheet |
+
 Built during the Meta AI Developer Hackathon (Oct 26 – Nov 4, 2026), Indie track, by LogicCraft. All code in this repository was written during the hackathon; the first commit is dated 2026-10-28.
 
 ## Try it
@@ -24,7 +33,7 @@ Built first for the hardest case — learners with intellectual disabilities, wh
 |---|---|---|
 | Special-education job training | teacher | student |
 | New staff training (cafés, kitchens, warehouses) | senior staff | new hires, including migrant workers (Korean and English cards) |
-| Follow-along versions of creators' videos | the creator, from their own video | viewers |
+| Follow-along versions of creators' videos (e.g. teens filming POV "how to" Reels with Ray-Ban Meta) | the creator, from their own video | viewers — and the cards they got stuck on go back to the creator |
 | Assembly and setup | the maker | first-time buyers |
 | Family know-how (a parent's recipe) | family | family |
 
