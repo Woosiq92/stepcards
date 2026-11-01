@@ -908,7 +908,8 @@
  ],
  "title": "농-농케어 · 수어 인사 (견본)",
  "edited_at": 1793521676.628302,
- "seed_v": 1,
+ "seed_v": 2,
  "mode": "together",
- "no_done": false
+ "no_done": false,
+ "pov": "facing"
 }

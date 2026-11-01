@@ -73,5 +73,6 @@
  "title": "쇼키 춤 기초 (견본)",
  "mode": "alone",
  "no_done": false,
- "seed_v": 1
+ "seed_v": 2,
+ "pov": "facing"
 }

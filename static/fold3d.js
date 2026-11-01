@@ -153,7 +153,7 @@ function view(fr) {
   const x0 = Math.min(a.x0, b.x0), x1 = Math.max(a.x1, b.x1), y0 = Math.min(a.y0, b.y0), y1 = Math.max(a.y1, b.y1);
   const cx = (x0 + x1) / 2, cz = (y0 + y1) / 2, size = Math.max(x1 - x0, y1 - y0, 0.3);
   const cam = new THREE.PerspectiveCamera(38, W / H, 0.01, 50);
-  cam.position.set(cx, size * 1.55, cz + size * 1.05); cam.lookAt(cx, 0, cz);
+  cam.position.set(cx, size * 1.3, cz + size * 0.85); cam.lookAt(cx, 0, cz);  // 모양에 가깝게(여백이 컸다)
   return cam;
 }
 

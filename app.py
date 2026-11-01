@@ -217,7 +217,7 @@ def runs(request: Request):
                         "job": seed.get("job_en" if request.query_params.get("ui") == "en" else "job", ""), "custom": seed.get("custom", False),
                         "done": data is not None, "count": len(cs),
                         "failed": data is None and (prog.get("events") or [{}])[-1].get("stage") == "error",
-                        "issues": len(data["problems"]) if data else 0, "thumb": cs[0]["image"] if cs else None,
+                        "issues": len(data["problems"]) if data else 0, "thumb": seed.get("thumb") or (cs[0]["image"] if cs else None),  # 견본은 자막 없는 장면을 썸네일로
                         "stage": storage.stage(d), "delete_on": None if d.name in SEED_INDEX else storage.delete_on(d)})
     return out
 
@@ -427,6 +427,8 @@ def _save(d, body):
         data["title"] = body["title"].strip()[:60]
     if body.get("mode") in ("together", "alone"):  # 같이 하기(곁에 사람: 도와줘요) / 혼자 하기(여기서 막혔어요)
         data["mode"] = body["mode"]
+    if body.get("pov") in ("first", "facing"):  # 시범 시점: 하는 사람 눈높이(기본) / 마주 보고 찍음(수어·춤)
+        data["pov"] = body["pov"]
     if isinstance(body.get("no_done"), bool):  # 사람을 돕거나 다칠 수 있는 일: 기계가 '됐어요'라고 판단하지 않는다
         data["no_done"] = body["no_done"]
     if "fold" in body:  # 3D 접기 프로그램(브라우저가 검사한 것). 끄기는 None

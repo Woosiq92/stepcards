@@ -37,6 +37,7 @@
   .logo .mark svg { width:20px; height:20px; }
   .steps { display:flex; align-items:center; gap:2px; margin:0 auto; background:var(--bg); padding:4px; border-radius:999px; }
   #uiseg .short, .step .short { display:none; } #uiseg .long, #uiseg .short { pointer-events:none; }
+  @media (max-width:720px) { body.home #steps { display:none; } }
   @media (max-width:720px) { #uiseg .short, .step .short { display:inline; } .step .long { display:none; } #uiseg button, .step { min-width:44px; min-height:44px; } }
   .f3speed, .fh-rec input[type=checkbox] { min-height:40px; } .fh-rec input[type=checkbox] { width:22px; height:22px; accent-color:var(--accent); }
   .step { display:flex; align-items:center; gap:8px; padding:7px 14px 7px 8px; border-radius:999px; border:none; background:none; color:var(--muted); font-size:14px; font-weight:600; transition:background .15s, color .15s; }
@@ -101,9 +102,9 @@
   .news { display:grid; grid-template-columns:repeat(6,1fr); gap:28px 24px; } .newscard { grid-column:span 2; } .newscard:nth-child(4) { grid-column:2 / span 2; }
   .news.four { grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); } .news.four .newscard { grid-column:auto; }  /* 직무 견본 수가 바뀌어도 한 줄에 */
   @media (max-width:860px) { .news.four { grid-template-columns:1fr 1fr; } }
+  .mpov .short { display:none; } @media (max-width:640px) { .mpov .long { display:none; } .mpov .short { display:inline; } }
   .mpov { display:inline-flex; align-items:center; gap:6px; align-self:flex-start; background:rgba(0,0,0,.45); color:#fff; border-radius:999px; padding:6px 12px; font-size:13px; font-weight:600; } .mpov .ico { width:16px; height:16px; }
   .sect.first { margin-top:56px; }
-  .notmeta { margin:-8px auto 18px; font-size:14px; }
   .jobsrc { max-width:720px; margin:-8px auto 22px; font-size:14px; }
   .newscard { color:var(--ink); font-weight:400; display:flex; flex-direction:column; gap:6px; } .newscard:hover { text-decoration:none; }
   .newscard img { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:24px; transition:transform .2s; } .newscard:hover img { transform:scale(1.015); }
@@ -113,11 +114,6 @@
   @media (max-width:560px) { .news, .mpair { grid-template-columns:1fr; } h2.sect { font-size:30px; margin-top:64px; } .mstory { padding:64px 16px; } }
   .trust { display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:10px; font-size:13px; color:var(--ink2); font-weight:600; }
   .trust span { display:inline-flex; align-items:center; gap:4px; } .trust .ico { width:15px; height:15px; color:var(--ok); }
-  .where { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
-  .where > div { background:var(--paper); border-radius:var(--r); padding:16px 18px; box-shadow:var(--sh-1); display:flex; flex-direction:column; gap:4px; border-top:4px solid var(--accent); }
-  .where > div:nth-child(2) { border-top-color:var(--ink); } .where.two { grid-template-columns:repeat(2,1fr); max-width:900px; margin:0 auto; }
-  .where .m { font-size:12px; font-weight:700; color:var(--muted); } .where .muted { font-size:13px; }
-  @media (max-width:720px) { .where { grid-template-columns:1fr; } }
   .uses { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
   .uses div { background:var(--paper); border-radius:var(--r); padding:16px; box-shadow:var(--sh-1); display:flex; flex-direction:column; gap:4px; }
  
@@ -232,7 +228,7 @@
   .log { margin-top:32px; font-size:13px; color:var(--muted); } .log summary { cursor:pointer; font-weight:600; }
 
   /* 확인·고치기 */
-  .tbcount { font-size:20px; white-space:nowrap; } .toolbar .titlein { flex:1 1 220px; min-width:0; }
+  .tbcount { font-size:20px; white-space:nowrap; } .toolbar .titlein { flex:1 1 260px; min-width:240px; }
   details.kebab { position:relative; } details.kebab > summary { list-style:none; cursor:pointer; min-width:44px; text-align:center; } details.kebab > summary::-webkit-details-marker { display:none; }
   details.kebab .kmenu { position:absolute; right:0; top:calc(100% + 6px); z-index:20; display:flex; flex-direction:column; gap:6px; background:var(--paper, #fff); border:1px solid var(--line); border-radius:14px; padding:8px; box-shadow:0 12px 32px rgba(0,0,0,.14); min-width:200px; }
   details.kebab .kmenu .btn { justify-content:flex-start; white-space:nowrap; }
@@ -319,12 +315,12 @@
   }
   body.tabmode header { display:none; } body.tabmode main { padding:0; max-width:none; }
   .tab { position:fixed; inset:0; background:var(--dark); color:#fff; display:flex; flex-direction:column; user-select:none; }
-  .tab .imgwrap { flex:1; position:relative; display:flex; align-items:center; justify-content:center; min-height:0; padding:72px 24px 8px; }
+  .tab .imgwrap { flex:1; position:relative; display:flex; align-items:flex-end; justify-content:center; min-height:0; padding:72px 24px 8px; }  /* 그림을 문장 바로 위에 */
   .tab .imgwrap img, .tab .imgwrap video { max-width:100%; max-height:100%; border-radius:var(--r-l); box-shadow:0 20px 60px rgba(0,0,0,.5); }
   .tab .zone { position:absolute; top:0; bottom:0; width:50%; } .tab .zone.l { left:0; } .tab .zone.r { right:0; }
   .tab .txt { font-size:clamp(28px,4.5vw,52px); font-weight:800; letter-spacing:-.025em; line-height:1.25; text-align:center; padding:10px 24px 4px; }
   .tab .bar { display:flex; align-items:center; justify-content:space-between; padding:16px 24px 28px; gap:16px; }
-  .tab .navb { background:var(--dark3); color:#fff; border:none; border-radius:999px; padding:18px 34px; font-size:20px; font-weight:700; min-width:150px; transition:background .15s; }
+  .tab .navb { background:var(--dark3); color:#fff; border:1px solid rgba(255,255,255,.22); border-radius:999px; padding:18px 34px; font-size:20px; font-weight:700; min-width:150px; transition:background .15s; }
   .tab .navb:hover:not(:disabled) { background:#38444f; }
   .tab .navb.next { background:var(--accent); } .tab .navb.next:hover:not(:disabled) { background:var(--accent-h); }
   .tab .navb:disabled { opacity:.25; cursor:default; }
@@ -337,7 +333,9 @@
   .coachv .cam { position:absolute; top:16px; left:16px; width:240px; border-radius:var(--r); overflow:hidden; background:#000; box-shadow:0 0 0 1px rgba(255,255,255,.12), 0 10px 30px rgba(0,0,0,.5); z-index:3; }
   .coachv .cam video { width:100%; display:block; min-height:135px; }
   .coachv .cam .guide, .coachv .cam .aimtxt { display:none; }
-  .coachv.aim .cam { width:min(70vw, 520px); left:50%; top:72px; transform:translateX(-50%); z-index:6; box-shadow:0 0 0 3px var(--accent), 0 20px 60px rgba(0,0,0,.6); transition:width .25s; }
+  .coachv.aim .cam { width:min(34vw, 380px); top:72px; left:16px; z-index:6; box-shadow:0 0 0 3px var(--accent), 0 20px 60px rgba(0,0,0,.6); transition:width .25s; cursor:pointer; }
+  .coachv.aim .imgwrap { padding-left:calc(min(34vw, 380px) + 40px); }  /* 카드는 미리보기 옆으로 비켜서 계속 보인다 */
+  @media (max-width:640px) { .coachv.aim .cam { width:calc(100vw - 32px); top:64px; } .coachv.aim .cam video { max-height:30vh; object-fit:cover; } .coachv.aim .imgwrap { padding-left:24px; padding-top:calc(30vh + 84px); } }
   .coachv.aim .cam .guide { display:block; position:absolute; inset:14% 12%; border:3px dashed rgba(255,255,255,.9); border-radius:18px; pointer-events:none; }
   .coachv.aim .cam .aimqr:not([hidden]) { display:flex; position:absolute; top:10px; right:10px; flex-direction:column; align-items:center; gap:4px; background:#fff; color:#11183a; border-radius:12px; padding:8px; font-size:12px; font-weight:700; }
   .coachv .cam .aimqr { display:none; }
@@ -354,7 +352,8 @@
   .livehint button { border:none; background:none; color:var(--muted); padding:6px; align-self:flex-start; }
   .livetoggle { display:flex; align-items:center; gap:8px; color:#cfd9e3; font-size:14px; max-width:520px; text-align:left; } .livetoggle input { width:18px; height:18px; accent-color:var(--accent); }
   .lvtag { position:absolute; top:18px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.1); backdrop-filter:blur(12px); padding:6px 6px 6px 14px; border-radius:99px; font-size:14px; font-weight:700; z-index:3; white-space:nowrap; }
-  .lvtag i { width:8px; height:8px; border-radius:50%; background:var(--dark3); } .lvtag i.on { background:#fff; }
+  .lvtag i { font-style:normal; font-size:13px; font-weight:700; padding:6px 10px; border-radius:99px; color:#8d9bab; background:var(--dark3); }
+  .lvtag i.on { background:rgba(255,255,255,.22); color:#fff; } .lvtag i.now { background:#fff; color:var(--ink); }
   .lvtag span { margin:0 4px 0 6px; }
   .lvtag button { border:none; background:var(--accent); color:#fff; border-radius:99px; padding:0 16px; min-height:44px; font-weight:700; font-size:14px; }
   .helpbtn { display:flex; flex-direction:column; align-items:center; gap:10px; background:var(--dark2); color:#cfd9e3; border:2px dashed var(--dark3); border-radius:var(--r-l); padding:40px 48px; font-size:20px; font-weight:700; }
@@ -492,6 +491,7 @@ async function route() {
 
 /* 위쪽 1·2·3 단계 표시 */
 function header() {
+  document.body.classList.toggle("home", S.view === "home");  // 휴대폰 처음 화면에서는 숫자만 남는 단계 표시를 숨긴다
   const done = !!S.data, cur = ["tablet", "coach"].includes(S.view) ? "use" : S.view === "home" ? "making" : S.view;
   const items = [["making", T("영상 넣기", "Add video"), T("영상", "Video")], ["edit", T("카드 확인·고치기", "Check & edit"), T("고치기", "Edit")], ["use", T("따라 하며 확인", "Follow & check"), T("확인", "Check")]];  // 세 번째는 휴대폰용 짧은 이름
   $("#steps").innerHTML = items.map(([v, l, short], i) => {
@@ -571,7 +571,7 @@ async function showRecords() {
 const isFront = track => { const st = track?.getSettings?.() || {}; return !!track && (st.facingMode ? st.facingMode === "user" : !/Android|iPhone|iPad/i.test(navigator.userAgent)); };  // 맥 FaceTime 은 facingMode 를 안 알려 준다
 function drawFrame(cv, video) {
   const g = cv.getContext("2d");
-  if (isFront(video.srcObject?.getVideoTracks?.()[0])) { g.save(); g.translate(cv.width, cv.height); g.rotate(Math.PI); g.drawImage(video, 0, 0, cv.width, cv.height); g.restore(); }
+  if (S.data?.pov !== "facing" && isFront(video.srcObject?.getVideoTracks?.()[0])) { g.save(); g.translate(cv.width, cv.height); g.rotate(Math.PI); g.drawImage(video, 0, 0, cv.width, cv.height); g.restore(); }
   else g.drawImage(video, 0, 0, cv.width, cv.height);
 }
 async function grabPhoto(video) {
@@ -650,7 +650,7 @@ async function home() {
       ${has(L) ? `<video class="mbg" src="/api/runs/${L}/clip/9.mp4" poster="/runs/${L}/cards/09.jpg" autoplay muted loop playsinline aria-hidden="true"></video>` : ""}
       <div class="mshade"></div>
       <div class="mcopy">
-        <span class="mpov">${icon("glasses")} ${T("하는 사람의 눈높이에서 찍은 시범 (Ray-Ban Meta 시점)", "Demonstration filmed at the doer's eye level (Ray-Ban Meta view)")}</span>
+        <span class="mpov">${icon("glasses")} <span class="long">${T("하는 사람의 눈높이에서 찍은 시범 (Ray-Ban Meta 시점)", "Demonstration filmed at the doer's eye level (Ray-Ban Meta view)")}</span><span class="short">${T("눈높이에서 찍은 시범", "Filmed at eye level")}</span></span>
         <h2>${T("한 번 보여 주면, 다음부턴 혼자서", "Show it once. Then they've got it.")}</h2>
         <p>${T("시범 영상 하나가 따라 하기 카드가 되고, 막히는 순간에만 손을 내밀어요.", "One demonstration turns into follow-along cards that step in only when someone gets stuck.")}</p>
         <div class="mbtns"><a class="pill" href="#" onclick="event.preventDefault();document.getElementById('start').scrollIntoView({behavior:'smooth'})">${T("영상 넣기", "Add a video")}</a>${ex[0] ? `<a class="pill ghost" href="#run=${ex[0].id}&view=use">${T("예시 보기", "See an example")}</a>` : ""}</div>
@@ -700,14 +700,6 @@ async function home() {
       ["creator", T("크리에이터 따라 하기", "Follow-along for creators")], ["assembly", T("조립·설치 안내", "Assembly and setup")],
     ].map(([u, t]) => { const r = runs.find(x => x.use === u && x.done); return r ? `<a class="newscard" href="#run=${r.id}&view=use">
         <img src="/runs/${r.id}/${r.thumb}" alt=""><span class="kicker">${t}</span><strong>${name(r)}</strong><span class="seemore">${icon("arrow")}<b>${T("예시 보기", "See example")}</b></span></a>` : ""; }).join("")}</div>
-
-
-    <h2 class="center sect">${T("모두 Meta 모델로 돌아가요", "Runs on Meta models")}</h2>
-    <p class="center muted notmeta">${T("Meta 모델로 만들었지만 Meta 제품은 아니에요. 로직크래프트가 Meta AI 해커톤에서 만들었어요.", "Built with Meta models — not a Meta product. Made by LogicCraft for the Meta AI Developer Hackathon.")}</p>
-    <div class="where two">${[
-      [T("Meta Model API", "Meta Model API"), "Muse Spark · SAM 3.1 · Muse Image · Muse Voice Transcribe", T("카드를 만들고, 따라 하는 동안 단계를 알아보고, 됐는지 확인해요.", "Makes the cards, follows the steps and checks each result.")],
-      [T("학교 컴퓨터에서", "On the school's computer"), T("Muse Glimmer 30B · 공개 가중치", "Muse Glimmer 30B · open weights"), T("같은 일을 학교 안에서. 학생 영상이 학교 밖으로 나가지 않아요.", "The same work inside the school. Student video never leaves it.")],
-    ].map(([t, m, d]) => `<div><strong>${t}</strong><span class="m">${m}</span><span class="muted">${d}</span></div>`).join("")}</div>
 `;
     })()}
     ${mine.length ? `<h3>${T("지난 카드 묶음", "Previous card sets")}</h3><div class="past">${mine.map(r => `
@@ -1324,6 +1316,7 @@ function use() {
           <span class="seg">${[["together", T("같이 하기", "Together")], ["alone", T("혼자 하기", "Alone")]].map(([v, l]) => `<button class="${(S.data.mode || "together") === v ? "on" : ""}" aria-pressed="${!!((S.data.mode || "together") === v)}" onclick="setFollow({mode:'${v}'})">${l}</button>`).join("")}</span>
           <span class="muted">${alone() ? T("곁에 아무도 없어요(릴스 시청자, 집). '여기서 막혔어요'를 누르면 카드 번호만 만든 사람에게 모여요.", "Nobody nearby (Reels viewers, at home). 'Stuck here' sends only the card number to the maker.")
             : T("곁에 선생님·선배가 있어요. '도와줘요'를 누르면 아래 현황판에 떠요.", "A teacher or senior is nearby. 'Ask for help' shows on the live board.")}</span>
+          <label class="fh-rec"><input type="checkbox" ${S.data.pov === "facing" ? "checked" : ""} onchange="setFollow({pov:this.checked ? 'facing' : 'first'})"> ${T("시범을 마주 보고 찍었어요 (수어·춤처럼)", "The demonstration faces the camera (signing, dance)")}</label>
           <label class="fh-rec"><input type="checkbox" ${noDone() ? "checked" : ""} onchange="setFollow({no_done:this.checked})"> ${T("기계가 '됐어요'라고 판단하지 않기", "Don't let the app decide a step is done")}</label>
           <span class="muted">${T("사람을 돕거나 다칠 수 있는 일(예: 차에 타는 것 돕기). 카메라 판단·확인하기가 꺼지고 카드는 사람이 넘겨요.", "For helping a person or anything risky (e.g. helping someone into a car). Camera decisions and Check are off; a person turns the cards.")}</span></div>
         <div class="fh-box"><strong>${icon("check")} ${T("확인 결과 기록", "Check records")}</strong>
@@ -1489,7 +1482,7 @@ function coach() {
   $("#main").innerHTML = `<div class="tab coachv">
     <button class="exit" onclick="coachExit()">${icon("x")}${T("나가기", "Exit")}</button>
     <button class="exit voice" id="cvoice" onclick="setVoice(!C.voice)"></button>
-    <div class="cam"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimqr" id="caimqr" hidden><img src="/api/runs/${S.run}/qr.svg?to=coach&lang=${ui}&log=${new URLSearchParams(location.search).get("log") === "1" ? 1 : ""}" alt="QR" width="104" height="104"><span>${T("또는 휴대폰을 눈높이로", "Or a phone at eye level")}</span></div><div class="aimtxt" id="caimtxt">${T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box")}</div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
+    <div class="cam" onclick="aim(false)" title="${T("누르면 작게", "Tap to shrink")}"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimqr" id="caimqr" hidden><img src="/api/runs/${S.run}/qr.svg?to=coach&lang=${ui}&log=${new URLSearchParams(location.search).get("log") === "1" ? 1 : ""}" alt="QR" width="104" height="104"><span>${T("또는 휴대폰을 눈높이로", "Or a phone at eye level")}</span></div><div class="aimtxt" id="caimtxt">${T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box")}</div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
     <div class="lvtag" id="clv" hidden></div>
     <div class="livehint" id="clive" hidden></div>
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
@@ -1685,7 +1678,7 @@ async function setFollow(v) {  // 만든 사람만(키). 카드 묶음마다 한
   const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards: S.data.cards, title: S.data.title ?? "", ...v }) }).catch(() => null);
   if (!r) { toast(T("저장하지 못했어요. 다시 해 주세요.", "Could not save. Please try again.")); return use(); }
   if (!r.ok) { toast(r.status === 403 ? T("다른 사람의 카드 묶음이에요.", "This is another teacher's card set.") : T("바꾸려면 접속 키가 필요해요.", "An access key is needed to change this.")); return use(); }
-  const d = await r.json(); Object.assign(S.data, { mode: d.mode, no_done: d.no_done }); use();
+  const d = await r.json(); Object.assign(S.data, { mode: d.mode, no_done: d.no_done, pov: d.pov }); use();
 }
 async function markStuck(btn) {  // 키 없이, 카드 번호만. 같은 카드는 이 화면에서 한 번
   const c = S.data.cards[S.idx]; S.marked = S.marked || new Set();
@@ -1726,7 +1719,7 @@ function coachCard(quiet) {
   if (!quiet && (!C.help || C.lv >= 3)) speak();
   $("#cwrap").innerHTML = helpMedia(c);
   $("#clv").hidden = !C.help;
-  $("#clv").innerHTML = `${[1, 2, 3, 4].map(l => `<i class="${l <= C.lv ? "on" : ""}"></i>`).join("")}<span>${T("도움", "Help")}: ${lvName(C.lv)}</span>${C.lv < maxLv() ? `<button onclick="helpUp()">${T("더 보기", "More")}</button>` : ""}`;
+  $("#clv").innerHTML = `${[1, 2, 3, 4].slice(0, maxLv()).map(l => `<i class="${l < C.lv ? "on" : l === C.lv ? "on now" : ""}">${lvName(l)}</i>`).join("")}${C.lv < maxLv() ? `<button onclick="helpUp()">${T("도움 더", "More help")}</button>` : ""}`;
   $("#ctxt").innerHTML = text(c);
   $("#cmid").innerHTML = `${dotsHtml(cs.length, S.idx)}${S.idx + 1} / ${cs.length}`;
   $("#cprev").disabled = !S.idx;
@@ -1776,9 +1769,10 @@ function coachFile(f) {
 }
 function coachStart() {
   $("#cstart").hidden = true; C.buf = []; C.running = true; pill(T("지켜보는 중", "Watching"));
-  if (!noDone()) aim(true, C.front ? T("이 카드의 동작이 네모 안에 보이게 화면을 뒤로 젖히거나 카메라 앞으로 옮겨 주세요", "Tilt the screen back or move in front of the camera so this card's action is inside the box")
+  if (!noDone()) aim(true, S.data?.pov === "facing" ? T("이 카드의 동작이 네모 안에 보이게 카메라 앞에 서 주세요", "Stand in front of the camera so this card's action is inside the box") : C.front ? T("이 카드의 동작이 네모 안에 보이게 화면을 뒤로 젖히거나 카메라 앞으로 옮겨 주세요", "Tilt the screen back or move in front of the camera so this card's action is inside the box")
                     : T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box"));  // 처음엔 크게: 손이 보이면 저절로 작아진다
-  $("#caimqr").hidden = !C.front;
+  $("#caimqr").hidden = !C.front || S.data?.pov === "facing";
+  clearTimeout(C.aimTimer); C.aimTimer = setTimeout(() => { if (!C.noView) aim(false); }, 10000);  // 판단이 안 와도 10초 뒤 작게(카드를 오래 가리지 않게)
   C.started = true; C.since = Date.now(); coachCard(); clog("start", { cur: S.idx + 1, n: S.data.cards.length });
   clearInterval(C.helpTimer);
   C.helpTimer = setInterval(() => {
