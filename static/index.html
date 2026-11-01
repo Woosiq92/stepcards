@@ -233,7 +233,9 @@
   .n { width:32px; height:32px; border-radius:50%; background:var(--ink); color:#fff; display:grid; place-items:center; font-weight:700; font-size:14px; }
   .pic { position:relative; border-radius:var(--r); overflow:hidden; background:var(--line); aspect-ratio:16/9; }
   .pic img, .pic video, .pic canvas.fold3d { width:100%; height:100%; object-fit:cover; display:block; }
-  canvas.fold3d { background:#f4f1ea; } .tab .imgwrap canvas.fold3d { width:min(100%, 880px); aspect-ratio:4/3; height:auto; border-radius:var(--r-l); }
+  canvas.fold3d { background:#f4f1ea; cursor:pointer; } .f3wrap { position:relative; display:block; width:100%; height:100%; } .tab .imgwrap .f3wrap { display:inline-block; width:auto; height:auto; }
+  .f3speed { position:absolute; left:10px; bottom:10px; font-size:13px; padding:5px 11px; border-radius:999px; border:1px solid #c9c2b2; background:#fffdf8; color:#1c2b33; cursor:pointer; }
+  canvas.fold3d[data-paused] + .f3speed::after { content:" · II"; } .tab .imgwrap canvas.fold3d { width:min(100%, 880px); aspect-ratio:4/3; height:auto; border-radius:var(--r-l); }
   .f3tag { display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; background:var(--line); margin-left:6px; } .f3tag.no { background:#fbe3dc; color:#b4441f; }
   .f3log { font-size:13px; margin:8px 0; padding:10px 12px; border:1px solid var(--line); border-radius:12px; } .f3log div { margin:2px 0; }
   .pic .busy { position:absolute; inset:0; background:rgba(255,255,255,.8); backdrop-filter:blur(2px); display:grid; place-items:center; font-weight:600; color:var(--accent-ink); }
@@ -486,7 +488,7 @@ function imgSrc(c) {
 // 움직임 보기: 그 단계 영상 몇 초를 소리 없이 반복. 인쇄·미리 불러오기는 사진(imgSrc)을 쓴다
 function media(c, attrs = "") {
   if (c.view === "fold" && S.data?.fold?.report?.[c.n] === "no" && S.view !== "edit") return media({ ...c, view: S.data.stage === "archived" ? (c.ill ? "ill" : "photo") : "clip" }, attrs);  // 대조에서 다르다고 나온 3D는 학습자에게 보이지 않고 움직임으로
-  if (c.view === "fold" && S.data?.fold) return `<canvas class="fold3d" data-n="${c.n}" data-t0="${performance.now()}" width="480" height="360" role="img" aria-label="${esc(c.ko)}"></canvas>`;  // 3D 접기(fold3d.js 가 그린다)
+  if (c.view === "fold" && S.data?.fold) return `<span class="f3wrap"><canvas class="fold3d" data-n="${c.n}" width="480" height="360" role="img" aria-label="${esc(c.ko)}" onclick="f3pause(this)" title="${T("누르면 멈춰요", "Tap to pause")}"></canvas><button class="f3speed" onclick="f3slow(event)">${f3slowLabel()}</button></span>`;  // 3D 접기(fold3d.js 가 그린다)
   return c.view === "clip" ? `<video src="/api/runs/${S.run}/clip/${c.n}.mp4?t=${c.frame_t ?? c.rep}" poster="${imgSrc(c)}" autoplay muted loop playsinline ${attrs}></video>`
                            : `<img src="${imgSrc(c)}" alt="${esc(c.ko)}" ${attrs}>`;  // 사진 설명 = 카드 문장(화면 낭독기)
 }
@@ -1116,7 +1118,14 @@ async function reframe(i, t) {
 }
 /* 3D 접기 카드: Muse Spark 가 시범 사진을 보고 접기 순서를 쓰면 → 코드 검사기(fold.js)가 돌려 보고 → 3D 끝 모양을
    시범 영상의 단계 끝 장면과 Muse Spark 가 비교한다. 걸리면 이유를 붙여 다시 쓰게 한다(검사 2번, 대조 2번까지). 판정은 코드·대조가 한다 */
-window.Fold3D = Object.assign(window.Fold3D || {}, { source: () => S.data?.fold ? { program: S.data.fold, cardNs: S.data.cards.map(c => c.n) } : null });
+const f3slowLabel = () => window.Fold3D?.slow ? T("보통 속도", "Normal speed") : T("느리게", "Slower");
+function f3slow(ev) {  // 3D 접기 속도: 느리게(0.5배) ↔ 보통. 이 기기에 기억
+  ev.stopPropagation(); window.Fold3D.slow = !window.Fold3D.slow;
+  try { localStorage.setItem("f3slow", window.Fold3D.slow ? "1" : ""); } catch {}
+  document.querySelectorAll(".f3speed").forEach(b => b.textContent = f3slowLabel());
+}
+function f3pause(cv) { if (cv.dataset.paused) delete cv.dataset.paused; else cv.dataset.paused = "1"; }
+window.Fold3D = Object.assign(window.Fold3D || {}, { slow: (() => { try { return localStorage.getItem("f3slow") === "1"; } catch { return false; } })(), source: () => S.data?.fold ? { program: S.data.fold, cardNs: S.data.cards.map(c => c.n) } : null });
 async function makeFold() {
   if (!window.Fold3D?.ready) return toast(T("3D 화면을 불러오는 중이에요. 잠시 뒤 다시 눌러 주세요.", "The 3D view is still loading. Try again in a moment."));
   const btn = $("#f3go"); btn.disabled = true;

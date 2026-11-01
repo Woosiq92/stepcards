@@ -3,7 +3,7 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { run, bbox } from "./fold.js";
 
-const W = 480, H = 360, LAYER = 0.006, PAUSE0 = 0.7, MOVE = 1.6, PAUSE1 = 1.2;
+const W = 480, H = 360, LAYER = 0.006, PAUSE0 = 0.5, MOVE = 3.2, PAUSE1 = 1.2;  // 접기 한 번 3.2초(선 보이기 0.8 · 넘기기 1.8 · 쓸어 누르기 0.6)
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 renderer.setSize(W, H, false); renderer.setPixelRatio(1); renderer.setClearColor(0xf4f1ea, 1);  // 종이색 바탕(검사용 jpeg 도 같은 바탕)
 const ink = new THREE.LineBasicMaterial({ color: 0x1c2b33 });
@@ -51,10 +51,48 @@ function arrow(p, q, lift) {
   g.add(tip); return g;
 }
 
-// 한 동작이 t(0~1)만큼 진행된 장면
+// 종이접기 도해 표시: 접는 선(골 = 점선, 산 = 점-선), 잡을 곳 손가락 점
+const blue = new THREE.MeshBasicMaterial({ color: 0x0866ff }), creaseMat = new THREE.MeshBasicMaterial({ color: 0x1c2b33 });
+function creaseSeg(an) {  // 천 위에 실제로 생기는 접는 선 구간(움직이는 조각의 꼭짓점 중 선 위에 있는 것)
+  const L = Math.hypot(an.d[0], an.d[1]), u = [an.d[0] / L, an.d[1] / L];
+  let lo = Infinity, hi = -Infinity;
+  for (const m of an.moving) for (const [x, y] of m.before.poly) {
+    const px = x - an.o[0], py = y - an.o[1];
+    if (Math.abs(px * u[1] - py * u[0]) < 1e-6) { const k = px * u[0] + py * u[1]; lo = Math.min(lo, k); hi = Math.max(hi, k); }
+  }
+  return lo < hi ? [[an.o[0] + lo * u[0], an.o[1] + lo * u[1]], [an.o[0] + hi * u[0], an.o[1] + hi * u[1]]] : null;
+}
+function crease(seg, valley, y) {
+  const g = new THREE.Group(); if (!seg) return g;
+  const [a, b] = seg, len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const pattern = valley ? [0.045, 0.03] : [0.045, 0.022, 0.008, 0.022];  // 골접기 점선, 산접기 점-선
+  let k = 0, i = 0;
+  while (k < len) {
+    const l = Math.min(pattern[i % pattern.length], len - k);
+    if (i % 2 === 0) {
+      const s = new THREE.Vector3(a[0] + (b[0] - a[0]) * k / len, y, a[1] + (b[1] - a[1]) * k / len);
+      const e = new THREE.Vector3(a[0] + (b[0] - a[0]) * (k + l) / len, y, a[1] + (b[1] - a[1]) * (k + l) / len);
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.LineCurve3(s, e), 1, 0.006, 5), creaseMat));
+    }
+    k += l; i++;
+  }
+  return g;
+}
+function finger(pos, pulse) {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(0.028, 16, 12), blue));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.05 + 0.02 * pulse, 0.006, 6, 24), blue);
+  ring.rotation.x = Math.PI / 2; g.add(ring);
+  g.position.copy(pos); return g;
+}
+const clamp01 = x => Math.max(0, Math.min(1, x));
+
+// 한 동작이 t(0~1)만큼 진행된 장면. 접기는 세 구간: 선·잡을 곳 보이기(0~0.25) → 넘기기(~0.8) → 접힌 선 쓸어 누르기
 function animGroup(an, t, color) {
-  const g = new THREE.Group(), e = ease(t);
+  const g = new THREE.Group();
+  let e = ease(t);
   if (an.kind === "fold") {
+    e = ease(clamp01((t - 0.25) / 0.55));
     const movedIds = new Set(an.moving.map(m => m.after.id));
     g.add(stateGroup(an.to, color, movedIds));
     const top = Math.max(...an.to.faces.map(f => f.layer)), rk = ranks(an.to.faces);
@@ -62,14 +100,28 @@ function animGroup(an, t, color) {
     // 움직이는 쪽이 위로 들리는 회전 방향을 고른다(골접기는 위로, 산접기는 아래로 넘어간다)
     const probe = new THREE.Vector3(an.p[0], 0, an.p[1]).sub(axisO).applyAxisAngle(axisD, Math.PI / 2);
     const sign = (probe.y > 0 ? 1 : -1) * (an.valley ? 1 : -1);
-    for (const m of an.moving) {
-      const piece = faceMesh(m.before, rk(m.after) || top, color);
-      const pivot = new THREE.Group(); pivot.position.copy(axisO);
-      piece.position.x -= axisO.x; piece.position.z -= axisO.z; piece.position.y = (rk(m.after)) * LAYER;
+    const rkBefore = ranks(an.from.faces);
+    for (const m of an.moving) {  // 접기 전 높이에서 시작해, 반 바퀴 돌고 나면 접은 뒤 높이에 놓이게(회전이 높이를 뒤집으므로 축 높이로 보탠다)
+      const hb = rkBefore(m.before) * LAYER, ha = rk(m.after) * LAYER;
+      const piece = faceMesh(m.before, 0, color);
+      const pivot = new THREE.Group(); pivot.position.copy(axisO); pivot.position.y = e * (hb + ha) + Math.sin(Math.PI * e) * 0.02;
+      piece.position.set(-axisO.x, hb, -axisO.z);
       pivot.add(piece); pivot.setRotationFromAxisAngle(axisD, sign * Math.PI * e);
       g.add(pivot);
     }
-    if (t < 0.15) g.add(arrow(an.p, an.q, (an.from.faces.length + 1) * LAYER + 0.01));
+    const hy = (an.to.faces.length + 2) * LAYER + 0.01, seg = creaseSeg(an);
+    if (t < 0.25 || t > 0.8) g.add(crease(seg, an.valley, hy));
+    if (t < 0.25) {  // 잡을 곳과 방향
+      g.add(arrow(an.p, an.q, hy));
+      g.add(finger(new THREE.Vector3(an.p[0], hy, an.p[1]), Math.sin(t * 40) * 0.5 + 0.5));
+    } else if (t <= 0.8) {  // 손가락이 모서리를 잡고 같이 넘어간다
+      const pivot = new THREE.Group(); pivot.position.copy(axisO); pivot.position.y = e * 2 * hy;
+      pivot.add(finger(new THREE.Vector3(an.p[0] - axisO.x, hy, an.p[1] - axisO.z), 0));
+      pivot.setRotationFromAxisAngle(axisD, sign * Math.PI * e); g.add(pivot);
+    } else if (seg) {  // 접힌 선을 따라 쓸어 누르기
+      const k = clamp01((t - 0.8) / 0.2);
+      g.add(finger(new THREE.Vector3(seg[0][0] + (seg[1][0] - seg[0][0]) * k, hy, seg[0][1] + (seg[1][1] - seg[0][1]) * k), 0));
+    }
   } else if (an.kind === "flip") {
     const st = stateGroup(an.from, color), pivot = new THREE.Group();
     pivot.position.set(an.c[0], 0, an.c[1]); st.position.set(-an.c[0], 0, -an.c[1]);
@@ -119,6 +171,7 @@ export function draw(fr, time, color, target) {
 
 // 화면에 보이는 3D 카드만 그린다(약 30fps)
 let last = 0;
+const clock = new WeakMap();  // 3D 카드마다 따로 흐르는 시간
 function loop(now) {
   requestAnimationFrame(loop);
   if (now - last < 33) return; last = now;
@@ -127,15 +180,19 @@ function loop(now) {
     const r = cv.getBoundingClientRect();
     if (!r.width || r.bottom < 0 || r.top > innerHeight) continue;
     const fr = m.res.frames.find(f => f.n === +cv.dataset.n);
-    if (fr) draw(fr, (now - (+cv.dataset.t0 || 0)) / 1000, m.color, cv);
+    if (!fr) continue;
+    const c = clock.get(cv) || { t: 0, at: now }, speed = window.Fold3D.slow ? 0.5 : 1;  // 느리게(0.5배)·멈춤은 화면 단추가 바꾼다
+    if (!cv.dataset.paused) c.t += (now - c.at) / 1000 * speed;
+    c.at = now; clock.set(cv, c);
+    draw(fr, c.t, m.color, cv);
   }
 }
 requestAnimationFrame(loop);
-// 끝 모양 한 장(검사용): 카드 n 이 끝난 뒤의 모습을 jpeg data URL 로
-export function still(n) {
+// 카드 n 의 time 초 장면 한 장(jpeg data URL). 시각을 안 주면 끝 모양(검사·대조용)
+export function still(n, time) {
   const m = result(), fr = m?.res.frames.find(f => f.n === n); if (!fr) return null;
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
-  draw(fr, PAUSE0 + fr.anims.length * MOVE + 0.01, m.color, cv);  // 마지막 멈춤 구간 = 이번 카드가 끝난 모습
+  draw(fr, time ?? PAUSE0 + fr.anims.length * MOVE + 0.01, m.color, cv);  // 마지막 멈춤 구간 = 이번 카드가 끝난 모습
   return cv.toDataURL("image/jpeg", 0.85);
 }
 window.Fold3D = Object.assign(window.Fold3D || {}, { still, ready: true, check: (program, ns) => run(program, ns).problems });
