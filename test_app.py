@@ -450,10 +450,13 @@ def test_learner_without_key_limited_and_credit_cap(monkeypatch, tmp_path):
     assert client.post(f"/api/runs/{rid}/translate", json={"lang": "x"}).status_code == 401  # 만드는 쪽 기능은 여전히 키
     monkeypatch.setattr(spend, "FILE", tmp_path / "spend.json")
     monkeypatch.setattr(spend, "CAP", 1.0)
+    monkeypatch.setattr(spend, "ALREADY", 0.0)
     spend.add(0.4)
     assert not spend.over()
     spend.add(0.7)
     assert spend.over() and abs(spend.total() - 1.1) < 1e-9
+    monkeypatch.setattr(spend, "ALREADY", 5.0)  # 장부 밖 기존 사용액은 더해진다
+    assert abs(spend.total() - 6.1) < 1e-9
     assert client.post(f"/api/runs/{rid}/cards/1/verify", json={}).status_code == 402  # 상한: Meta 를 부르는 요청은 거절
     assert client.get(f"/api/runs/{rid}/cards").status_code == 200  # 보기는 그대로
     import pytest as _p
