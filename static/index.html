@@ -1280,7 +1280,7 @@ function use() {
             <li>${T("지금 단계를 알아보고 카드를 넘겨요", "It follows the step and turns the card")}</li>
             <li>${T("단계마다 시범과 맞춰 보고, 다르면 고칠 점을 한 줄로", "Each step is matched to the demonstration; if it's off, one line says what to fix")}</li>
           </ol>
-          <div class="fh-btns"><button class="pill big" onclick="go({run:S.run,view:'coach'})">${icon("camera")} ${T("따라 하며 확인 시작", "Start following & checking")}</button>
+          <div class="fh-btns"><button class="pill big" onclick="go({run:S.run,view:'coach'})">${icon("camera")} ${noDone() ? T("따라 하기 시작", "Start following") : T("따라 하며 확인 시작", "Start following & checking")}</button>
             <a class="btn" href="/glasses?run=${S.run}&lang=${lang}&m=${ui}&s=${pairCode}" target="_blank">${icon("glasses")} ${T("안경 화면", "Glasses view")}</a></div>
           <p class="muted fh-note">${T("셀카 카메라가 아니라, 하는 사람의 눈높이(안경, 또는 이마 앞 휴대폰 뒤 카메라)에서 손이 보이게 찍어요.", "Not the selfie camera: film from the doer's eye level (glasses, or a phone's back camera held at the forehead) with the hands in view.")}</p>
         </div>
@@ -1289,6 +1289,12 @@ function use() {
         <div class="fh-box"><strong>${icon("glasses")} ${T("Ray-Ban Display에 띄우기", "Show on Ray-Ban Display")}</strong>
           <span class="muted">${T("Meta AI 앱 → 웹앱 추가에 아래 주소를 넣거나 QR을 찍어요. 따라 하기의 카드와 확인 결과가 렌즈에 떠요.", "Add this address as a Web App in the Meta AI app, or scan the QR. Coach cards and check results appear on the lens.")}</span>
           <div class="fh-qr"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&m=${ui}&s=${pairCode}" alt="QR" width="112" height="112"><button class="btn" onclick="shareLink('glasses')">${icon("share")} ${T("링크 보내기", "Send link")}</button></div></div>
+        <div class="fh-box"><strong>${icon("glasses")} ${T("어떻게 따라 하나요", "How it's followed")}</strong>
+          <span class="seg">${[["together", T("같이 하기", "Together")], ["alone", T("혼자 하기", "Alone")]].map(([v, l]) => `<button class="${(S.data.mode || "together") === v ? "on" : ""}" onclick="setFollow({mode:'${v}'})">${l}</button>`).join("")}</span>
+          <span class="muted">${alone() ? T("곁에 아무도 없어요(릴스 시청자, 집). '여기서 막혔어요'를 누르면 카드 번호만 만든 사람에게 모여요.", "Nobody nearby (Reels viewers, at home). 'Stuck here' sends only the card number to the maker.")
+            : T("곁에 선생님·선배가 있어요. '도와줘요'를 누르면 아래 현황판에 떠요.", "A teacher or senior is nearby. 'Ask for help' shows on the live board.")}</span>
+          <label class="fh-rec"><input type="checkbox" ${noDone() ? "checked" : ""} onchange="setFollow({no_done:this.checked})"> ${T("기계가 '됐어요'라고 판단하지 않기", "Don't let the app decide a step is done")}</label>
+          <span class="muted">${T("사람을 돕거나 다칠 수 있는 일(예: 차에 타는 것 돕기). 카메라 판단·확인하기가 꺼지고 카드는 사람이 넘겨요.", "For helping a person or anything risky (e.g. helping someone into a car). Camera decisions and Check are off; a person turns the cards.")}</span></div>
         <div class="fh-box"><strong>${icon("check")} ${T("확인 결과 기록", "Check records")}</strong>
           <label class="fh-rec"><input type="checkbox" ${S.rec ? "checked" : ""} onchange="setRec(this.checked)"> ${T("이 기기에서 기록 남기기", "Keep records on this device")}</label>
           <span class="muted">${T("이름 없이 날짜·카드·확인 결과·도움 단계만. 사진은 남지 않아요.", "No names: date, card, check result and help level. No photos.")}</span>
@@ -1432,7 +1438,7 @@ function tablet() {
     <button class="exit" onclick="go({run:S.run,view:'use'})">${icon("x")}${T("나가기", "Exit")}</button>
     <div class="imgwrap">${media(c)}<div class="zone l" onclick="flip(-1)" role="button" aria-label="${T("이전 카드", "Previous card")}"></div><div class="zone r" onclick="flip(1)" role="button" aria-label="${T("다음 카드", "Next card")}"></div></div>
     <div class="txt" onclick="sayCard(S.data.cards[S.idx])" title="${T("눌러서 듣기", "Tap to hear")}">${text(c)} <span class="hear">${icon("sound")}</span></div>
-    ${S.data.stage === "archived" ? "" : `<div class="vrow"><button class="verifybtn" onclick="verifyNow()">${icon("camera")} ${T("확인하기", "Check")}</button></div>`}
+    <div class="vrow">${S.data.stage === "archived" || noDone() ? "" : `<button class="verifybtn" onclick="verifyNow()">${icon("camera")} ${T("확인하기", "Check")}</button>`}${alone() ? `<button class="callbtn" id="tmark" onclick="markStuck(this)" ${S.marked?.has(c.n) ? "disabled" : ""}>${S.marked?.has(c.n) ? T("알렸어요", "Sent") : T("여기서 막혔어요", "Stuck here")}</button>` : ""}</div>
     <div class="bar">
       <button class="navb" onclick="flip(-1)" ${S.idx ? "" : "disabled"}>${T("◀ 이전", "◀ Back")}</button>
       <div class="mid">${dotsHtml(cs.length, S.idx)}${S.idx + 1} / ${cs.length}</div>
@@ -1451,14 +1457,14 @@ function coach() {
   $("#main").innerHTML = `<div class="tab coachv">
     <button class="exit" onclick="coachExit()">${icon("x")}${T("나가기", "Exit")}</button>
     <button class="exit voice" id="cvoice" onclick="setVoice(!C.voice)"></button>
-    <div class="cam"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimqr" id="caimqr" hidden><img src="/api/runs/${S.run}/qr.svg?to=coach&lang=${ui}&log=${new URLSearchParams(location.search).get("log") === "1" ? 1 : ""}" alt="QR" width="104" height="104"><span>${T("또는 휴대폰을 눈높이로", "Or a phone at eye level")}</span></div><div class="aimtxt" id="caimtxt">${T("휴대폰을 눈높이(안경 자리)에 두고, 하는 손과 물건이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with your hands and the object inside the box")}</div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
+    <div class="cam"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimqr" id="caimqr" hidden><img src="/api/runs/${S.run}/qr.svg?to=coach&lang=${ui}&log=${new URLSearchParams(location.search).get("log") === "1" ? 1 : ""}" alt="QR" width="104" height="104"><span>${T("또는 휴대폰을 눈높이로", "Or a phone at eye level")}</span></div><div class="aimtxt" id="caimtxt">${T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box")}</div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
     <div class="lvtag" id="clv" hidden></div>
     <div class="livehint" id="clive" hidden></div>
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
     <div class="imgwrap" id="cwrap"></div>
     <div class="txt" id="ctxt" onclick="speak(true)" title="${T("다시 듣기", "Hear again")}"></div>
-    <div class="vrow">${S.data.stage === "archived" ? "" : `<button class="verifybtn" onclick="verifyNow()">${icon("camera")} ${T("확인하기", "Check")}</button>`}
-      <button class="callbtn" id="ccall" onclick="callMaker('button')">${T("도와줘요", "Ask for help")}</button></div>
+    <div class="vrow">${S.data.stage === "archived" || noDone() ? "" : `<button class="verifybtn" onclick="verifyNow()">${icon("camera")} ${T("확인하기", "Check")}</button>`}
+      <button class="callbtn" id="ccall" onclick="callMaker('button')">${alone() ? T("여기서 막혔어요", "Stuck here") : T("도와줘요", "Ask for help")}</button></div>
     <div class="bar">
       <button class="navb" id="cprev" onclick="coachFlip(-1)">${T("◀ 이전", "◀ Back")}</button>
       <div class="mid" id="cmid"></div>
@@ -1631,13 +1637,32 @@ function coachEnd(finished) {
 }
 /* 만든 사람 부르기: 기기가 도울 수 있는 만큼 도와도 안 될 때 사람을 잇는다. 카드마다 한 번, 카드를 넘기면 꺼진다 */
 function callMaker(why) {
+  if (alone()) { if (why !== "auto") markStuck(); return; }  // 혼자 하기: 올 사람이 없다. 저절로 부르지 않고, 누르면 만든 사람에게 카드 번호만
   if (C.called === S.idx) return;
   C.called = S.idx; callBtn(); clog("call", { n: S.idx + 1, by: why });
   fetch(`/api/runs/${S.run}/call`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ s: C.pair, call: true, why }) }).catch(() => {});
   pill(why === "auto" ? T("계속 막혀 있어서 도와줄 사람을 불렀어요", "Still stuck, so help was called") : T("도와줄 사람을 불렀어요", "Help is called"));
 }
+/* 같이 하기(곁에 사람: 도와줘요) / 혼자 하기(릴스 시청자·집: 여기서 막혔어요). '됐어요' 판단 끄기는 사람을 돕거나 다칠 수 있는 일 */
+const alone = () => S.data?.mode === "alone", noDone = () => !!S.data?.no_done;
+async function setFollow(v) {  // 만든 사람만(키). 카드 묶음마다 한 번 정한다
+  const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards: S.data.cards, title: S.data.title ?? "", ...v }) });
+  if (!r.ok) { toast(r.status === 403 ? T("다른 사람의 카드 묶음이에요.", "This is another teacher's card set.") : T("바꾸려면 접속 키가 필요해요.", "An access key is needed to change this.")); return use(); }
+  const d = await r.json(); Object.assign(S.data, { mode: d.mode, no_done: d.no_done }); use();
+}
+async function markStuck(btn) {  // 키 없이, 카드 번호만. 같은 카드는 이 화면에서 한 번
+  const c = S.data.cards[S.idx]; S.marked = S.marked || new Set();
+  if (S.marked.has(c.n)) return;
+  S.marked.add(c.n);
+  const r = await fetch(`/api/runs/${S.run}/mark`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ n: c.n }) }).catch(() => null);
+  if (!r?.ok) { S.marked.delete(c.n); return toast(T("보내지 못했어요. 잠시 뒤 다시 눌러 주세요.", "Could not send. Try again in a moment.")); }
+  const b = btn || $("#ccall"); if (b) { b.textContent = T("알렸어요", "Sent"); b.disabled = true; }
+  toast(T("만든 사람에게 이 카드가 어려웠다고 알렸어요.", "The maker will know this card was hard."));
+  if (S.view === "coach") clog("mark", { n: S.idx + 1 });
+}
 function callBtn(coming) {
   const b = $("#ccall"); if (!b) return;
+  if (alone()) { const done = S.marked?.has(S.data.cards[S.idx]?.n); b.disabled = !!done; b.textContent = done ? T("알렸어요", "Sent") : T("여기서 막혔어요", "Stuck here"); return; }
   b.disabled = C.called === S.idx;
   b.textContent = coming ? T("오고 있어요", "Help is coming") : C.called === S.idx ? T("불렀어요", "Help called") : T("도와줘요", "Ask for help");
 }
@@ -1696,6 +1721,9 @@ function viewSeen(d) {
   }
 }
 async function coachCamera() {
+  if (noDone()) {  // 사람을 돕는 일: 카메라가 '다 했다'를 정하지 않는다. 도움 단계·카드는 그대로, 넘기기는 사람이
+    C.manual = true; coachStart(); aim(false); pill(T("직접 넘겨요 · '다 했다'는 사람이 정해요", "Turn cards by hand · a person decides when it's done")); return;
+  }
   try {
     C.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 1280 }, audio: false });
     $("#cvid").srcObject = C.stream; await $("#cvid").play();
@@ -1711,8 +1739,8 @@ function coachFile(f) {
 }
 function coachStart() {
   $("#cstart").hidden = true; C.buf = []; C.running = true; pill(T("지켜보는 중", "Watching"));
-  aim(true, C.front ? T("하는 손과 물건이 네모 안에 보이게 화면을 뒤로 젖히거나 물건을 카메라 앞에 두세요", "Tilt the screen back or put the object in front of the camera so your hands and it are inside the box")
-                    : T("휴대폰을 눈높이(안경 자리)에 두고, 하는 손과 물건이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with your hands and the object inside the box"));  // 처음엔 크게: 손이 보이면 저절로 작아진다
+  if (!noDone()) aim(true, C.front ? T("이 카드의 동작이 네모 안에 보이게 화면을 뒤로 젖히거나 카메라 앞으로 옮겨 주세요", "Tilt the screen back or move in front of the camera so this card's action is inside the box")
+                    : T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box"));  // 처음엔 크게: 손이 보이면 저절로 작아진다
   $("#caimqr").hidden = !C.front;
   C.started = true; C.since = Date.now(); coachCard(); clog("start", { cur: S.idx + 1, n: S.data.cards.length });
   clearInterval(C.helpTimer);

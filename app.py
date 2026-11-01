@@ -57,7 +57,8 @@ JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 
 JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "translate": 10, "step": 400, "compare": 400, "coach": 900, "frame": 60, "retry": 6, "verify": 300}  # 하루 횟수. 따라 하기 900번 ≈ 30분
 JUDGE_USE = {"day": "", "n": {}}
 TEACHERS = dict(x.strip().split(":", 1) for x in os.environ.get("TEACHER_KEYS", "").split(",") if ":" in x)  # 교사별 키 "이름:키,이름:키"
-NOW_PATH = re.compile(r"/api/runs/\w+/(now|call)$")  # 안경은 키(쿠키)가 없다: 지금 카드 맞추기와 '도와줘요'는 키 없이
+NOW_PATH = re.compile(r"/api/runs/\w+/(now|call|mark)$")  # 안경은 키(쿠키)가 없다: 지금 카드 맞추기와 '도와줘요'·'여기서 막혔어요'는 키 없이
+MARKS = {}  # 혼자 하기 '여기서 막혔어요': 카드 묶음별 1분 안 횟수(장난 방지)
 RUN_PATH = re.compile(r"/api/runs/(\w+)(?=/|$)")
 STATE = DATA / "state.json"  # 안경·따라 하기 맞추기 상태와 심사용 키 사용량: 서버를 다시 켜도 이어지게
 
@@ -423,6 +424,10 @@ def _save(d, body):
     data["cards"] = body["cards"]
     if isinstance(body.get("title"), str):
         data["title"] = body["title"].strip()[:60]
+    if body.get("mode") in ("together", "alone"):  # 같이 하기(곁에 사람: 도와줘요) / 혼자 하기(여기서 막혔어요)
+        data["mode"] = body["mode"]
+    if isinstance(body.get("no_done"), bool):  # 사람을 돕거나 다칠 수 있는 일: 기계가 '됐어요'라고 판단하지 않는다
+        data["no_done"] = body["no_done"]
     if "fold" in body:  # 3D 접기 프로그램(브라우저가 검사한 것). 끄기는 None
         f = body["fold"]
         data["fold"] = f if isinstance(f, dict) and isinstance(f.get("steps"), list) and len(json.dumps(f)) < 50_000 else None
@@ -493,6 +498,8 @@ def illustrate(run_id: str, n: int):
 def coach_check(run_id: str, body: dict):
     """따라 하기: 카메라 사진 몇 장으로 카드를 넘길지 정한다. 사진은 저장하지 않는다."""
     data = read(run_dir(run_id), "cards.json")
+    if data and data.get("no_done"):  # 사람을 돕는 일: 기계가 '다 했다'를 정하지 않는다(카드는 사람이 넘긴다)
+        raise HTTPException(409, "이 카드 묶음은 직접 넘겨요")
     frames = [f for f in body.get("frames", [])[-6:] if isinstance(f, str) and f.startswith("data:image/jpeg;base64,")]
     cur = int(body.get("cur", 1))
     ver = body.get("ver")
@@ -540,6 +547,27 @@ def now_set(run_id: str, body: dict):
                  "vreq": int(body.get("vreq") or 0), "vres": {k: str(v)[:80] for k, v in (body.get("vres") or {}).items()} if isinstance(body.get("vres"), dict) else None}  # fin = 마지막 단계까지 마침  # 도움 단계(0=끔, 1 글 → 4 움직임)
     save_state()
     return NOW[key]
+
+
+@app.post("/api/runs/{run_id}/mark")
+def mark_stuck(run_id: str, body: dict):
+    """혼자 하기: 따라 하는 사람(키 없음, 릴스 시청자 등)이 '여기서 막혔어요'. 카드 번호만 남는다(이름·사진·기기 정보 없음).
+    만든 사람의 고치기 화면 '자주 막힌 카드'에 모인다"""
+    d = run_dir(run_id)
+    data = read(d, "cards.json")
+    n = body.get("n")
+    if not data or not any(c.get("n") == n for c in data["cards"]):
+        raise HTTPException(400, "없는 카드입니다")
+    now = time.time()
+    MARKS[run_id] = [t for t in MARKS.get(run_id, []) if now - t < 60][-59:] + [now]
+    if len(MARKS[run_id]) > 30:
+        raise HTTPException(429, "잠시 뒤에 다시 눌러 주세요")
+    f = d / "marks.jsonl"
+    if f.exists() and f.stat().st_size > 500_000:  # 오래된 것부터 버린다
+        f.write_text("\n".join(f.read_text().splitlines()[-2000:]) + "\n")
+    with f.open("a") as fh:
+        fh.write(json.dumps({"t": round(now), "kind": "mark", "n": n}) + "\n")
+    return {"ok": True}
 
 
 @app.post("/api/runs/{run_id}/call")
@@ -710,6 +738,8 @@ def card_by_n(d, n):
 def verify_card(run_id: str, n: int, body: dict):
     """확인하기: 학생 사진 한 장을 그 카드의 완료 기준과 비교. 사진은 저장하지 않는다"""
     d = run_dir(run_id)
+    if (read(d, "cards.json") or {}).get("no_done"):
+        raise HTTPException(409, "이 카드 묶음은 '됐어요' 판단을 하지 않아요")
     c = card_by_n(d, n)
     photo = body.get("photo", "")
     if not (isinstance(photo, str) and photo.startswith("data:image/jpeg;base64,")) or len(photo) > 3_000_000:
@@ -823,15 +853,17 @@ def stuck_cards(rows):
     """기록에서 따라 하는 사람들이 자주 막힌 카드: 소리·움직임 도움까지 간 비율이 절반 이상(2번 이상 따라 했을 때)이거나, 확인에서 '달라요·아직'이 2번 이상"""
     by = {}
     for r in rows:
-        s = by.setdefault(r.get("n"), {"n": r.get("n"), "tries": 0, "high": 0, "checks": 0, "miss": 0})
+        s = by.setdefault(r.get("n"), {"n": r.get("n"), "tries": 0, "high": 0, "checks": 0, "miss": 0, "marks": 0})
         if r.get("kind") == "coach":
             s["tries"] += 1
             s["high"] += int(r.get("lv", 0)) >= 3
         elif r.get("kind") == "verify":
             s["checks"] += 1
             s["miss"] += r.get("result") in ("different", "not_yet")
-    out = [s for s in by.values() if (s["tries"] >= 2 and s["high"] * 2 >= s["tries"]) or s["miss"] >= 2]
-    return sorted(out, key=lambda s: (s["high"] + s["miss"], s["tries"]), reverse=True)
+        elif r.get("kind") == "mark":
+            s["marks"] += 1
+    out = [s for s in by.values() if (s["tries"] >= 2 and s["high"] * 2 >= s["tries"]) or s["miss"] >= 2 or s["marks"] >= 2]
+    return sorted(out, key=lambda s: (s["high"] + s["miss"] + s["marks"], s["tries"]), reverse=True)
 
 
 @app.get("/api/runs/{run_id}/stuck")
@@ -839,8 +871,11 @@ def get_stuck(run_id: str, request: Request):
     """고치기 화면: 자주 막힌 카드(기록이 있는 사람만 — 기록은 키가 있어야 본다)"""
     if not has_key(request):
         raise HTTPException(401, "key required")
-    f = run_dir(run_id) / "records.jsonl"
-    return stuck_cards([json.loads(x) for x in f.read_text().splitlines() if x.strip()] if f.exists() else [])
+    rows = []
+    for name in ("records.jsonl", "marks.jsonl"):  # 같이 하기 기록 + 혼자 하기 '여기서 막혔어요'
+        f = run_dir(run_id) / name
+        rows += [json.loads(x) for x in f.read_text().splitlines() if x.strip()] if f.exists() else []
+    return stuck_cards(rows)
 
 
 @app.get("/api/runs/{run_id}/records")

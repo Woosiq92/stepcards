@@ -416,3 +416,21 @@ def test_call_maker_and_live(monkeypatch):
     monkeypatch.setattr(A, "APP_KEY", "k")
     assert client.get(f"/api/runs/{rid}/live").status_code == 401
     assert client.post(f"/api/runs/{rid}/call", json={"s": "zz01", "call": True}).status_code == 200  # 안경은 키 없이
+
+
+# 혼자 하기·'됐어요' 판단 끄기(11-01): 설정 저장, 키 없는 '여기서 막혔어요', 막힌 카드에 모임, 판단 경로 거절
+def test_alone_mode_marks_and_no_done(monkeypatch):
+    rid, d = make_run()
+    cards = json.loads((d / "cards.json").read_text())["cards"]
+    r = client.put(f"/api/runs/{rid}/cards", json={"cards": cards, "mode": "alone", "no_done": True}).json()
+    assert r["mode"] == "alone" and r["no_done"] is True
+    assert client.put(f"/api/runs/{rid}/cards", json={"cards": cards, "mode": "party"}).json()["mode"] == "alone"  # 모르는 값은 무시
+    monkeypatch.setattr(A, "APP_KEY", "secret")
+    assert client.post(f"/api/runs/{rid}/mark", json={"n": 2}).status_code == 200  # 키 없이
+    assert client.post(f"/api/runs/{rid}/mark", json={"n": 2}).status_code == 200
+    assert client.post(f"/api/runs/{rid}/mark", json={"n": 99}).status_code == 400
+    monkeypatch.setattr(A, "APP_KEY", "")
+    st = client.get(f"/api/runs/{rid}/stuck").json()
+    assert [(x["n"], x["marks"]) for x in st] == [(2, 2)]
+    assert client.post(f"/api/runs/{rid}/coach", json={"cur": 1, "frames": []}).status_code == 409
+    assert client.post(f"/api/runs/{rid}/cards/1/verify", json={"photo": "data:image/jpeg;base64,AA"}).status_code == 409

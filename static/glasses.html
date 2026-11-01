@@ -38,7 +38,7 @@ const lang = new URLSearchParams(location.search).get("lang") || (() => { try { 
 const M = new URLSearchParams(location.search).get("m") === "en" ? "en" : "ko";  // 한 언어 더(lang=x)일 때 위 줄 언어
 const K = lang === "en" || (lang === "x" && M === "en");
 document.documentElement.lang = K ? "en" : "ko";
-let cards = [], cur = { i: -1, v: -1 }, arch = false, xOk = false;  // arch: 보관된 묶음(영상이 없어 움직임·확인이 없다)
+let cards = [], cur = { i: -1, v: -1 }, arch = false, xOk = false, alone = false, noDone = false;  // alone: 혼자 하기(막혔어요) · noDone: '됐어요' 판단 끔  // arch: 보관된 묶음(영상이 없어 움직임·확인이 없다)
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const say = c => lang === "x" ? `${esc(c[M])}${xOk && c.x ? `<small>${esc(c.x)}</small>` : ""}` : lang === "en" ? esc(c.en) : lang === "both" ? `${esc(c.ko)}<small>${esc(c.en)}</small>` : esc(c.ko);
 
@@ -60,8 +60,9 @@ function draw(again) {
     <div class="say">${say(c)}</div>
     <div class="bar"><button id="b" onclick="act(() => flip(-1))" ${cur.i ? "" : "disabled"}>${K ? "◀ Previous" : "◀ 이전"}</button>
       ${cur.lv && cur.lv < (arch ? 3 : 4) ? `<button id="h" onclick="act(help)">${K ? "Help" : "도움"}</button>`
+        : alone ? `<button id="h" onclick="act(markStuck)" ${marked.has(c.n) ? "disabled" : ""}>${marked.has(c.n) ? (K ? "Sent" : "알렸어요") : (K ? "Stuck here" : "막혔어요")}</button>`
         : `<button id="h" onclick="act(callMaker)" ${cur.call ? "disabled" : ""}>${cur.call ? (K ? "Called" : "불렀어요") : (K ? "Ask for help" : "도와줘요")}</button>`}
-      ${arch ? "" : `<button id="v" onclick="act(check)">${K ? "Check" : "확인"}</button>`}
+      ${arch || noDone ? "" : `<button id="v" onclick="act(check)">${K ? "Check" : "확인"}</button>`}
       ${cur.i < n - 1 ? `<button id="f" onclick="act(() => flip(1))">${K ? "Next ▶" : "다음 ▶"}</button>` : `<button id="f" onclick="act(finish)">${K ? "Done ✓" : "다 했어요 ✓"}</button>`}</div>`;
   if (shown !== `${cur.i}|${cur.fin}`) { shown = `${cur.i}|${cur.fin}`; lockUntil = Date.now() + 600; }
   const keep = document.getElementById(had);
@@ -110,6 +111,13 @@ async function send(body) {
   const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, s: pair }) });
   if (r.ok) { cur = await r.json(); draw(false); }
 }
+const marked = new Set();
+async function markStuck() {  // 혼자 하기: 카드 번호만 만든 사람에게(키 없이)
+  const c = cards[cur.i]; if (!c || marked.has(c.n)) return;
+  const r = await fetch(`/api/runs/${run}/mark`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ n: c.n }) }).catch(() => null);
+  if (r?.ok) marked.add(c.n);
+  draw();
+}
 async function callMaker() {  // 도움을 다 봐도 안 되면 사람을 부른다(카드 번호만 간다)
   const r = await fetch(`/api/runs/${run}/call`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ s: pair, call: true, why: "glasses" }) });
   if (r.ok) { cur = await r.json(); draw(false); }
@@ -138,7 +146,7 @@ async function poll() {
       overlay(head, [word, K ? d.vres.en : d.vres.ko].filter(Boolean).join(" · "), 5000);
     }
     if (d.v !== cur.v) {  // 교사가 사진·그림·움직임을 바꿨을 수 있다(처음 한 번은 이미 받았다)
-      if (cur.v !== -1) { const x = await (await fetch(`/api/runs/${run}/cards`)).json(); cards = x.cards; arch = x.stage === "archived"; xOk = !!x.extra?.ok; }
+      if (cur.v !== -1) { const x = await (await fetch(`/api/runs/${run}/cards`)).json(); cards = x.cards; arch = x.stage === "archived"; xOk = !!x.extra?.ok; alone = x.mode === "alone"; noDone = !!x.no_done; }
       if (!cards.length) { document.getElementById("m").innerHTML = `<div class="msg" id="msg">${K ? "No card set" : "카드 묶음이 없어요"}</div>`; cur = d; }
       else {  // 카드가 지워졌으면 마지막 카드로. 그리다 실패하면 cur를 되돌려 다음 확인 때 다시 그린다
         const was = cur; cur = { ...d, i: Math.max(0, Math.min(cards.length - 1, d.i | 0)) };
@@ -151,7 +159,7 @@ async function poll() {
 (async () => {
   const r = run && await fetch(`/api/runs/${run}/cards`);
   if (!r || !r.ok) { document.getElementById("msg").textContent = K ? "No card set" : "카드 묶음이 없어요"; return; }
-  const x = await r.json(); cards = x.cards; arch = x.stage === "archived"; xOk = !!x.extra?.ok;
+  const x = await r.json(); cards = x.cards; arch = x.stage === "archived"; xOk = !!x.extra?.ok; alone = x.mode === "alone"; noDone = !!x.no_done;
   poll();
 })();
 </script>

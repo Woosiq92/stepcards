@@ -134,5 +134,7 @@
  ],
  "title": "디앤디케어 · 차량 승하차 돕기 (견본)",
  "edited_at": 1793521676.543902,
- "seed_v": 1
+ "seed_v": 2,
+ "mode": "together",
+ "no_done": true
 }
