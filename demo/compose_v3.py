@@ -1,12 +1,13 @@
 # 데모 v3 합치기: record_v3.mjs 장면 + 영어 내레이션(합성 음성) + 자막 + 꼬리표 → demo/out/v3/stepcards_demo_v3.mp4
 # 사용: .venv/bin/python demo/compose_v3.py <만들기 실행 id>
 # 숫자는 기록에서만 뽑는다(만들기 = 이번 실행 progress.json, 따라 하기 = coach.marks.json, Glimmer = 6d5279d1379e)
-import json, math, re, subprocess, sys
+import json, math, os, re, subprocess, sys
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
-V3 = ROOT / "demo" / "out" / "v3"
+KO = os.environ.get("DEMO_LANG") == "ko"  # 한글판: DEMO_LANG=ko (녹화도 같은 변수로 한국어 화면)
+V3 = ROOT / "demo" / "out" / ("v3ko" if KO else "v3")
 TMP = V3 / "tmp"
 TMP.mkdir(parents=True, exist_ok=True)
 W, H = 1920, 1080
@@ -116,15 +117,51 @@ SEGMENTS = [
      "One video. Checked cards. Help only when needed. StepCards."),
 ]
 
+if KO:  # 한글판 꼬리표·내레이션(숫자는 위와 같은 기록에서)
+    k = re.search(r"문제 (\d+)개", splits[0]["msg"]).group(1) if len(splits) > 1 else ""
+    note = f"이번 실행에서는 첫 답이 규칙 {k}개를 어겨 이유와 함께 돌려보냈고, {len(splits)}번째 답이 통과했어요. " if len(splits) > 1 else "이번 실행에서는 모든 카드가 처음에 검사를 통과했어요. "
+    KO_TEXT = {
+        "open": ("다시 재생 · 시범 영상을 카메라 대신 흘림 · Muse Spark 실제 판단",
+                 "카드를 보세요. 손이 한 단계를 끝내고 몇 초 뒤, 다음 카드가 휴대폰과 안경에 함께 떠요."),
+        "problem": (None, "StepCards는 특수교사와, 직업 훈련을 받는 지적장애 학생을 위한 도구예요. "
+                    "지금은 교사가 단계 그림 카드를 손으로 만들어요. 찍고, 멈추고, 캡처하고, 쓰고, 인쇄하죠. StepCards는 시범 영상 하나로 이 카드를 만들어요."),
+        "making": ("실제 실행 · Muse Voice Transcribe · Muse Spark · SAM 3.1 · 코드 검사기",
+                   "교사는 레이밴 메타 안경이 보는 것처럼 눈높이에서 한 번 시범을 찍어 영상을 넣어요. "
+                   "Muse Voice Transcribe가 말로 한 설명을 받아 적는데, 이 영상에는 말소리가 없어요. "
+                   "Muse Spark가 영상을 동작 하나씩의 단계로 나누고, 쉬운 한국어와 영어 문장을 써요. "
+                   "그다음 모델이 아니라 코드가 모든 카드를 검사하고, 걸리면 이유를 붙여 돌려보내요. " + note +
+                   f"SAM 3.1은 손에 든 물건을 찾아요. {round(video_s / 60)}분짜리 영상이 {make_s:.0f}초 만에 카드 {n_cards}장이 됐고, 비용은 약 {make_cost * 100:.0f}센트였어요."),
+        "edit": ("교사 확인 · 고칠 때마다 다시 검사",
+                 "결정은 교사가 해요. 문장에 동작을 하나 더 넣으면 카드가 빨갛게 바뀌고, 빼면 통과해요. "
+                 "카드마다 사진, 영상에서 뽑은 움직임, 시범을 따라 그린 3D 접기 중에서 고를 수 있어요."),
+        "follow": ("2.5배속 다시 재생 · 시범 영상을 카메라 대신 흘림 · Muse Spark 실제 판단",
+                   "학생 쪽에서는 카드가 손을 따라가요. 여기서도 같은 냅킨 영상을 카메라 대신 흘렸어요. Muse Spark가 손이 어느 단계에 있는지 판단해요. "
+                   f"카드는 {auto_to}번까지 저절로 넘어갔고, 단계가 끝나고 {math.floor(min(lags))}초에서 {math.ceil(max(lags))}초 뒤였어요. 안경 화면은 레이밴 디스플레이용으로 만들었어요."),
+        "help": ("필요할 때만 도움 · 오른쪽은 교사 현황판",
+                 "도움은 글만으로 시작해요. 학생이 막히면 한 칸씩 늘어나요. 그림, 문장 읽어 주기, 그다음 움직임이에요. "
+                 "도움을 다 써도 안 되면 '도와줘요'가 교사 현황판에 떠요. 교사가 '갈게요'를 누르면 학생 화면에 도와주러 온다고 나와요. "
+                 "칭찬도, 점수도, 저장하는 영상도 없어요."),
+        "jobs": ("견본 카드 · 중증장애인 맞춤형 국가 일자리 직무 · CC BY 영상",
+                 "기계가 판단하면 안 되는 일도 있어요. 사람을 차에 태우는 돌봄 일은 카메라를 켜지 않고, 끝났는지는 사람이 정해요. "
+                 "중증장애인 맞춤형 국가 일자리 직무로 견본 카드를 만들었어요. 공개 라이선스 영상으로 만들었고, 한국 수어 인사도 있어요."),
+        "glimmer": (f"이 맥에서 돌린 기록 · 공개 가중치 Muse Glimmer · {g_s}초 · $0",
+                    f"영상을 밖으로 보낼 수 없는 학교에서는 같은 과정을 공개 가중치 모델 Muse Glimmer로 맥에서 돌려요. "
+                    f"이 냅킨 영상이 {g_s}초 만에 검사를 통과한 카드 {g_cards}장이 됐고, API 비용은 0원이었어요. "
+                    "아직 안 되는 것도 있어요. 냅킨 시험에서 숨은 겹을 펴는 뒷단계는 알아보지 못해서, 학생이 '다음'을 직접 눌러요. 학생과 함께한 시험도 아직 하지 않았어요."),
+        "close": (None, "영상 하나, 검사한 카드, 필요할 때만 도움. StepCards."),
+    }
+    SEGMENTS = [(n, lay, sp, *KO_TEXT[n]) for n, lay, sp, _, _ in SEGMENTS]
+
 
 def slide_close():
     img = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(img)
-    rows = [("StepCards", 120, True, INK), ("One video → checked cards → help only when needed", 52, False, INK), ("", 40, False, INK),
-            ("Built with Meta models: Muse Spark · SAM 3.1 · Muse Voice Transcribe · Muse Image · Muse Glimmer", 36, False, MUTED),
-            ("Not a Meta product · made by LogicCraft", 36, False, MUTED), ("", 30, False, INK),
+    models = "Muse Spark · SAM 3.1 · Muse Voice Transcribe · Muse Image · Muse Glimmer"
+    rows = [("StepCards", 120, True, INK), ("영상 하나 → 검사한 카드 → 필요할 때만 도움" if KO else "One video → checked cards → help only when needed", 52, False, INK), ("", 40, False, INK),
+            (("Meta 모델로 만듦: " if KO else "Built with Meta models: ") + models, 36, False, MUTED),
+            ("Meta 제품 아님 · 로직크래프트 제작" if KO else "Not a Meta product · made by LogicCraft", 36, False, MUTED), ("", 30, False, INK),
             ("stepcards-production.up.railway.app", 44, True, ACCENT),
-            ("Sample videos: CC BY, credited in the app and README · English narration: synthetic voice", 30, False, MUTED)]
+            ("견본 영상: CC BY, 앱과 README에 출처 표기 · 한국어 내레이션: 합성 음성" if KO else "Sample videos: CC BY, credited in the app and README · English narration: synthetic voice", 30, False, MUTED)]
     y = 250
     for t, s, b, c in rows:
         d.text((160, y), t, font=font(s, b), fill=c)
@@ -206,11 +243,11 @@ def base_video(name, layout, span, seg_len):
 parts = []
 for idx, (name, layout, span, label, text) in enumerate(SEGMENTS):
     aiff = TMP / f"{name}.aiff"
-    sh("say", "-v", "Samantha", "-r", "180", "-o", aiff, text)
+    sh("say", "-v", "Yuna" if KO else "Samantha", "-r", "200" if KO else "180", "-o", aiff, text)
     nar = duration(aiff)
     seg_len = round(max(nar + 0.9, (span[1] / span[2]) if span else 0), 2)
     base = base_video(name, layout, span, seg_len)
-    sents = re.findall(r"[^.!?]+[.!?]", text)
+    sents = re.findall(r".+?[.!?](?=\s|$)", text)  # "SAM 3.1" 의 점에서 끊지 않게: 뒤에 빈칸이나 끝이 올 때만
     total, t = sum(len(s) for s in sents), 0.3
     inputs, overlays = [], []
     for k, s in enumerate(sents):
@@ -233,6 +270,6 @@ for idx, (name, layout, span, label, text) in enumerate(SEGMENTS):
 
 lst = TMP / "list.txt"
 lst.write_text("".join(f"file '{p}'\n" for p in parts))
-final = V3 / "stepcards_demo_v3.mp4"
+final = V3 / ("stepcards_demo_v3_ko.mp4" if KO else "stepcards_demo_v3.mp4")
 sh("ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", 0, "-i", lst, "-c", "copy", final)
 print(f"완성: {final} · {duration(final):.1f}s")
