@@ -54,7 +54,7 @@ mark_interrupted()
 
 APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정: 키를 아는 사람만 크레딧을 쓰고 카드를 바꾸게
 JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 수 있지만 하루 한도가 있다(제출 설명에 적는 키)
-JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "translate": 10, "fold": 20, "compare": 20, "coach": 900, "frame": 60, "retry": 6, "verify": 300}  # 하루 횟수. 따라 하기 900번 ≈ 30분
+JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "translate": 10, "step": 400, "compare": 400, "coach": 900, "frame": 60, "retry": 6, "verify": 300}  # 하루 횟수. 따라 하기 900번 ≈ 30분
 JUDGE_USE = {"day": "", "n": {}}
 TEACHERS = dict(x.strip().split(":", 1) for x in os.environ.get("TEACHER_KEYS", "").split(",") if ":" in x)  # 교사별 키 "이름:키,이름:키"
 NOW_PATH = re.compile(r"/api/runs/\w+/(now|call)$")  # 안경은 키(쿠키)가 없다: 지금 카드 맞추기와 '도와줘요'는 키 없이
@@ -340,19 +340,19 @@ def translate_cards(run_id: str, body: dict):
     return {**data, "translate": {"problems": t["problems"], "cost": t["cost"]}}
 
 
-@app.post("/api/runs/{run_id}/fold")
-def fold_write(run_id: str, body: dict):
-    """3D 접기 프로그램을 Muse Spark 에게 받는다(저장 안 함: 브라우저가 검사·대조한 뒤 저장). previous+problems/notes 면 고쳐 쓰기"""
+@app.post("/api/runs/{run_id}/fold/step")
+def fold_step(run_id: str, body: dict):
+    """3D 접기: 카드 하나의 동작만 받는다(앞 카드까지의 프로그램과 지금 3D 모양 그림을 보고). 저장 안 함"""
     import fold_gen
     d = run_dir(run_id)
     data = read(d, "cards.json")
-    if not data:
+    if not data or not isinstance(body.get("n"), int):
         raise HTTPException(400, "카드가 없습니다")
-    prev = body.get("previous") if isinstance(body.get("previous"), dict) else None
-    lines = lambda k: [str(x)[:300] for x in body.get(k, [])][:30] if isinstance(body.get(k), list) else []
-    out = fold_gen.write(d, data["cards"], prev, lines("problems"), lines("notes"))
-    if not out["program"]:
-        raise HTTPException(502, "접기 프로그램을 받지 못했습니다. 다시 해 보세요")
+    lines = lambda k: [str(x)[:300] for x in body.get(k, [])][:10] if isinstance(body.get(k), list) else []
+    prefix = body.get("prefix") if isinstance(body.get("prefix"), dict) else {}
+    out = fold_gen.write_step(d, data["cards"], body["n"], prefix, body.get("current"), lines("problems"), lines("notes"))
+    if out["ops"] is None:
+        raise HTTPException(502, "접기 동작을 받지 못했습니다. 다시 해 보세요")
     return out
 
 

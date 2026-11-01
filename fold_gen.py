@@ -1,6 +1,6 @@
 # 3D 접기 카드: Muse Spark 가 시범 사진을 보고 카드마다 접는 동작을 짧은 형식(접기 프로그램)으로 쓴다.
-# 판정은 모델이 아니라 코드와 대조: 브라우저의 fold.js 가 프로그램을 돌려 검사하고(검사기),
-# 3D 끝 모양을 시범 영상의 단계 끝 장면과 Muse Spark 가 비교한다(compare). 둘 다 걸리면 이유를 붙여 다시 쓴다.
+# 카드 하나씩 쓴다(write_step). 판정은 모델이 아니라 코드와 대조: 브라우저의 fold.js 가 돌려 검사하고(검사기),
+# 그 카드의 3D 끝 모양을 시범 영상의 단계 끝 장면과 Muse Spark 가 비교한다(compare). 걸리면 이유를 붙여 그 카드만 다시 쓴다.
 import json
 import re
 from pipeline import client, STEP_MODEL, PRICE_IN, PRICE_OUT, data_url
@@ -35,8 +35,9 @@ Ignore colour, hands, shadows, perspective and small size differences. If the cl
 Answer with JSON only: {"cards":[{"n":1,"match":"yes"|"no"|"unclear","fix":"if no: one short sentence on what the drawing should change"}]}"""
 
 
-def _ask(content):
-    r = client.responses.create(model=STEP_MODEL, input=[{"role": "user", "content": content}], store=False)
+def _ask(content, effort=None):
+    kw = {"reasoning": {"effort": effort}} if effort else {}
+    r = client.responses.create(model=STEP_MODEL, input=[{"role": "user", "content": content}], store=False, **kw)
     m = re.search(r"\{.*\}", r.output_text or "", re.S)
     try:
         ans = json.loads(m.group(0)) if m else {}
@@ -51,27 +52,39 @@ def frame(d, t, last):
     return d / "frames" / f"f{i:03d}.jpg"
 
 
-def write(d, cards, previous=None, problems=(), notes=()):
-    """접기 프로그램 쓰기. previous 와 problems(검사기)·notes(대조)가 있으면 그 부분만 고쳐 쓴다"""
+STEP = """Now write only the moves for card n={n}: {sentence}
+Before this card the cloth looks like the 3D drawing below (top of the drawing = far side of the video), made by the moves so far:
+{prefix}
+The first photo is the end of the previous step, the second the end of this step.{shape_q}
+Answer with JSON only: {{{shape_a}"ops":[...]}}"""
+
+
+def write_step(d, cards, n, prefix, current, problems=(), notes=()):
+    """카드 하나의 동작만 쓰기(앞 카드까지의 프로그램과 지금 3D 모양 그림을 보고). 첫 카드면 시작 모양(shape)도"""
     last = len(list((d / "frames").glob("f*.jpg")))
+    i = next((k for k, c in enumerate(cards) if c["n"] == n), None)
+    if i is None:
+        return {"ops": None, "cost": 0}
+    c, first = cards[i], i == 0
+    prev_t = cards[i - 1].get("end", 0) if i else c.get("start", 0)
     content = [{"type": "input_text", "text": FORMAT},
-               {"type": "input_text", "text": "Before card 1 (the starting sheet):"},
-               {"type": "input_image", "image_url": data_url(frame(d, cards[0].get("start", 0), last))}]
-    for c in cards:
-        content += [{"type": "input_text", "text": f'Card n={c["n"]} ({c.get("start")}-{c.get("end")} s): {c.get("en", "")} / {c.get("ko", "")}. Photo at the end of this step:'},
-                    {"type": "input_image", "image_url": data_url(frame(d, c.get("end", 0), last))}]
-    if previous:
-        content.append({"type": "input_text", "text": "Your previous program:\n" + json.dumps(previous, ensure_ascii=False)
-                        + ("\nThe code checker found these problems:\n- " + "\n- ".join(problems) if problems else "")
-                        + ("\nComparing the 3D result with the photos found these differences:\n- " + "\n- ".join(notes) if notes else "")
-                        + "\nFix those cards and answer with the whole program again."})
-    ans, cost = _ask(content)
-    prog = ans if isinstance(ans.get("steps"), list) else None
-    if prog:  # 모양 값 정리(색은 #rrggbb 만)
-        sh = prog.get("shape") if isinstance(prog.get("shape"), dict) else {}
-        prog["shape"] = {"w": float(sh.get("w") or 1), "h": float(sh.get("h") or 1),
-                         "color": sh.get("color") if re.fullmatch(r"#[0-9a-fA-F]{6}", str(sh.get("color", ""))) else "#c0392b"}
-    return {"program": prog, "cost": round(cost, 4)}
+               {"type": "input_text", "text": STEP.format(n=n, sentence=f'{c.get("en", "")} / {c.get("ko", "")}', prefix=json.dumps(prefix, ensure_ascii=False),
+                                                         shape_q=" This is the first card: also give the flat starting sheet as \"shape\" (w:h as seen, colour)." if first else "",
+                                                         shape_a='"shape":{"w":1,"h":1,"color":"#rrggbb"},' if first else "")},
+               {"type": "input_image", "image_url": data_url(frame(d, prev_t, last))},
+               {"type": "input_image", "image_url": data_url(frame(d, c.get("end", 0), last))}]
+    if isinstance(current, str) and current.startswith("data:image/jpeg;base64,") and len(current) < 400_000:
+        content.append({"type": "input_image", "image_url": current})
+    if problems or notes:
+        content.append({"type": "input_text", "text": "Your last answer for this card had problems:\n- " + "\n- ".join([*problems, *notes]) + "\nFix them."})
+    ans, cost = _ask(content, "low")  # 실측(냅킨 2번): 기본 60.6초·low 16.9초 같은 답, minimal 11.3초는 틀림
+    ops = ans.get("ops") if isinstance(ans.get("ops"), list) else None
+    out = {"ops": ops, "cost": round(cost, 4)}
+    if first and isinstance(ans.get("shape"), dict):
+        sh = ans["shape"]
+        out["shape"] = {"w": float(sh.get("w") or 1), "h": float(sh.get("h") or 1),
+                        "color": sh.get("color") if re.fullmatch(r"#[0-9a-fA-F]{6}", str(sh.get("color", ""))) else "#c0392b"}
+    return out
 
 
 def compare(d, cards, stills):
@@ -85,7 +98,7 @@ def compare(d, cards, stills):
         content += [{"type": "input_text", "text": f'Card n={c["n"]}: {c.get("en", "")}'},
                     {"type": "input_image", "image_url": data_url(frame(d, c.get("end", 0), last))},
                     {"type": "input_image", "image_url": s}]
-    ans, cost = _ask(content)
+    ans, cost = _ask(content, "low")
     out = [{"n": x.get("n"), "match": x.get("match") if x.get("match") in ("yes", "no", "unclear") else "unclear", "fix": str(x.get("fix", ""))[:200]}
            for x in ans.get("cards", []) if isinstance(x, dict)]
     return {"cards": out, "cost": round(cost, 4)}

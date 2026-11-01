@@ -1126,42 +1126,53 @@ function f3slow(ev) {  // 3D 접기 속도: 느리게(0.5배) ↔ 보통. 이 �
 }
 function f3pause(cv) { if (cv.dataset.paused) delete cv.dataset.paused; else cv.dataset.paused = "1"; }
 window.Fold3D = Object.assign(window.Fold3D || {}, { slow: (() => { try { return localStorage.getItem("f3slow") === "1"; } catch { return false; } })(), source: () => S.data?.fold ? { program: S.data.fold, cardNs: S.data.cards.map(c => c.n) } : null });
-async function makeFold() {
+async function makeFold() {  // 카드 하나씩: 쓰기 → 검사기 → 끝 모양 대조 → 다르면 그 카드만 다시(앞 카드 잘못이 뒤로 번지지 않게)
   if (!window.Fold3D?.ready) return toast(T("3D 화면을 불러오는 중이에요. 잠시 뒤 다시 눌러 주세요.", "The 3D view is still loading. Try again in a moment."));
   const btn = $("#f3go"); btn.disabled = true;
   const box = document.createElement("div"); box.className = "f3log"; btn.closest("div").after(box);
-  const say = t => box.insertAdjacentHTML("beforeend", `<div>${t}</div>`);
+  const say = t => { box.insertAdjacentHTML("beforeend", `<div>${t}</div>`); return box.lastElementChild; };
   const post = (u, b) => fetch(u, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) }).then(r => r.ok ? r.json() : Promise.reject(r.status)).catch(e => ({ error: e }));
-  const ns = S.data.cards.map(c => c.n), keep = S.data.fold;
-  let cost = 0, prog = null, problems = [], notes = [], report = {};
+  const cs = S.data.cards, ns = cs.map(c => c.n), keep = S.data.fold, t0 = Date.now();
+  let cost = 0, prog = { shape: { w: 1, h: 1, color: "#c0392b" }, steps: [] };
+  const report = {};
   try {
-    for (let round = 0, compares = 0; round < 4; round++) {
-      say(prog ? T("Muse Spark 가 지적받은 카드를 고쳐 쓰는 중…", "Muse Spark is fixing the flagged cards…") : T("Muse Spark 가 시범 사진을 보고 접기 순서를 쓰는 중…", "Muse Spark is writing the folds from the demonstration photos…"));
-      const w = await post(`/api/runs/${S.run}/fold`, prog ? { previous: prog, problems, notes } : {});
-      if (w.error) throw w.error;
-      cost += w.cost; prog = w.program; notes = [];
-      problems = window.Fold3D.check(prog, ns);
-      if (problems.length && round < 2) { say(`${icon("x")} ${T(`검사기가 ${problems.length}곳을 잡았어요`, `The checker caught ${problems.length}`)}: ${esc(problems.slice(0, 3).join(" · "))}`); continue; }
-      say(`${icon("check")} ${problems.length ? T(`검사기 문제 ${problems.length}곳이 남았어요`, `${problems.length} checker problem(s) left`) : T("검사기 통과", "Passed the checker")}`);
-      // 3D 끝 모양 그려서 시범 장면과 대조
+    for (const [k, c] of cs.entries()) {
+      if (Object.values(report).includes("no")) {  // 앞 카드 모양이 이미 다르면 뒤는 맞을 수 없다: 시도하지 않고 움직임으로
+        report[c.n] = "no"; prog = { ...prog, steps: [...prog.steps, { n: c.n, ops: [] }] }; continue;
+      }
+      const line = say(T(`${k + 1}번 카드 · Muse Spark 가 쓰는 중…`, `Card ${k + 1} · Muse Spark is writing…`));
       S.data.fold = prog;
-      const stills = {}; for (const n of ns) { const u = window.Fold3D.still(n); if (u) stills[n] = u; }
-      say(T("3D 끝 모양을 시범 장면과 비교하는 중…", "Comparing each 3D end shape with the demonstration…"));
-      const cmp = await post(`/api/runs/${S.run}/fold/compare`, { stills });
-      if (cmp.error) throw cmp.error;
-      cost += cmp.cost; report = Object.fromEntries(cmp.cards.map(x => [x.n, x.match]));
-      const bad = cmp.cards.filter(x => x.match === "no");
-      const pos = n => S.data.cards.findIndex(c => c.n === n) + 1;
-      say(`${T("대조", "Compared")}: ${T("맞음", "match")} ${cmp.cards.filter(x => x.match === "yes").length} · ${T("다름", "different")} ${bad.length} · ${T("알 수 없음", "unclear")} ${cmp.cards.filter(x => x.match === "unclear").length}${bad.length ? " — " + esc(bad.slice(0, 3).map(x => `${pos(x.n)}: ${x.fix}`).join(" · ")) : ""}`);
-      if (!bad.length || ++compares >= 2) break;  // 대조는 두 번까지(한 번에 1~2분)
-      notes = bad.map(x => `card n=${x.n}: ${x.fix}`);
+      const current = k ? window.Fold3D.still(cs[k - 1].n) : null;  // 지금까지 접은 모양
+      let best = null, problems = [], notes = [];
+      for (let tries = 0; tries < 4; tries++) {
+        const w = await post(`/api/runs/${S.run}/fold/step`, { n: c.n, prefix: prog, current, problems, notes });
+        if (w.error) throw w.error;
+        cost += w.cost;
+        const trial = { shape: w.shape || prog.shape, steps: [...prog.steps, { n: c.n, ops: w.ops }] };
+        problems = window.Fold3D.check(trial, ns); notes = [];
+        if (problems.length) { line.textContent = T(`${k + 1}번 카드 · 검사기: ${problems[0]}`, `Card ${k + 1} · checker: ${problems[0]}`); if (tries < 3) continue; trial.steps.at(-1).ops = []; }
+        if (!w.ops.length) { best = { trial, match: "yes" }; break; }  // 모양이 안 바뀌는 카드(집기·펴기)
+        S.data.fold = trial;
+        const cmp = await post(`/api/runs/${S.run}/fold/compare`, { stills: { [c.n]: window.Fold3D.still(c.n) } });
+        if (cmp.error) throw cmp.error;
+        cost += cmp.cost;
+        const r = cmp.cards[0] || { match: "unclear" };
+        if (!best || r.match === "yes" || (r.match === "unclear" && best.match === "no")) best = { trial, match: r.match };
+        if (r.match !== "no" || tries >= 2) break;  // 대조 뒤 다시 쓰기는 두 번까지(경계 카드: 냅킨 5번은 실행마다 맞았다 틀렸다)
+        notes = [`the 3D shape at the end of this card differs from the photo: ${r.fix}`];
+        line.textContent = T(`${k + 1}번 카드 · 대조: 다름 — 다시 쓰는 중`, `Card ${k + 1} · compared: different — rewriting`);
+      }
+      prog = best.trial; report[c.n] = best.match;
+      line.innerHTML = `${best.match === "no" ? icon("x") : icon("check")} ${T(`${k + 1}번 카드 · 대조 ${{ yes: "맞음", no: "다름", unclear: "알 수 없음" }[best.match]}`, `Card ${k + 1} · ${{ yes: "matches", no: "differs", unclear: "unclear" }[best.match]}`)}`;
+      if (best.match === "no" && k < cs.length - 1) say(T(`${k + 2}번 카드부터는 3D 대신 움직임으로 보여요(앞 모양이 시범과 달라서).`, `From card ${k + 2} on, motion is shown instead of 3D (the shape no longer matches the demonstration).`));
     }
     S.data.fold = { ...prog, report };
-    S.data.cards.forEach(c => { if (!c.view || c.view === "photo" || c.view === "ill") c.view = "fold"; });
-    say(`${icon("check")} ${T(`3D 접기를 카드에 넣었어요 · $${cost.toFixed(3)}. 카드마다 사진·그림·움직임으로 되돌릴 수 있어요.`, `3D folds added to the cards · $${cost.toFixed(3)}. Each card can switch back to photo, drawing or motion.`)}`);
+    S.data.cards.forEach(c => { if (!c.view || c.view === "photo" || c.view === "ill" || c.view === "fold") c.view = report[c.n] === "no" ? (S.data.stage === "archived" ? c.view : "clip") : "fold"; });  // 다른 카드는 움직임으로
+    const ok = Object.values(report).filter(x => x === "yes").length;
+    say(`${icon("check")} ${T(`3D 접기를 카드에 넣었어요 · 대조 맞음 ${ok}/${cs.length} · $${cost.toFixed(3)} · ${Math.round((Date.now() - t0) / 1000)}초. '다름'인 카드는 학습자에게 움직임으로 보여요.`, `3D folds added · ${ok}/${cs.length} match · $${cost.toFixed(3)} · ${Math.round((Date.now() - t0) / 1000)} s. Cards marked 'differs' show motion to learners.`)}`);
     const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards: S.data.cards, title: S.data.title ?? "", fold: S.data.fold }) });
     if (!r.ok) throw r.status;
-    edit();
+    edit(); $("#f3go")?.closest("div").after(box);  // 다시 그린 뒤에도 진행 기록·요약을 남긴다
   } catch (e) {
     S.data.fold = keep;
     say(`${icon("x")} ${e === 401 ? T("접속 키가 필요해요.", "An access key is needed.") : T("3D 접기를 만들지 못했어요. 다시 해 주세요.", "Could not make the 3D folds. Please try again.")}`);
