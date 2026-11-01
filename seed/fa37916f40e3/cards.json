@@ -320,5 +320,7 @@
    "box_touches_hand": false
   }
  ],
- "title": "침대 옆 서랍장 조립 (견본)"
+ "title": "침대 옆 서랍장 조립 (견본)",
+ "mode": "alone",
+ "seed_v": 1
 }
