@@ -1,0 +1,350 @@
+{
+ "video": "sign_greetings.mp4",
+ "video_path": "",
+ "events": [
+  {
+   "t": 1793520149.3,
+   "stage": "start",
+   "msg": "f3d1c1514436_UktSega5kmU.mp4 → f3d1c1514436",
+   "local": false
+  },
+  {
+   "t": 1793520150.1,
+   "stage": "extract",
+   "msg": "영상 323초, 사진 324장"
+  },
+  {
+   "t": 1793520178.5,
+   "stage": "listen",
+   "msg": "영상에 말소리가 없음",
+   "n": 0,
+   "cost": 0.0162
+  },
+  {
+   "t": 1793520239.7,
+   "stage": "split",
+   "msg": "1번째 시도: 단계 44개, 문제 1개 (61초, $0.207)",
+   "n": 44,
+   "problems": [
+    "18단계: 구간 104~104초가 영상(0~323초) 밖이거나 끝이 시작보다 빠릅니다."
+   ],
+   "warnings": [],
+   "cost": 0.2069
+  },
+  {
+   "t": 1793520264.1,
+   "stage": "split",
+   "msg": "2번째 시도: 단계 43개, 문제 0개 (24초, $0.152)",
+   "n": 43,
+   "problems": [],
+   "warnings": [],
+   "cost": 0.1516
+  },
+  {
+   "t": 1793520265.4,
+   "stage": "highlight",
+   "msg": "1단계 'both thumbs': 상자 찾음(both thumbs, 손과 겹침)",
+   "i": 1,
+   "total": 43
+  },
+  {
+   "t": 1793520267.0,
+   "stage": "highlight",
+   "msg": "2단계 'right hand': 상자 찾음(right hand, 손과 겹침)",
+   "i": 2,
+   "total": 43
+  },
+  {
+   "t": 1793520269.0,
+   "stage": "highlight",
+   "msg": "3단계 'right index': 못 찾음",
+   "i": 3,
+   "total": 43
+  },
+  {
+   "t": 1793520270.9,
+   "stage": "highlight",
+   "msg": "4단계 'right hand': 상자 찾음(right hand, 손과 겹침)",
+   "i": 4,
+   "total": 43
+  },
+  {
+   "t": 1793520271.9,
+   "stage": "highlight",
+   "msg": "5단계 'right hand': 상자 찾음(right hand, 손과 겹침)",
+   "i": 5,
+   "total": 43
+  },
+  {
+   "t": 1793520273.5,
+   "stage": "highlight",
+   "msg": "6단계 'both indexes': 못 찾음",
+   "i": 6,
+   "total": 43
+  },
+  {
+   "t": 1793520274.5,
+   "stage": "highlight",
+   "msg": "7단계 'both hands': 상자 찾음(both hands, 손과 겹침)",
+   "i": 7,
+   "total": 43
+  },
+  {
+   "t": 1793520275.3,
+   "stage": "highlight",
+   "msg": "8단계 'right hand': 상자 찾음(right hand, 손과 겹침)",
+   "i": 8,
+   "total": 43
+  },
+  {
+   "t": 1793520276.5,
+   "stage": "highlight",
+   "msg": "9단계 'right hand': 상자 찾음(right hand, 손과 겹침)",
+   "i": 9,
+   "total": 43
+  },
+  {
+   "t": 1793520280.0,
+   "stage": "highlight",
+   "msg": "10단계 'right index': 못 찾음",
+   "i": 10,
+   "total": 43
+  },
+  {
+   "t": 1793520281.7,
+   "stage": "highlight",
+   "msg": "11단계 'right hand': 상자 찾음(right hand, 손과 겹침)",
+   "i": 11,
+   "total": 43
+  },
+  {
+   "t": 1793520282.9,
+   "stage": "highlight",
+   "msg": "12단계 'both fists': 상자 찾음(both fists, 손과 겹침)",
+   "i": 12,
+   "total": 43
+  },
+  {
+   "t": 1793520284.7,
+   "stage": "highlight",
+   "msg": "13단계 'right hand': 상자 찾음(right hand, 손과 겹침)",
+   "i": 13,
+   "total": 43
+  },
+  {
+   "t": 1793520286.5,
+   "stage": "highlight",
+   "msg": "14단계 'right palm': 상자 찾음(right palm, 손과 겹침)",
+   "i": 14,
+   "total": 43
+  },
+  {
+   "t": 1793520287.5,
+   "stage": "highlight",
+   "msg": "15단계 'right thumb': 상자 찾음(right thumb, 손과 겹침)",
+   "i": 15,
+   "total": 43
+  },
+  {
+   "t": 1793520288.4,
+   "stage": "highlight",
+   "msg": "16단계 'right hand': 상자 찾음(right hand, 손과 겹침)",
+   "i": 16,
+   "total": 43
+  },
+  {
+   "t": 1793520291.2,
+   "stage": "highlight",
+   "msg": "17단계 'middle finger': 상자 찾음(finger, 손과 겹침)",
+   "i": 17,
+   "total": 43
+  },
+  {
+   "t": 1793520292.6,
+   "stage": "highlight",
+   "msg": "18단계 'right fist': 상자 찾음(right fist, 손과 겹침)",
+   "i": 18,
+   "total": 43
+  },
+  {
+   "t": 1793520297.6,
+   "stage": "highlight",
+   "msg": "19단계 'left palm': 상자 찾음(left palm, 손과 겹침, 사진 114→113초)",
+   "i": 19,
+   "total": 43
+  },
+  {
+   "t": 1793520302.9,
+   "stage": "highlight",
+   "msg": "20단계 'both indexes': 못 찾음",
+   "i": 20,
+   "total": 43
+  },
+  {
+   "t": 1793520305.7,
+   "stage": "highlight",
+   "msg": "21단계 'both arms': 못 찾음",
+   "i": 21,
+   "total": 43
+  },
+  {
+   "t": 1793520307.4,
+   "stage": "highlight",
+   "msg": "22단계 'both hands': 상자 찾음(both hands, 손과 겹침)",
+   "i": 22,
+   "total": 43
+  },
+  {
+   "t": 1793520308.5,
+   "stage": "highlight",
+   "msg": "23단계 'both hands': 상자 찾음(both hands, 손과 겹침)",
+   "i": 23,
+   "total": 43
+  },
+  {
+   "t": 1793520310.0,
+   "stage": "highlight",
+   "msg": "24단계 'both hands': 상자 찾음(both hands, 손과 겹침)",
+   "i": 24,
+   "total": 43
+  },
+  {
+   "t": 1793520311.0,
+   "stage": "highlight",
+   "msg": "25단계 'right hand': 상자 찾음(right hand, 손과 겹침)",
+   "i": 25,
+   "total": 43
+  },
+  {
+   "t": 1793520312.5,
+   "stage": "highlight",
+   "msg": "26단계 'right finger': 상자 찾음(right finger, 손과 겹침)",
+   "i": 26,
+   "total": 43
+  },
+  {
+   "t": 1793520313.7,
+   "stage": "highlight",
+   "msg": "27단계 'right fist': 상자 찾음(right fist, 손과 겹침)",
+   "i": 27,
+   "total": 43
+  },
+  {
+   "t": 1793520318.4,
+   "stage": "highlight",
+   "msg": "28단계 'both indexes': 못 찾음",
+   "i": 28,
+   "total": 43
+  },
+  {
+   "t": 1793520320.1,
+   "stage": "highlight",
+   "msg": "29단계 'right hand': 상자 찾음(right hand, 손과 겹침)",
+   "i": 29,
+   "total": 43
+  },
+  {
+   "t": 1793520321.4,
+   "stage": "highlight",
+   "msg": "30단계 'right hand': 상자 찾음(right hand, 손과 겹침)",
+   "i": 30,
+   "total": 43
+  },
+  {
+   "t": 1793520322.7,
+   "stage": "highlight",
+   "msg": "31단계 'right fingers': 상자 찾음(right fingers, 손과 겹침)",
+   "i": 31,
+   "total": 43
+  },
+  {
+   "t": 1793520324.1,
+   "stage": "highlight",
+   "msg": "32단계 'right hand': 상자 찾음(right hand, 손과 겹침)",
+   "i": 32,
+   "total": 43
+  },
+  {
+   "t": 1793520325.3,
+   "stage": "highlight",
+   "msg": "33단계 'right fingers': 상자 찾음(right fingers, 손과 겹침)",
+   "i": 33,
+   "total": 43
+  },
+  {
+   "t": 1793520327.2,
+   "stage": "highlight",
+   "msg": "34단계 'right hand': 상자 찾음(right hand, 손과 겹침)",
+   "i": 34,
+   "total": 43
+  },
+  {
+   "t": 1793520328.0,
+   "stage": "highlight",
+   "msg": "35단계 'right fist': 상자 찾음(right fist, 손과 겹침)",
+   "i": 35,
+   "total": 43
+  },
+  {
+   "t": 1793520330.0,
+   "stage": "highlight",
+   "msg": "36단계 'right index': 못 찾음",
+   "i": 36,
+   "total": 43
+  },
+  {
+   "t": 1793520336.4,
+   "stage": "highlight",
+   "msg": "37단계 'right palm': 못 찾음",
+   "i": 37,
+   "total": 43
+  },
+  {
+   "t": 1793520337.8,
+   "stage": "highlight",
+   "msg": "38단계 'right hand': 상자 찾음(right hand, 손과 겹침)",
+   "i": 38,
+   "total": 43
+  },
+  {
+   "t": 1793520345.4,
+   "stage": "highlight",
+   "msg": "39단계 'right palm': 못 찾음",
+   "i": 39,
+   "total": 43
+  },
+  {
+   "t": 1793520346.7,
+   "stage": "highlight",
+   "msg": "40단계 'right hand': 상자 찾음(right hand, 손과 겹침)",
+   "i": 40,
+   "total": 43
+  },
+  {
+   "t": 1793520347.6,
+   "stage": "highlight",
+   "msg": "41단계 'right fingers': 상자 찾음(right fingers, 손과 겹침)",
+   "i": 41,
+   "total": 43
+  },
+  {
+   "t": 1793520348.5,
+   "stage": "highlight",
+   "msg": "42단계 'both hands': 상자 찾음(both hands, 손과 겹침)",
+   "i": 42,
+   "total": 43
+  },
+  {
+   "t": 1793520349.8,
+   "stage": "highlight",
+   "msg": "43단계 'both fists': 상자 찾음(both fists, 손과 겹침)",
+   "i": 43,
+   "total": 43
+  },
+  {
+   "t": 1793520349.8,
+   "stage": "done",
+   "msg": "완료:"
+  }
+ ]
+}

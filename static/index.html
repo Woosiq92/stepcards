@@ -97,7 +97,7 @@
   .mstart { padding:88px 0 8px; } .mstart h2 { font-size:clamp(30px,4vw,44px); font-weight:500; margin:0 0 10px; } .mstart .sub { margin-bottom:28px; }
   .mstart .drop { max-width:760px; margin:0 auto; } .mstart .trust { justify-content:center; margin-top:16px; }
   .news { display:grid; grid-template-columns:repeat(6,1fr); gap:28px 24px; } .newscard { grid-column:span 2; } .newscard:nth-child(4) { grid-column:2 / span 2; }
-  .news.four { grid-template-columns:repeat(4,1fr); } .news.four .newscard { grid-column:auto; }
+  .news.four { grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); } .news.four .newscard { grid-column:auto; }  /* 직무 견본 수가 바뀌어도 한 줄에 */
   @media (max-width:860px) { .news.four { grid-template-columns:1fr 1fr; } }
   .jobsrc { max-width:720px; margin:-8px auto 22px; font-size:14px; }
   .newscard { color:var(--ink); font-weight:400; display:flex; flex-direction:column; gap:6px; } .newscard:hover { text-decoration:none; }
