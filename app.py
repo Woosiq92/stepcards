@@ -205,6 +205,7 @@ def runs(request: Request):
             seed = SEED_INDEX.get(d.name, {})
             out.append({"id": d.name, "video": prog["video"], "title": (data or {}).get("title") or seed.get("title", ""), "title_en": seed.get("title_en", ""), "use": seed.get("use", ""),
                         "done": data is not None, "count": len(cs),
+                        "failed": data is None and (prog.get("events") or [{}])[-1].get("stage") == "error",
                         "issues": len(data["problems"]) if data else 0, "thumb": cs[0]["image"] if cs else None,
                         "stage": storage.stage(d), "delete_on": None if d.name in SEED_INDEX else storage.delete_on(d)})
     return out

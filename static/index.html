@@ -287,7 +287,7 @@
   .pcard img { width:100%; aspect-ratio:16/9; object-fit:cover; display:block; }
   .pcard .txt { padding:6px 10px; font-size:clamp(12px,2.2vw,19px); font-weight:700; }
   .pcard .n { position:absolute; top:6px; left:6px; width:28px; height:28px; font-size:13px; }
-  .pcard .en, .tab .en { display:block; font-size:.72em; font-weight:400; opacity:.75; }
+  .pcard .en, .tab .en, .record .en { display:block; font-size:.72em; font-weight:400; opacity:.75; }
   @page { size:A4; margin:0; }
   @media print {
     header, .noprint { display:none !important; } main { padding:0; max-width:none; } body { background:#fff; }
@@ -670,7 +670,7 @@ async function home() {
         ${r.thumb ? `<img src="/runs/${r.id}/${r.thumb}" alt="">` : '<div class="ph"></div>'}
         <div class="pt"><strong>${esc(runTitle(r))}</strong>
         ${r.delete_on && r.delete_on * 1000 - Date.now() < 7 * 864e5 ? `<span class="red">${T(`${Math.max(0, Math.ceil((r.delete_on * 1000 - Date.now()) / 864e5))}일 뒤 지워져요`, `deleted in ${Math.max(0, Math.ceil((r.delete_on * 1000 - Date.now()) / 864e5))} days`)}</span>` : ""}
-        <span class="muted">${r.done ? `${T(`카드 ${r.count}장`, `${r.count} cards`)}${r.issues ? ` · <span class="red">${T(`확인할 곳 ${r.issues}`, `${r.issues} to check`)}</span>` : T(" · 확인 끝", " · all checks passed")}` : T("만드는 중", "in progress")}</span></div>
+        <span class="muted">${r.done ? `${T(`카드 ${r.count}장`, `${r.count} cards`)}${r.issues ? ` · <span class="red">${T(`확인할 곳 ${r.issues}`, `${r.issues} to check`)}</span>` : T(" · 확인 끝", " · all checks passed")}` : r.failed ? `<span class="red">${T("멈췄어요", "stopped")}</span>` : T("만드는 중", "in progress")}</span></div>
         ${r.use ? "" : `<button class="del" title="${T("지우기", "Delete")}" aria-label="${T("지우기", "Delete")}" onclick="event.preventDefault();delRun('${r.id}')">${icon("x")}</button>`}
       </a>`).join("")}</div>` : ""}
     <p class="muted adminlink"><a href="#view=admin">${T("저장 공간 관리(관리자)", "Storage (admin)")}</a></p>`;
@@ -945,7 +945,7 @@ function saveNow() {
     if (r.status === 403) return setSave("others");  // 다른 교사의 카드 묶음
     if (!r.ok) throw new Error(r.status);
     const d = await r.json();
-    Object.assign(S.data, { problems: d.problems, warnings: d.warnings, status: d.status });
+    Object.assign(S.data, { problems: d.problems, warnings: d.warnings, status: d.status, extra: d.extra });  // 문장이 바뀌면 서버가 번역 확인을 푼다
     setSave("saved");
     if (S.view === "edit") updateIssues();
   }).catch(() => setSave("error"));
@@ -1098,7 +1098,7 @@ async function reframe(i, t) {
   const c = S.data.cards[i];
   S.busy.set(c.n, T("장면을 바꾸는 중…", "Changing the frame…")); edit();
   await saveNow();
-  const r = await fetch(`/api/runs/${S.run}/cards/${c.n}/frame?t=${t}`, { method: "POST" });
+  const r = await fetch(`/api/runs/${S.run}/cards/${c.n}/frame?t=${t}`, { method: "POST" }).catch(() => ({ ok: false }));  // 끊겨도 '바꾸는 중'이 풀리게
   S.busy.delete(c.n);
   if (r.ok) {
     const f = await r.json();
@@ -1113,7 +1113,7 @@ async function illustrateCard(i, quiet) {
   const c = S.data.cards[i];
   S.busy.set(c.n, T("그림으로 바꾸는 중…", "Drawing…")); if (S.view === "edit") edit();
   await saveNow();
-  const r = await fetch(`/api/runs/${S.run}/cards/${c.n}/illustrate`, { method: "POST" });
+  const r = await fetch(`/api/runs/${S.run}/cards/${c.n}/illustrate`, { method: "POST" }).catch(() => ({ ok: false }));
   S.busy.delete(c.n);
   if (r.ok) { const f = await r.json(); Object.assign(c, { ill: f.ill, view: "ill", v: Date.now() }); }
   else if (!quiet) toast(T("그림을 만들지 못했어요. 다시 해 주세요.", "Could not make the drawing. Please try again."));
@@ -1156,7 +1156,7 @@ async function addCard(i) {
 function segHtml() {
   const x = S.data?.extra?.ok ? [["x", `${ui === "en" ? "English" : "한국어"} + ${S.data.extra.name}`]] : [];
   return `<span class="seg">${[["ko", "한국어"], ["en", "English"], ["both", T("둘 다", "Both")], ...x].map(([v, l]) =>
-    `<button class="${lang === v ? "on" : ""}" onclick="setLang('${v}')">${l}</button>`).join("")}</span>`;
+    `<button class="${lang === v || (lang === "x" && !x.length && v === ui) ? "on" : ""}" onclick="setLang('${v}')">${l}</button>`).join("")}</span>`;
 }
 function use() {
   const cs = S.data.cards, nIss = (S.data.problems || []).length, pages = Math.ceil(cs.length / 6);
@@ -1245,7 +1245,7 @@ function xboxHtml() {
 async function runX() {
   const l = $("#xlang").value.trim(); if (!l) return $("#xlang").focus();
   const b = $("#xgo"); b.disabled = true; b.textContent = T("옮기는 중…", "Translating…");
-  const r = await fetch(`/api/runs/${S.run}/translate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lang: l }) });
+  const r = await fetch(`/api/runs/${S.run}/translate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lang: l }) }).catch(() => ({ ok: false }));
   if (!r.ok) { b.disabled = false; b.textContent = T("옮기기", "Translate"); return toast(r.status === 401 ? T("옮기려면 접속 키가 필요해요.", "An access key is needed to translate.") : r.status === 403 ? T("다른 사람의 카드 묶음이에요.", "This is another teacher's card set.") : T("옮기지 못했어요. 다시 해 주세요.", "Could not translate. Please try again.")); }
   const d = await r.json();
   S.data.cards = d.cards; S.data.extra = d.extra; S.xprob = d.translate.problems;
@@ -1529,7 +1529,7 @@ function coachEnd(finished) {
     fetch(`/api/runs/${S.run}/records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ s: C.pair, rows: Object.entries(C.max).map(([i, lv]) => ({ n: S.data.cards[+i].n, lv })) }) }).catch(() => {});
   if (finished) fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: S.idx, by: "coach", fin: true, s: C.pair }) }).catch(() => {});
   $(".coachv").insertAdjacentHTML("beforeend", `<div class="cstart" id="csum"><div class="glyph">${icon("check")}</div><div class="t">${finished ? T("다 했어요", "All steps done") : T("오늘 따라 하기", "Today's run")}</div>
-    ${C.help && rec.length ? `<div class="sumgrid">${by.map((ns, j) => `<div><b>${j ? T(`${lvName(j + 1)}까지`, `Up to ${lvName(j + 1).toLowerCase()}`) : T("글만 보고", "Text only")}</b><span>${ns.length ? T(`카드 ${ns.join(", ")}`, `Cards ${ns.join(", ")}`) : "–"}</span></div>`).join("")}</div>
+    ${C.help && rec.length ? `<div class="sumgrid">${by.map((ns, j) => `<div><b>${j ? T(`${lvName(j + 1)}까지`, `Up to ${lvName(j + 1).toLowerCase()}`) : T("글만 보고", "Text only")}</b><span>${ns.length ? T(`카드 ${ns.join(", ")}`, `Card${ns.length > 1 ? "s" : ""} ${ns.join(", ")}`) : "–"}</span></div>`).join("")}</div>
     <div class="d">${S.rec ? T("기록에 남겼어요. 3번 화면의 '기록 보기'에서 볼 수 있어요.", "Saved to records. See 'View records' on the Follow & check page.") : T("이 기록은 저장하지 않아요. 필요하면 지금 적어 두세요.", "This is not saved. Write it down now if you need it.")}</div>` : ""}
     <button class="navb" onclick="shareRun()">${T("오늘 한 것 보내기", "Share today's run")}</button>
     ${by[2].length + by[3].length ? `<button class="navb" onclick="sendStuck()">${T("막힌 카드 고치러 가기", "Fix the cards that were hard")}</button>` : ""}
@@ -1581,7 +1581,8 @@ function coachCard(quiet) {
   $("#cnext").innerHTML = last ? T("다 했어요 ✓", "Done ✓") : T("다음 ▶", "Next ▶");
   $("#cnext").onclick = last ? () => coachEnd(true) : () => coachFlip(1);
 }
-function coachFlip(d) { const was = S.idx; S.idx = Math.max(0, Math.min(S.data.cards.length - 1, S.idx + d)); if (S.idx !== was) clog("card", { cur: was + 1, to: S.idx + 1, by: "manual" }); C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); }
+// 2초 안에 넘긴 카드는 '글만 보고 했어요'로 세지 않는다
+function coachFlip(d) { const was = S.idx; if (C.max?.[was] === 1 && Date.now() - C.since < 2000) delete C.max[was]; S.idx = Math.max(0, Math.min(S.data.cards.length - 1, S.idx + d)); if (S.idx !== was) clog("card", { cur: was + 1, to: S.idx + 1, by: "manual" }); C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); }
 function watching(d) {  // 학생 화면에는 '지켜보는 중'만. 판단 시간은 교사용으로 마우스를 올리면 보인다
   pill(T(`지켜보는 중${C.local ? " · 이 맥" : ""}`, `Watching${C.local ? " · this Mac" : ""}`));
   const el = $("#cpill"); if (el) el.title = `${d.latency} s`;
