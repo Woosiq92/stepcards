@@ -4,6 +4,14 @@ Turn one demonstration video into checked picture step cards — then let a came
 
 Built during the Meta AI Developer Hackathon (Oct 26 – Nov 4, 2026), Indie track, by LogicCraft. All code in this repository was written during the hackathon; the first commit is dated 2026-10-28.
 
+## Try it
+
+Live: https://stepcards-production.up.railway.app
+
+- Viewing needs no key: open a sample under "In the café, the kitchen, the classroom" on the home page (the napkin fold is the quickest), look through the cards, then "Follow & check" → "Tablet view", or "Glasses view" for the 600×600 Ray-Ban Display page.
+- Making cards from your own video, editing, drawings, Check, translation and Coach mode call the Meta Model API, so the app asks once for an access key. Judges: use the judge key from the submission form (it has a daily limit). Without a key, Coach mode still runs but cards move only by hand.
+- A 30-second path: napkin sample → "Follow & check" → "Start following & checking" → choose "Help only when needed" and start (allow the camera) → press Help a few times to see text → picture → sound → motion → "Ask for help", then, signed in with the key, open the same card set's Follow & check page in another tab to see the live board and press "On my way".
+
 ## The problem
 
 Special-education teachers teach job skills (making a drink, doing laundry, packing) with task-analysis cards: one action per card, one photo, one short sentence. Today they make these by hand — film the task, pause, screenshot, write a sentence, print. StepCards does the first draft from a single video, checks it with code, and leaves the teacher in charge of the final version.
@@ -20,7 +28,7 @@ Built first for the hardest case — learners with intellectual disabilities, wh
 | Assembly and setup | the maker | first-time buyers |
 | Family know-how (a parent's recipe) | family | family |
 
-Tested so far: latte making (café training, two videos including a creator's recipe video) and napkin folding (restaurant service). The other situations are use cases, not yet tested.
+Cards have been made and checked from six sample videos, one or more per row above: two latte videos (first-person, and a creator's recipe video), napkin folding, a Shoki dance lesson, a bedside-cabinet manual video and a family stew recipe. None of these situations has been tried with real learners or staff yet.
 
 ## What it does
 
@@ -39,22 +47,24 @@ Tested so far: latte making (café training, two videos including a creator's re
    Live checking: while Coach mode runs, the same decision call every 2–4 s also gets the current card's reference photo and reports done / not yet / different; "done" counts as the step finished, and "different" twice in a row shows the reference and one instruction without stopping the learner (once per card, help level up, also on the glasses). It is near-real-time (one decision every few seconds), not frame-by-frame.
    Stuck cards go back to the maker: the editor lists cards that people following them often got stuck on — from the learning records (sound or motion help on at least half the runs, or "different / not yet" twice in Check) or from the Coach run that just ended on this device ("Fix the cards that were hard" on the end screen, nothing stored). "Get a fix" asks the same Muse Spark agent to rewrite only that card, checked by the code checker; the maker applies it or not.
    Ask for help (connecting people, not replacing them): when the help ladder runs out, the person who made the cards is called — by the learner ("Ask for help" on the phone, or on the glasses where Help becomes Ask for help at the last level), or automatically when the last help level still doesn't get the step done, or Check / live checking says "different" twice. The maker's Follow & check page shows a live board of everyone following that card set (pairing code, card, help level, calls first, a short beep); "On my way" clears the call and the learner's phone and glasses show "Help is on the way". Only card numbers and help levels travel — no video, photos or names. Calls clear by themselves when the learner moves to the next card.
-6. **Coach mode**: a camera watches the learner. Muse Spark looks at the last two frames and says which step is happening; SAM 3.1 confirms the object in hand before the next card appears. If a later step shows up, the current card is shown again first; if it shows up twice in a row, the cards follow the learner. No praise, no scores, nothing stored — camera frames are never saved. Optional "help only when needed" (a prompt hierarchy, as in special-education practice): each card starts as text only; if the step takes more than twice as long as in the demonstration (10–60 s), or the learner presses Help (also on the glasses), it adds the picture, then reads it aloud (skipped if the teacher turned sound off), then plays the motion clip. On the last card, when the model sees the step finished twice in a row (or someone presses Done), a plain "All steps done" screen appears, with how far help went on each card; this is shown once and not saved. Back and Next always work by hand.
+6. **Coach mode**: a camera watches the learner. Muse Spark looks at the last two frames and says which step is happening; SAM 3.1 confirms the object in hand before the next card appears. If a later step shows up, the current card is shown again first; if it shows up twice in a row, the cards follow the learner. No praise, no scores, nothing stored — camera frames are never saved. Optional "help only when needed" (a prompt hierarchy, as in special-education practice): each card starts as text only; if the step takes more than twice as long as in the demonstration (10–60 s), or the learner presses Help (also on the glasses), it adds the picture, then reads it aloud (skipped if the teacher turned sound off), then plays the motion clip. On the last card, when the model sees the step finished twice in a row (or someone presses Done), a plain "All steps done" screen appears, with how far help went on each card; this is shown once and not saved. Back and Next always work by hand. "Share today's run" on the end screen sends one line (for example "Finished all 12 steps … Needed help on cards 3, 7 with picture") and the view-only card link through the phone's share sheet — to a parent, a manager or family; no names or photos, and only when someone presses it.
 
 7. **Glasses display** (`/glasses?run=<id>`): a 600×600 web app for Meta Ray-Ban Display. Black background (transparent on the glasses' additive display), focus-and-select controls only, about 16 KB first load. It shows the same card as Coach mode, and Back/Next on the glasses move Coach mode too. Checked in Meta's Ray-Ban Display Simulator (Chrome extension) and built to Meta's web-app guidance (toolkit colours and 88 px buttons, drawings shown on a see-through black background, one action per press, system Back asks before leaving). Not yet tested on physical glasses. Today the camera is a phone or tablet and the glasses are the display and Help/Next input; a glasses camera through Meta's Wearables Device Access Toolkit (a native phone app) is the next step.
 
-The interface is available in Korean and English (switch at the top right). Card text can be Korean, English, or both.
+The interface is available in Korean and English (switch at the top right). Card text can be Korean, English, or both — plus one more language for the people around the learner (a parent's language, a coworker's language). Muse Spark translates the cards; a second call that never sees the original translates them back into Korean and English so the maker, who may not read that language, can check the meaning; code flags any number from the original missing in the translation. The extra language reaches print, tablet, card images and glasses only after the maker presses "I've checked it", and is unconfirmed again whenever a card sentence changes. Measured once: 27 cards of the stew recipe into Vietnamese in 16 s for about $0.024, no number flags; the back-translation showed one card where "split the tofu" came back as "separate the tofu". Translation quality is not otherwise measured.
 
 ## Meta models used
 
 | Model | Used for |
 |---|---|
 | `muse-spark-1.3` | splitting into steps and writing sentences; Coach mode step recognition (`reasoning.effort = minimal`) |
-| `muse-spark-1.3` (agent) | teacher-request agent: rewrites sentences, calling the code checker (`check_cards` tool) until it passes |
+| `muse-spark-1.3` (agent) | teacher-request agent: rewrites sentences, calling the code checker (`check_cards` tool) until it passes; the same agent rewrites a single card people often got stuck on |
+| `muse-spark-1.3` | Check and live checking: compares the learner's photo with the step's completion reference |
+| `muse-spark-1.3` | one more card language: translation, then an independent back-translation that never sees the original |
 | `sam-3.1` | outlining the object in hand; confirming the object before Coach mode moves on |
 | `muse-voice-transcribe-1.0` | transcribing what the demonstrator says (`/v1/asr/transcribe`, endpointing mode) |
 | `muse-image-1.0` | drawing cards: redraws a card's photo as a simple illustration, with one fixed style for every card (`/v1/images/edits`) |
-| `Muse Glimmer 30B` (open weights) | optional, on this Mac: making cards (step splitting and sentences) and Coach mode step recognition — video and camera frames never leave the computer |
+| `Muse Glimmer 30B` (open weights) | optional, on this Mac: making cards (step splitting and sentences), Coach mode step recognition and Check — video and camera frames never leave the computer |
 
 All other calls go to the Meta Model API (`https://api.meta.ai/v1`).
 
@@ -69,7 +79,7 @@ From runs recorded in this build (small samples, see notes):
 
 - Coach mode on this Mac with Muse Glimmer 30B (Q4 GGUF, llama.cpp, 48 GB Apple Silicon): reached the last card in the same replay test at about 4.7 s per decision, $0. Glimmer writes a long reasoning trace first (18–21 s per answer); pre-filling the start of the JSON answer skips it with about the same accuracy (Glimmer 15 and 13 of 16 cards, Muse Spark 15 and 14, on two single-frame-pair tests). The SAM check is skipped in this mode because SAM runs on the API.
 
-- Making cards on this Mac with Muse Glimmer (same prompt, checker and retries; frames 2–3 s apart): napkin video, 11 steps, 8 of the 10 steps in the video's own captions (Muse Spark: also 8 of 10), passed the checker on the third try, about 3.3 min, $0; dance video, the same 3 steps as the instructor's captions, about 2.4 min. Korean sentences were rougher than Muse Spark's (one misspelling the checker caught but the model could not fix).
+- Making cards on this Mac with Muse Glimmer, end to end in the app ("On this Mac" on upload, same prompt, checker and retries): napkin video (2 min 20 s) → 11 cards in 172 s for $0; the checker found 3 problems in the first answer, 1 in the second, and the third passed. 8 of the 10 steps in the video's own captions (Muse Spark: also 8 of 10; both missed the last two shaping steps); differences: Glimmer added a "pick up the napkin" card and one step the captions don't have. With the model file on the Mac's internal SSD the model server starts in about 3 s. An earlier script run on the dance video found the same 3 steps as the instructor's captions; its Korean sentences were rougher than Muse Spark's (one misspelling the checker caught but the model could not fix).
 
 Step accuracy against the sample videos' own on-screen step captions (not a teacher's task analysis):
 
