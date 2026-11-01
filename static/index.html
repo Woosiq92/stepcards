@@ -97,7 +97,7 @@
   .mstart { padding:88px 0 8px; } .mstart h2 { font-size:clamp(30px,4vw,44px); font-weight:500; margin:0 0 10px; } .mstart .sub { margin-bottom:28px; }
   .mstart .drop { max-width:760px; margin:0 auto; } .mstart .trust { justify-content:center; margin-top:16px; }
   .news { display:grid; grid-template-columns:repeat(6,1fr); gap:28px 24px; } .newscard { grid-column:span 2; } .newscard:nth-child(4) { grid-column:2 / span 2; }
-  .news.four { grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); } .news.four .newscard { grid-column:auto; }  /* 직무 견본 수가 바뀌어도 한 줄에 */
+  .news.four { grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); } .news.four .newscard { grid-column:auto; }  /* 직무 견본 수가 바뀌어도 한 줄에 */
   @media (max-width:860px) { .news.four { grid-template-columns:1fr 1fr; } }
   .jobsrc { max-width:720px; margin:-8px auto 22px; font-size:14px; }
   .newscard { color:var(--ink); font-weight:400; display:flex; flex-direction:column; gap:6px; } .newscard:hover { text-decoration:none; }
@@ -632,7 +632,7 @@ async function home() {
   $("#main").innerHTML = `
     ${(() => {  // 첫 화면은 이야기 순서로: 큰 영상 한 장면 → 도움 → 확인 → 시작하기 → 쓰임새 → 판단 위치
       const has = id => runs.some(r => r.id === id && r.done), L = "807dcf4d2be2", N = "8e1456e529ca";
-      const ex = ["special", "staff", "creator", "assembly", "family"].map(u => runs.find(r => r.use === u && r.done)).filter(Boolean);
+      const ex = ["staff", "special", "creator", "assembly", "family"].map(u => runs.find(r => r.use === u && r.done)).filter(Boolean);
       const name = r => esc(runTitle(r).replace(/ \((견본|sample)\)$/, ""));
       return `
     <section class="mhero full">
@@ -678,16 +678,16 @@ async function home() {
     </section>
 
     <h2 class="center sect">${T("가게에서도, 부엌에서도, 교실에서도", "In the café, the kitchen, the classroom")}</h2>
-    <div class="news">${[
-      ["special", T("특수교육 직무 훈련", "Special-education job training")], ["staff", T("신입 직원 교육", "New staff training")], ["family", T("가족 손기술 남기기", "Family know-how")],
+    <div class="news four">${[
+      ["staff", T("신입 직원 교육", "New staff training")], ["family", T("가족 손기술 남기기", "Family know-how")],
       ["creator", T("크리에이터 따라 하기", "Follow-along for creators")], ["assembly", T("조립·설치 안내", "Assembly and setup")],
     ].map(([u, t]) => { const r = runs.find(x => x.use === u && x.done); return r ? `<a class="newscard" href="#run=${r.id}&view=use">
         <img src="/runs/${r.id}/${r.thumb}" alt=""><span class="kicker">${t}</span><strong>${name(r)}</strong><span class="seemore">${icon("arrow")}<b>${T("예시 보기", "See example")}</b></span></a>` : ""; }).join("")}</div>
 
-    ${runs.some(x => x.use === "job" && x.done) ? `<h2 class="center sect">${T("국가 장애인일자리 직무로 만든 카드", "Cards for Korea's national disability jobs")}</h2>
-    <p class="center muted jobsrc">${T("보건복지부 「2026년 장애인일자리 사업안내」의 직무에 맞는 공개(CC BY) 시범 영상으로 만들었어요. ★ = 심한장애인 맞춤형 직무(11개, p.70)", "Made from open (CC BY) demonstration videos matching jobs in the Ministry of Health and Welfare's 2026 disability job program guide. ★ = one of the 11 jobs tailored for people with severe disabilities (p.70)")}</p>
-    <div class="news four">${runs.filter(x => x.use === "job" && x.done).sort((a, b) => b.custom - a.custom).map(r => `<a class="newscard" href="#run=${r.id}&view=use">
-        <img src="/runs/${r.id}/${r.thumb}" alt=""><span class="kicker">${r.custom ? "★ " : ""}${esc(r.job)}</span><strong>${name(r)}</strong><span class="seemore">${icon("arrow")}<b>${T("예시 보기", "See example")}</b></span></a>`).join("")}</div>` : ""}
+    ${runs.some(x => x.use === "job" && x.done) ? `<h2 class="center sect">${T("특수교육과 장애인 일자리", "Special education and disability jobs")}</h2>
+    <p class="center muted jobsrc">${T("특수교육 직업훈련 견본과, 보건복지부 「2026년 장애인일자리 사업안내」의 직무에 맞는 공개(CC BY) 시범 영상으로 만든 카드예요. ★ = 심한장애인 맞춤형 직무(11개, p.70)", "A special-education job-training sample, and cards made from open (CC BY) demonstration videos matching jobs in the Ministry of Health and Welfare's 2026 disability job program guide. ★ = one of the 11 jobs tailored for people with severe disabilities (p.70)")}</p>
+    <div class="news four">${runs.filter(x => (x.use === "job" || x.use === "special") && x.done).sort((a, b) => (b.use === "special") - (a.use === "special") || b.custom - a.custom).map(r => `<a class="newscard" href="#run=${r.id}&view=use">
+        <img src="/runs/${r.id}/${r.thumb}" alt=""><span class="kicker">${r.use === "special" ? T("특수교육 직무 훈련", "Special-education job training") : `${r.custom ? "★ " : ""}${esc(r.job)}`}</span><strong>${name(r)}</strong><span class="seemore">${icon("arrow")}<b>${T("예시 보기", "See example")}</b></span></a>`).join("")}</div>` : ""}
 
     <h2 class="center sect">${T("모두 Meta 모델로 돌아가요", "Runs on Meta models")}</h2>
     <div class="where two">${[
