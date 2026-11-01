@@ -651,7 +651,7 @@ def qr(run_id: str, request: Request, to: str = "tablet", lang: str = "ko", s: s
     if to == "coach":  # 노트북 앞 카메라 대신 휴대폰 뒤 카메라로 따라 하기(시험 기록 켬은 그대로 넘긴다)
         url = f"{base}/?ui={lang if lang in ('ko', 'en') else m}" + ("&log=1" if log == "1" else "") + f"#run={run_id}&view=coach"
     buf = io.BytesIO()
-    segno.make(url, error="m").save(buf, kind="svg", scale=6, border=2, dark="#1c2b33")
+    segno.make(url, error="m").save(buf, kind="svg", scale=6, border=2, dark="#11183a")
     return Response(buf.getvalue(), media_type="image/svg+xml", headers={"Cache-Control": "no-store"})
 
 

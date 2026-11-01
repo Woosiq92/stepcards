@@ -6,7 +6,7 @@ import { run, bbox } from "./fold.js";
 const W = 480, H = 360, LAYER = 0.006, PAUSE0 = 0.5, MOVE = 3.2, PAUSE1 = 1.2;  // 접기 한 번 3.2초(선 보이기 0.8 · 넘기기 1.8 · 쓸어 누르기 0.6)
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 renderer.setSize(W, H, false); renderer.setPixelRatio(1); renderer.setClearColor(0xf4f1ea, 1);  // 종이색 바탕(검사용 jpeg 도 같은 바탕)
-const ink = new THREE.LineBasicMaterial({ color: 0x1c2b33 });
+const ink = new THREE.LineBasicMaterial({ color: 0x11183a });
 let memo = { key: "", res: null };
 
 function result() {
@@ -44,7 +44,7 @@ function arrow(p, q, lift) {
   const a = new THREE.Vector3(p[0], lift, p[1]), b = new THREE.Vector3(q[0], lift, q[1]);
   const m = a.clone().add(b).multiplyScalar(0.5); m.y += a.distanceTo(b) * 0.45;
   const curve = new THREE.QuadraticBezierCurve3(a, m, b);
-  const g = new THREE.Group(), mat = new THREE.MeshBasicMaterial({ color: 0x0866ff });
+  const g = new THREE.Group(), mat = new THREE.MeshBasicMaterial({ color: 0x2f63f4 });
   g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 24, 0.012, 6), mat));
   const tip = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.1, 12), mat);
   tip.position.copy(b); tip.lookAt(curve.getPoint(0.9)); tip.rotateX(-Math.PI / 2);
@@ -52,7 +52,7 @@ function arrow(p, q, lift) {
 }
 
 // 종이접기 도해 표시: 접는 선(골 = 점선, 산 = 점-선), 잡을 곳 손가락 점
-const blue = new THREE.MeshBasicMaterial({ color: 0x0866ff }), creaseMat = new THREE.MeshBasicMaterial({ color: 0x1c2b33 });
+const blue = new THREE.MeshBasicMaterial({ color: 0x2f63f4 }), creaseMat = new THREE.MeshBasicMaterial({ color: 0x11183a });
 function creaseSeg(an) {  // 천 위에 실제로 생기는 접는 선 구간(움직이는 조각의 꼭짓점 중 선 위에 있는 것)
   const L = Math.hypot(an.d[0], an.d[1]), u = [an.d[0] / L, an.d[1] / L];
   let lo = Infinity, hi = -Infinity;
