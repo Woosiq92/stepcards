@@ -389,6 +389,7 @@ def progress(run_id: str):
     d = run_dir(run_id)
     p = read(d, "progress.json", {"events": []})
     p["title"] = (read(d, "cards.json") or {}).get("title") or SEED_INDEX.get(run_id, {}).get("title", "")  # 진행 화면에 파일 이름 대신
+    p["title_en"] = SEED_INDEX.get(run_id, {}).get("title_en", "")
     return p
 
 
@@ -689,7 +690,7 @@ def admin_storage(request: Request):
     for d in sorted(RUNS.iterdir()):
         if d.is_dir() and (d / "progress.json").exists():
             data = read(d, "cards.json") or {}
-            rows.append({"id": d.name, "title": data.get("title") or SEED_INDEX.get(d.name, {}).get("title") or storage.progress(d).get("video", ""),
+            rows.append({"id": d.name, "title_en": SEED_INDEX.get(d.name, {}).get("title_en", ""), "title": data.get("title") or SEED_INDEX.get(d.name, {}).get("title") or storage.progress(d).get("video", ""),
                          "owner": owner_of(d.name) or ("seed" if d.name in SEED_INDEX else "admin"), "stage": storage.stage(d),
                          "last_used": storage.last_used(d), "delete_on": storage.delete_on(d), "size": storage.report(d, UPLOADS)})
     du = shutil.disk_usage(RUNS)

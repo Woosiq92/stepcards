@@ -56,7 +56,7 @@ function draw(again) {
     ${cur.ack && Date.now() / 1000 - cur.ack < 20 ? `<div class="again">${K ? "Help is on the way" : "도와주러 오고 있어요"}</div>`
       : again ? `<div class="again">${K ? "Start with this card" : "이 카드부터 해요"}</div>` : ""}
     <div class="pic">${cur.lv === 1 ? `<div class="msg">${K ? "Need help? Press Help" : "도움이 필요하면 '도움'을 눌러요"}</div>` : (cur.lv === 4 || (!cur.lv && c.view === "clip")) && !arch ? `<video src="/api/runs/${run}/clip/${c.n}.mp4?g=1&t=${c.frame_t ?? c.rep}" autoplay muted loop playsinline></video>`
-      : `<img src="/api/runs/${run}/glass/${cur.i}.jpg?v=${cards[cur.i].v || 0}" alt="${esc(c.ko)}">`}</div>
+      : `<img src="/api/runs/${run}/glass/${cur.i}.jpg?v=${cards[cur.i].v || 0}" alt="${esc(K ? c.en : c.ko)}">`}</div>
     <div class="say">${say(c)}</div>
     <div class="bar"><button id="b" onclick="act(() => flip(-1))" ${cur.i ? "" : "disabled"}>${K ? "◀ Previous" : "◀ 이전"}</button>
       ${cur.lv && cur.lv < (arch ? 3 : 4) ? `<button id="h" onclick="act(help)">${K ? "Help" : "도움"}</button>`

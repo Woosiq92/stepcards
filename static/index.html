@@ -499,9 +499,9 @@ function imgSrc(c) {
 // 움직임 보기: 그 단계 영상 몇 초를 소리 없이 반복. 인쇄·미리 불러오기는 사진(imgSrc)을 쓴다
 function media(c, attrs = "") {
   if (c.view === "fold" && S.data?.fold?.report?.[c.n] === "no" && S.view !== "edit") return media({ ...c, view: S.data.stage === "archived" ? (c.ill ? "ill" : "photo") : "clip" }, attrs);  // 대조에서 다르다고 나온 3D는 학습자에게 보이지 않고 움직임으로
-  if (c.view === "fold" && S.data?.fold) return `<span class="f3wrap"><canvas class="fold3d" data-n="${c.n}" width="480" height="360" role="img" aria-label="${esc(c.ko)}" onclick="f3pause(this)" title="${T("누르면 멈춰요", "Tap to pause")}"></canvas><button class="f3speed" onclick="f3slow(event)">${f3slowLabel()}</button></span>`;  // 3D 접기(fold3d.js 가 그린다)
+  if (c.view === "fold" && S.data?.fold) return `<span class="f3wrap"><canvas class="fold3d" data-n="${c.n}" width="480" height="360" role="img" aria-label="${esc(main(c))}" onclick="f3pause(this)" title="${T("누르면 멈춰요", "Tap to pause")}"></canvas><button class="f3speed" onclick="f3slow(event)">${f3slowLabel()}</button></span>`;  // 3D 접기(fold3d.js 가 그린다)
   return c.view === "clip" ? `<video src="/api/runs/${S.run}/clip/${c.n}.mp4?t=${c.frame_t ?? c.rep}" poster="${imgSrc(c)}" autoplay muted loop playsinline ${attrs}></video>`
-                           : `<img src="${imgSrc(c)}" alt="${esc(c.ko)}" ${attrs}>`;  // 사진 설명 = 카드 문장(화면 낭독기)
+                           : `<img src="${imgSrc(c)}" alt="${esc(main(c))}" ${attrs}>`;  // 사진 설명 = 카드 문장(화면 낭독기, 고른 카드 글자로)
 }
 const xOn = () => lang === "x" && S.data?.extra?.ok;  // 한 언어 더: 만든 사람이 확인한 뒤에만 보인다
 const main = c => (lang === "en" || (lang === "x" && ui === "en")) ? c.en : c.ko;
@@ -534,7 +534,7 @@ async function admin() {
     <div class="adminrow">${Object.entries(d.owners).map(([o, v]) => `<span class="chip ok">${esc(o)} · ${v.sets} · ${mb(v.bytes)}</span>`).join("")}
       <a class="btn" href="/api/admin/backup.zip">${icon("share")} ${T("교사 자료 백업 받기", "Download teacher backup")}</a></div>
     <div class="tablewrap"><table class="admintable"><thead><tr><th>${T("카드 묶음", "Card set")}</th><th>${T("주인", "Owner")}</th><th>${T("단계", "Stage")}</th><th>${T("마지막 사용", "Last used")}</th><th>${T("영상", "Video")}</th><th>${T("사진·소리", "Frames·audio")}</th><th>${T("카드", "Cards")}</th><th>${T("합계", "Total")}</th><th></th></tr></thead>
-    <tbody>${d.runs.sort((a, b) => b.size.total - a.size.total).map(x => `<tr><td><a href="#run=${x.id}&view=edit">${esc(x.title)}</a></td><td>${esc(x.owner)}</td><td>${stageName(x.stage)}</td>
+    <tbody>${d.runs.sort((a, b) => b.size.total - a.size.total).map(x => `<tr><td><a href="#run=${x.id}&view=edit">${esc(runTitle(x))}</a></td><td>${esc(x.owner)}</td><td>${stageName(x.stage)}</td>
       <td>${x.last_used ? new Date(x.last_used * 1000).toLocaleDateString() : "–"}</td><td>${mb(x.size.video)}</td><td>${mb(x.size.frames + x.size.audio)}</td><td>${mb(x.size.cards)}</td><td><b>${mb(x.size.total)}</b></td>
       <td>${x.owner === "seed" ? "" : `${x.stage === "done" ? `<button class="btn" onclick="adminDo('${x.id}','compact')">${T("정리", "Compact")}</button>` : ""}${["done", "compact"].includes(x.stage) ? `<button class="btn" onclick="adminDo('${x.id}','archive')">${T("보관", "Archive")}</button>` : ""}<a class="btn" href="/api/runs/${x.id}/export.zip">.zip</a><button class="btn" onclick="delRun('${x.id}')">${T("지우기", "Delete")}</button>`}</td></tr>`).join("")}</tbody></table></div>`;
 }
@@ -628,6 +628,7 @@ function missing() {
 /* ① 처음 화면 */
 async function home() {
   const runs = await (await fetch(`/api/runs?ui=${ui}`)).json();
+  const mine = runs.filter(r => !r.use);  // 지난 카드 묶음 = 내가 올린 것만(견본은 위 칸들에 이미 있다). 키가 없으면 비어서 칸·관리자 링크가 숨는다
   $("#main").innerHTML = `
     ${(() => {  // 첫 화면은 이야기 순서로: 큰 영상 한 장면 → 도움 → 확인 → 시작하기 → 쓰임새 → 판단 위치
       const has = id => runs.some(r => r.id === id && r.done), L = "807dcf4d2be2", N = "8e1456e529ca";
@@ -695,7 +696,7 @@ async function home() {
     ].map(([t, m, d]) => `<div><strong>${t}</strong><span class="m">${m}</span><span class="muted">${d}</span></div>`).join("")}</div>
 `;
     })()}
-    ${runs.length ? `<h3>${T("지난 카드 묶음", "Previous card sets")}</h3><div class="past">${runs.map(r => `
+    ${mine.length ? `<h3>${T("지난 카드 묶음", "Previous card sets")}</h3><div class="past">${mine.map(r => `
       <a class="pastcard" href="#run=${r.id}&view=${r.done ? "edit" : "making"}">
         ${r.thumb ? `<img src="/runs/${r.id}/${r.thumb}" alt="">` : '<div class="ph"></div>'}
         <div class="pt"><strong>${esc(runTitle(r))}</strong>
@@ -703,7 +704,7 @@ async function home() {
         <span class="muted">${r.done ? `${T(`카드 ${r.count}장`, `${r.count} cards`)}${r.issues ? ` · <span class="red">${T(`확인할 곳 ${r.issues}`, `${r.issues} to check`)}</span>` : T(" · 확인 끝", " · all checks passed")}` : r.failed ? `<span class="red">${T("멈췄어요", "stopped")}</span>` : T("만드는 중", "in progress")}</span></div>
         ${r.use ? "" : `<button class="del" title="${T("지우기", "Delete")}" aria-label="${T("지우기", "Delete")}" onclick="event.preventDefault();delRun('${r.id}')">${icon("x")}</button>`}
       </a>`).join("")}</div>` : ""}
-    <p class="muted adminlink"><a href="#view=admin">${T("저장 공간 관리(관리자)", "Storage (admin)")}</a></p>`;
+    ${mine.length ? `<p class="muted adminlink"><a href="#view=admin">${T("저장 공간 관리(관리자)", "Storage (admin)")}</a></p>` : ""}`;
   const drop = $("#drop"), file = $("#file");
   file.onchange = () => file.files[0] && upload(file.files[0]);
   drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
@@ -769,7 +770,7 @@ async function making() {
     const last = splits.at(-1);
     $("#main").innerHTML = `
       <h2>${done ? T("카드가 다 만들어졌어요", "Your cards are ready") : err ? T("만들다가 멈췄어요", "Stopped with an error") : T("카드를 만들고 있어요", "Making your cards")}</h2>
-      <p class="sub">${esc(p.title || p.video || "")}${done || err ? "" : T(" · 몇 분 걸려요. 이 창을 닫아도 계속 만들어져요.", " · This takes a few minutes. It keeps going if you close this window.")}</p>
+      <p class="sub">${esc((ui === "en" && p.title_en) || p.title || p.video || "")}${done || err ? "" : T(" · 몇 분 걸려요. 이 창을 닫아도 계속 만들어져요.", " · This takes a few minutes. It keeps going if you close this window.")}</p>
       ${err ? `<div class="issue">${esc(errText(err.msg))}</div><p><button class="btn primary" onclick="retryRun()">${T("다시 만들기", "Try again")}</button> <span class="muted">${T("자세한 내용은 아래 '자세한 기록'에 있어요.", "Details are in the log below.")}</span></p>` : ""}
       ${done ? `<p><button class="btn primary big" onclick="openEdit()">${T("카드 확인하러 가기 →", "Check the cards →")}</button></p>` : ""}
       <div class="stages">
@@ -1263,7 +1264,7 @@ function use() {
   let sheets = "";
   for (let p = 0; p < pages; p++)
     sheets += `<div class="sheet">${title ? `<div class="shead">${title} · ${p + 1}/${pages}</div>` : ""}${cs.slice(p * 6, p * 6 + 6).map((c, j) =>
-      `<div class="pcard"><img src="${imgSrc(c)}" alt="${esc(c.ko)}"><div class="n">${p * 6 + j + 1}</div><div class="txt">${text(c)}</div></div>`).join("")}</div>`;
+      `<div class="pcard"><img src="${imgSrc(c)}" alt="${esc(main(c))}"><div class="n">${p * 6 + j + 1}</div><div class="txt">${text(c)}</div></div>`).join("")}</div>`;
   // 교사용 기록지: 카드마다 한 줄, 날짜 칸에 그날 도움 단계를 손으로 적는다(서버에는 아무것도 남기지 않음)
   const record = `<div class="record"><div class="rhead"><b>${title || T("과제분석 기록지", "Task-analysis record")}</b><span>${T("이름", "Name")} ______________</span></div>
     <div class="rkey">${T("적는 법: ○ 혼자 · 1 글 · 2 그림 · 3 소리 · 4 움직임 · 5 손으로 도움", "Key: ○ on own · 1 text · 2 picture · 3 sound · 4 motion · 5 hands-on help")}</div>
