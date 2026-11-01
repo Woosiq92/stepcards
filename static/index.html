@@ -1838,12 +1838,12 @@ function coachStart() {
   C.lastMove = Date.now();
   navigator.wakeLock?.request("screen").then(l => { C.lock = l; }).catch(() => {});  // 휴대폰 화면이 꺼지지 않게
   const v = $("#cvid"), cv = document.createElement("canvas");
-  C.timer = setInterval(() => {  // 1초에 한 장, 최근 4장만 둔다
+  C.timer = setInterval(() => {  // 0.5초에 한 장, 최근 4장(2초)만 둔다: 카드가 바뀐 뒤 판단 준비가 빨라진다(11-01 실측: 1초 간격이면 카드당 최소 7초)
     if (v.readyState < 2) return;
     cv.width = 480; cv.height = Math.round(480 * v.videoHeight / v.videoWidth);
     drawFrame(cv, v);
     C.buf.push(cv.toDataURL("image/jpeg", 0.7)); if (C.buf.length > 4) C.buf.shift();
-  }, 1000);
+  }, 500);
   coachLoop();
 }
 /* 이 기기에서 빠른 추적: 시범 영상의 1초 사진(카드 시각으로 단계가 정해져 있음)을 작은 이미지 모델로 숫자 묶음(임베딩)으로 바꿔 두고,
@@ -1942,7 +1942,7 @@ async function coachLoop() {
         } else watching(d);
       }
     }
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise(r => setTimeout(r, 400));  // 판단 사이 쉬는 시간(1.5초 → 0.4초, 짧은 단계에서 밀리지 않게)
   }
 }
 /* 실시간 확인: 따라 하기 판단(2~4초마다)에 지금 카드의 기준 사진을 같이 넣어, 결과가 기준과 다르면 막지 않고 알려 준다.
