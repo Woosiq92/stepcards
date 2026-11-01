@@ -67,3 +67,18 @@ def test_facing_reference_is_mid_step(tmp_path):
     assert verify.after_t(tmp_path, cards[0]) == 22  # 1인칭: 끝 + 2초
     (tmp_path / "cards.json").write_text(json.dumps({"cards": cards, "duration": 50, "pov": "facing"}))
     assert verify.after_t(tmp_path, cards[0]) == 15
+
+
+def test_now_merge_keeps_glasses_changes():
+    # 11-01 검수: 휴대폰의 평소 동기화가 안경의 확인 요청을 지우거나, 안경이 넘긴 카드를 되돌리지 않는다
+    rid, d = make_run()
+    c = lambda body: client.post(f"/api/runs/{rid}/now", json={**body, "s": "mg1"}).json()
+    v0 = c({"i": 0, "by": "coach", "base": 0})["v"]
+    g = c({"i": 1, "by": "glasses", "vreq": 77})             # 안경: 다음 카드 + 확인 요청
+    held = c({"i": 0, "by": "coach", "base": v0})            # 휴대폰이 안경 변경을 못 본 채 옛 카드 번호
+    assert held["held"] and held["i"] == 1 and held["vreq"] == 77
+    ok = c({"i": 1, "by": "coach", "base": g["v"]})          # 다음 폴링에서 받아 적용한 뒤
+    assert not ok.get("held") and ok["i"] == 1 and ok["vreq"] == 77   # 확인 요청은 그대로(휴대폰이 처리할 때까지)
+    r = c({"i": 1, "by": "coach", "base": ok["v"], "vres": {"result": "done", "id": "77"}})
+    assert r["vres"]["result"] == "done"
+    assert c({"i": 1, "by": "coach", "base": r["v"]})["vres"]["result"] == "done"  # 다음 동기화가 결과를 지우지 않는다

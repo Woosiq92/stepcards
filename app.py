@@ -632,11 +632,24 @@ def now_set(run_id: str, body: dict):
     if key not in NOW and sum(1 for k in NOW if k.startswith(run_id)) >= 40:  # 묶음당 화면 수 상한(짝 코드를 바꿔 가며 늘리지 못하게): 오래된 것부터 지운다
         old = min((k for k in NOW if k.startswith(run_id)), key=lambda k: NOW[k].get("t", 0))
         NOW.pop(old, None)
+    # 병합 규칙(11-01 검수): 휴대폰이 안경의 마지막 변경을 아직 못 본 채(base < v) 보낸 카드·도움 값은 적용하지 않는다(안경 넘김이 되돌아가지 않게).
+    # 휴대폰은 다음 폴링에서 안경 변경을 받아 적용한다. 응답의 held 는 '적용 안 함'
+    try:
+        base = int(body["base"]) if "base" in body else None
+    except (TypeError, ValueError):
+        raise HTTPException(400, "숫자가 아닙니다")
+    if body.get("by") == "coach" and prev.get("by") == "glasses" and base is not None and base < prev.get("v", 0):
+        if isinstance(body.get("vres"), dict):  # 확인 결과는 그래도 전한다
+            prev["vres"] = {k: str(x)[:80] for k, x in list(body["vres"].items())[:8] if k in VRES_KEYS}
+        prev["t"] = round(time.time())
+        return {**prev, "held": True}
     keep = prev.get("i") == i and not body.get("fin")  # '도와줘요'는 그 카드에 있는 동안만 켜 둔다(다음 카드로 가면 저절로 꺼짐)
     NOW[key] = {"call": prev.get("call", 0) if keep else 0, "why": prev.get("why", "") if keep else "","i": max(0, min(n - 1, int(body.get("i", 0)))), "again": bool(body.get("again")), "by": str(body.get("by", ""))[:10], "v": v,
                    "lv": max(0, min(4, int(body.get("lv") or 0))), "fin": bool(body.get("fin")), "t": round(time.time()),
                  # 안경 '확인' → 따라 하기 화면이 휴대폰 카메라로 찍어 확인(vreq), 결과를 안경에 돌려준다(vres)
-                 "vreq": int(body.get("vreq") or 0), "vres": {k: str(v)[:80] for k, v in list(body["vres"].items())[:8] if k in VRES_KEYS} if isinstance(body.get("vres"), dict) else None}  # fin = 마지막 단계까지 마침  # 도움 단계(0=끔, 1 글 → 4 움직임)
+                 # 확인 요청·결과는 보낸 쪽이 바꿀 때만 바뀐다(휴대폰의 평소 동기화가 안경의 확인 요청을 지우지 않게)
+                 "vreq": int(body.get("vreq") or 0) if "vreq" in body else prev.get("vreq", 0),
+                 "vres": ({k: str(x)[:80] for k, x in list(body["vres"].items())[:8] if k in VRES_KEYS} if isinstance(body.get("vres"), dict) else None) if "vres" in body else prev.get("vres")}  # fin = 마지막 단계까지 마침  # 도움 단계(0=끔, 1 글 → 4 움직임)
     save_state()
     return NOW[key]
 

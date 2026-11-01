@@ -665,8 +665,8 @@ function goCard(i) {  // 확인한 카드 기준으로 다음 카드(그사이 �
 }
 function glassesResult(d, req) {  // 안경 화면에도 결과 한 줄
   fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ i: S.idx, by: "coach", s: C.pair, lv: C.help ? C.lv : 0, vres: { result: d.result, ko: d.hint_ko, en: d.hint_en, id: req || Date.now() } }) })
-    .then(r => r.json()).then(x => { C.v = x.v; }).catch(() => {});
+    body: JSON.stringify({ i: S.idx, by: "coach", s: C.pair, lv: C.help ? C.lv : 0, base: C.v || 0, vres: { result: d.result, ko: d.hint_ko, en: d.hint_en, id: req || Date.now() } }) })
+    .then(r => r.json()).then(x => { if (!x.held) C.v = x.v; }).catch(() => {});
 }
 function missing() {
   $("#main").innerHTML = `<h2>${T("이 카드 묶음이 없어요", "This card set doesn't exist")}</h2>
@@ -1657,8 +1657,8 @@ function utter(text, langCode) {
 // 안경 화면(/glasses)에 지금 카드를 알린다
 function glassesSync(again) {
   if (C.hold) return;
-  fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: S.idx, again: !!again, by: "coach", lv: C.help ? C.lv : 0, s: C.pair }) })
-    .then(r => r.json()).then(d => { C.v = d.v; }).catch(() => {});
+  fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: S.idx, again: !!again, by: "coach", lv: C.help ? C.lv : 0, s: C.pair, base: C.v || 0 }) })
+    .then(r => r.json()).then(d => { if (!d.held) C.v = d.v; }).catch(() => {});  // held: 안경이 먼저 바꾼 게 있어 서버가 적용 안 함 → 다음 폴링에서 받는다
 }
 /* 필요할 때만 도움(촉구 위계): 1 글 → 2 그림·사진 → 3 소리 → 4 움직임.
    카드가 바뀌면 1부터, 10초 동안 넘어가지 않으면 한 칸 올린다. 학생·교사가 '도움'을 눌러도 올라간다.
