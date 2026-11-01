@@ -71,10 +71,14 @@ def load_state():
         pass
 
 
+STATE_LOCK = threading.Lock()
+
+
 def save_state():
-    tmp = STATE.with_suffix(".tmp")
-    tmp.write_text(json.dumps({"now": NOW, "judge": JUDGE_USE}, ensure_ascii=False))
-    os.replace(tmp, STATE)
+    with STATE_LOCK:  # 동시에 들어온 요청이 같은 임시 파일을 바꿔치기하다 500 이 났다(11-01 진단)
+        tmp = STATE.with_suffix(f".{threading.get_ident()}.tmp")
+        tmp.write_text(json.dumps({"now": NOW, "judge": JUDGE_USE}, ensure_ascii=False))
+        os.replace(tmp, STATE)
 NOW = {}
 load_state()
 app = FastAPI()
@@ -741,9 +745,10 @@ def card_by_n(d, n):
 def verify_card(run_id: str, n: int, body: dict):
     """확인하기: 학생 사진 한 장을 그 카드의 완료 기준과 비교. 사진은 저장하지 않는다"""
     d = run_dir(run_id)
-    if (read(d, "cards.json") or {}).get("no_done"):
+    data = read(d, "cards.json") or {}
+    if data.get("no_done"):
         raise HTTPException(409, "이 카드 묶음은 '됐어요' 판단을 하지 않아요")
-    c = card_by_n(d, n)
+    c = {**card_by_n(d, n), "pov": data.get("pov")}  # 마주 보기 시범이면 자세를 비교한다
     photo = body.get("photo", "")
     if not (isinstance(photo, str) and photo.startswith("data:image/jpeg;base64,")) or len(photo) > 3_000_000:
         raise HTTPException(400, "사진이 없거나 너무 큽니다")

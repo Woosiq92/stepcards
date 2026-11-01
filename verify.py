@@ -63,6 +63,8 @@ def parse(text):
 def ask(card, before, after, photo, local=False):
     """before·after 는 데이터 URL(카드 시작·끝 장면), photo 는 학생 사진 데이터 URL. (모델 답 dict, 비용)"""
     crit = f'\nThe teacher\'s success criterion for this step: "{card["check"]}"' if card.get("check") else ""
+    if card.get("pov") == "facing":  # 수어·자세 단계는 결과물이 아니라 몸과 손의 자세가 곧 결과
+        crit += "\nThis is a sign or pose step filmed facing the camera: compare the learner's hand and body pose in C with B."
     text = PROMPT.format(en=card.get("en", ""), ko=card.get("ko", ""), crit=crit)
     imgs = [("Image A (before)", before), ("Image B (target, after)", after), ("Image C (learner now)", photo)]
     if local:  # 이 맥의 Glimmer: 답 첫머리를 채워 긴 생각 글을 건너뛴다
@@ -86,6 +88,8 @@ def after_t(d, card):
     if card.get("done_t") is not None:
         return card["done_t"]
     data = json.loads((d / "cards.json").read_text())
+    if data.get("pov") == "facing":  # 수어·춤처럼 마주 보고 찍은 시범: 끝 뒤는 손을 내린 쉬는 자세라 동작 한가운데를 기준으로(11-01 진단)
+        return (card["start"] + card["end"] + 1) // 2
     cs = data["cards"]
     i = next((k for k, c in enumerate(cs) if c["n"] == card["n"]), None)
     nxt = cs[i + 1]["start"] if i is not None and i + 1 < len(cs) else data.get("duration", card["end"])

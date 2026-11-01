@@ -56,3 +56,13 @@ def test_glasses_relay():
     assert client.get(f"/api/runs/{rid}/now", params={"s": "x1"}).json()["vreq"] == 3
     client.post(f"/api/runs/{rid}/now", json={"i": 0, "by": "coach", "s": "x1", "vres": {"result": "done", "id": 3}})
     assert client.get(f"/api/runs/{rid}/now", params={"s": "x1"}).json()["vres"]["result"] == "done"
+
+
+def test_facing_reference_is_mid_step(tmp_path):
+    # 수어·춤처럼 마주 보고 찍은 시범: 끝 뒤 2초는 손을 내린 쉬는 자세라 기준이 동작 한가운데여야 한다(11-01 진단)
+    import json, verify
+    cards = [{"n": 1, "start": 10, "end": 20}, {"n": 2, "start": 30, "end": 40}]
+    (tmp_path / "cards.json").write_text(json.dumps({"cards": cards, "duration": 50}))
+    assert verify.after_t(tmp_path, cards[0]) == 22  # 1인칭: 끝 + 2초
+    (tmp_path / "cards.json").write_text(json.dumps({"cards": cards, "duration": 50, "pov": "facing"}))
+    assert verify.after_t(tmp_path, cards[0]) == 15

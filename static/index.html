@@ -338,6 +338,26 @@
   .tab .bar { display:flex; align-items:center; justify-content:space-between; padding:16px 24px 28px; gap:16px; }
   .tab .navb { background:var(--dark3); color:#fff; border:1px solid rgba(255,255,255,.22); border-radius:999px; padding:18px 34px; font-size:20px; font-weight:700; min-width:150px; transition:background .15s; }
   .tab .navb:hover:not(:disabled) { background:#38444f; }
+  /* 시안 1(학습자): 남색 바탕, 왼쪽 위 진행, 큰 문장 왼쪽 정렬, 도움 아이콘 줄, 아래 이전·도움(흙색)·다음(채움 하나) */
+  .tab { background:linear-gradient(180deg, #1B2350 0%, #11183A 100%); }
+  .ttop { position:absolute; top:18px; left:20px; z-index:4; display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
+  .tprog .tnum { font-size:15px; color:#aab3cf; font-weight:600; font-variant-numeric:tabular-nums; } .tprog .tnum b { font-size:30px; color:#fff; font-weight:700; margin-right:2px; }
+  .dashes { display:flex; gap:4px; margin-top:6px; } .dashes i { width:14px; height:4px; border-radius:2px; background:rgba(255,255,255,.22); } .dashes i.done { background:rgba(255,255,255,.6); } .dashes i.on { background:#fff; width:20px; }
+  .tab .ttop .pill { position:static; background:var(--ok-soft, #E3F2E8); color:#0A7A35; backdrop-filter:none; font-size:13px; padding:4px 12px; }
+  .tab .ttop .pill::before { background:#0A7A35; }
+  .tab.coachv.aim .ttop .pill { background:#FBEFD3; color:#8A5A00; } .tab.coachv.aim .ttop .pill::before { background:#D99A12; }
+  .tab.coachv .cam { left:auto; right:16px; top:72px; width:150px; } .tab.coachv .cam video { min-height:0; }
+  .coachv .imgwrap img, .coachv .imgwrap video, .coachv .imgwrap canvas.fold3d { border-radius:20px; }
+  .coachv .txt, .tab .txt { text-align:left; width:min(100%, 760px); margin:0 auto; font-size:clamp(28px,4.2vw,44px); }
+  .hrow { display:flex; align-items:center; gap:10px; width:min(100% - 48px, 760px); margin:10px auto 0; flex-wrap:wrap; }
+  .hlabel { color:#aab3cf; font-size:14px; font-weight:600; } .hsteps { display:flex; gap:8px; }
+  .hsteps i { width:38px; height:38px; border-radius:50%; display:grid; place-items:center; border:1.5px solid rgba(255,255,255,.35); color:#cfd5e8; }
+  .hsteps i.on { background:#fff; border-color:#fff; color:var(--ink); } .hsteps .ico { width:18px; height:18px; }
+  .hrow .verifybtn { margin-left:auto; }
+  .tab .navb:not(.next):not(.helpb) { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.18); }
+  @media (max-width:520px) { .hrow .verifybtn { padding:8px 14px; font-size:14px; } .hsteps { gap:6px; } .hsteps i { width:34px; height:34px; } }
+  .coachv .bar { justify-content:center; } .coachv .bar .navb { min-width:0; flex:1; max-width:220px; }
+  .tab .navb.helpb { background:var(--clay-soft); color:var(--clay-ink); border-color:transparent; } .tab .navb.helpb:hover:not(:disabled) { background:#ecd6c3; }
   .tab .navb.next { background:var(--accent); } .tab .navb.next:hover:not(:disabled) { background:var(--accent-h); }
   .tab .navb:disabled { opacity:.25; cursor:default; }
   .tab .mid { text-align:center; color:#8d9bab; font-weight:600; font-size:14px; }
@@ -367,11 +387,6 @@
   .livehint img { width:120px; aspect-ratio:4/3; object-fit:cover; border-radius:10px; } .livehint b { display:block; font-size:13px; color:var(--warn); } .livehint span { font-size:20px; font-weight:800; }
   .livehint button { border:none; background:none; color:var(--muted); padding:6px; align-self:flex-start; }
   .livetoggle { display:flex; align-items:center; gap:8px; color:#cfd9e3; font-size:14px; max-width:520px; text-align:left; } .livetoggle input { width:18px; height:18px; accent-color:var(--accent); }
-  .lvtag { position:absolute; top:18px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.1); backdrop-filter:blur(12px); padding:6px 6px 6px 14px; border-radius:99px; font-size:14px; font-weight:700; z-index:3; white-space:nowrap; }
-  .lvtag i { font-style:normal; font-size:13px; font-weight:700; padding:6px 10px; border-radius:99px; color:#8d9bab; background:var(--dark3); }
-  .lvtag i.on { background:rgba(255,255,255,.22); color:#fff; } .lvtag i.now { background:#fff; color:var(--ink); }
-  .lvtag span { margin:0 4px 0 6px; }
-  .lvtag button { border:none; background:var(--accent); color:#fff; border-radius:99px; padding:0 16px; min-height:44px; font-weight:700; font-size:14px; }
   .helpbtn { display:flex; flex-direction:column; align-items:center; gap:10px; background:var(--dark2); color:#cfd9e3; border:2px dashed var(--dark3); border-radius:var(--r-l); padding:40px 48px; font-size:20px; font-weight:700; }
   .helpbtn .ico { width:36px; height:36px; }
   #csum { z-index:6; }
@@ -397,7 +412,7 @@
     .coachv .cam { width:120px; top:12px; left:12px; border-radius:12px; } .coachv .cam video { min-height:68px; }
     .tab .exit { top:12px; right:12px; }
     .coachv .exit.voice { right:112px; top:12px; } .coachv .cam { width:96px; } .coachv .cam video { min-height:54px; } .coachv .pill { font-size:10px; }
-    .lvtag { top:62px; bottom:auto; font-size:12px; } .livehint { top:112px; } .sumgrid { grid-template-columns:1fr 1fr; }
+    .livehint { top:112px; } .sumgrid { grid-template-columns:1fr 1fr; }
     .coachv .imgwrap { padding:100px 16px 8px; }
     .againtag { top:auto; bottom:170px; font-size:17px; }
     .tab .bar { padding:12px 16px calc(16px + env(safe-area-inset-bottom)); }
@@ -1144,6 +1159,7 @@ async function deleteVoice(i) {
 }
 function doneT(c) {  // 완료 기준 시각: 교사가 고른 것, 없으면 카드 끝 뒤 다음 카드 전의 빈 시간(서버 verify.after_t 와 같은 식)
   if (c.done_t != null) return c.done_t;
+  if (S.data.pov === "facing") return Math.floor((c.start + c.end + 1) / 2);  // 마주 보고 찍은 시범은 동작 한가운데(서버와 같은 식)
   const cs = S.data.cards, i = cs.findIndex(x => x.n === c.n), nxt = cs[i + 1]?.start ?? (S.data.duration ?? c.end);
   return nxt - c.end >= 2 ? Math.min(c.end + 2, nxt - 1) : c.end;
 }
@@ -1504,17 +1520,17 @@ function coach() {
   $("#main").innerHTML = `<div class="tab coachv">
     <button class="exit" onclick="coachExit()">${icon("x")}${T("나가기", "Exit")}</button>
     <button class="exit voice" id="cvoice" onclick="setVoice(!C.voice)"></button>
-    <div class="cam" onclick="aim(false)" title="${T("누르면 작게", "Tap to shrink")}"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimqr" id="caimqr" hidden><img src="/api/runs/${S.run}/qr.svg?to=coach&lang=${ui}&log=${new URLSearchParams(location.search).get("log") === "1" ? 1 : ""}" alt="QR" width="104" height="104"><span>${T("또는 휴대폰을 눈높이로", "Or a phone at eye level")}</span></div><div class="aimtxt" id="caimtxt">${T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box")}</div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
-    <div class="lvtag" id="clv" hidden></div>
+    <div class="ttop"><div class="tprog" id="cmid"></div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
+    <div class="cam" onclick="aim(false)" title="${T("누르면 작게", "Tap to shrink")}"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimqr" id="caimqr" hidden><img src="/api/runs/${S.run}/qr.svg?to=coach&lang=${ui}&log=${new URLSearchParams(location.search).get("log") === "1" ? 1 : ""}" alt="QR" width="104" height="104"><span>${T("또는 휴대폰을 눈높이로", "Or a phone at eye level")}</span></div><div class="aimtxt" id="caimtxt">${T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box")}</div></div>
     <div class="livehint" id="clive" hidden></div>
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
     <div class="imgwrap" id="cwrap"></div>
     <div class="txt" id="ctxt" onclick="speak(true)" title="${T("다시 듣기", "Hear again")}"></div>
-    <div class="vrow">${S.data.stage === "archived" || noDone() ? "" : `<button class="verifybtn" onclick="verifyNow()">${icon("camera")} ${T("확인하기", "Check")}</button>`}
-      <button class="callbtn" id="ccall" onclick="callMaker('button')">${alone() ? T("여기서 막혔어요", "Stuck here") : T("도와줘요", "Ask for help")}</button></div>
+    <div class="hrow"><span class="hlabel" id="chlabel">${T("도움", "Help")}</span><span class="hsteps" id="clv"></span>
+      ${S.data.stage === "archived" || noDone() ? "" : `<button class="verifybtn" onclick="verifyNow()">${icon("camera")} ${T("확인하기", "Check")}</button>`}</div>
     <div class="bar">
-      <button class="navb" id="cprev" onclick="coachFlip(-1)">${T("◀ 이전", "◀ Back")}</button>
-      <div class="mid" id="cmid"></div>
+      <button class="navb" id="cprev" onclick="coachFlip(-1)">${T("이전", "Back")}</button>
+      <button class="navb helpb" id="ccall" onclick="helpOrCall()"></button>
       <button class="navb next" id="cnext"></button>
     </div>
     <div class="cstart" id="cstart">
@@ -1712,8 +1728,11 @@ async function markStuck(btn) {  // 키 없이, 카드 번호만. 같은 카드�
   toast(T("만든 사람에게 이 카드가 어려웠다고 알렸어요.", "The maker will know this card was hard."));
   if (S.view === "coach") clog("mark", { n: S.idx + 1 });
 }
+function helpOrCall() { if (C.help && C.lv < maxLv()) return helpUp(); callMaker("button"); }  // 가운데 단추: 도움이 남았으면 한 칸, 다 쓰면 사람에게
+function dashesHtml(n, idx) { return n > 24 ? "" : `<div class="dashes">${Array.from({ length: n }, (_, j) => `<i class="${j < idx ? "done" : j === idx ? "on" : ""}"></i>`).join("")}</div>`; }
 function callBtn(coming) {
   const b = $("#ccall"); if (!b) return;
+  if (S.view === "coach" && C.help && C.lv < maxLv()) { b.disabled = false; b.textContent = T("도움", "Help"); return; }  // 도움 단계가 남았으면 한 칸 더
   if (alone()) { const done = S.marked?.has(S.data.cards[S.idx]?.n); b.disabled = !!done; b.textContent = done ? T("알렸어요", "Sent") : T("여기서 막혔어요", "Stuck here"); return; }
   b.disabled = C.called === S.idx;
   b.textContent = coming ? T("오고 있어요", "Help is coming") : C.called === S.idx ? T("불렀어요", "Help called") : T("도와줘요", "Ask for help");
@@ -1740,13 +1759,14 @@ function coachCard(quiet) {
   glassesSync(false);
   if (!quiet && (!C.help || C.lv >= 3)) speak();
   $("#cwrap").innerHTML = helpMedia(c);
-  $("#clv").hidden = !C.help;
-  $("#clv").innerHTML = `${[1, 2, 3, 4].slice(0, maxLv()).map(l => `<i class="${l < C.lv ? "on" : l === C.lv ? "on now" : ""}">${lvName(l)}</i>`).join("")}${C.lv < maxLv() ? `<button onclick="helpUp()">${T("도움 더", "More help")}</button>` : ""}`;
+  $("#clv").hidden = $("#chlabel").hidden = !C.help;  // 시안: 켜진 도움(채움)만큼 아이콘 4개
+  $("#clv").innerHTML = [1, 2, 3, 4].slice(0, maxLv()).map(l => `<i class="${l <= C.lv ? "on" : ""}" title="${lvName(l)}" aria-label="${lvName(l)}${l <= C.lv ? " ✓" : ""}">${helpIcon(l)}</i>`).join("");
+  callBtn();
   $("#ctxt").innerHTML = text(c);
-  $("#cmid").innerHTML = `${dotsHtml(cs.length, S.idx)}${S.idx + 1} / ${cs.length}`;
+  $("#cmid").innerHTML = `<span class="tnum"><b>${S.idx + 1}</b> / ${cs.length}</span>${dashesHtml(cs.length, S.idx)}`;
   $("#cprev").disabled = !S.idx;
   const last = S.idx === cs.length - 1;
-  $("#cnext").innerHTML = last ? T("다 했어요 ✓", "Done ✓") : T("다음 ▶", "Next ▶");
+  $("#cnext").innerHTML = last ? T("다 했어요", "Done") : T("다음", "Next");
   $("#cnext").onclick = last ? () => coachEnd(true) : () => coachFlip(1);
 }
 // 2초 안에 넘긴 카드는 '글만 보고 했어요'로 세지 않는다
