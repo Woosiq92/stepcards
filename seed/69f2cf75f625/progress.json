@@ -1,0 +1,167 @@
+{
+ "video": "oral_care.mp4",
+ "video_path": "",
+ "events": [
+  {
+   "t": 1793520115.8,
+   "stage": "start",
+   "msg": "69f2cf75f625_SQEjgHODEz0.mp4 → 69f2cf75f625",
+   "local": false
+  },
+  {
+   "t": 1793520118.9,
+   "stage": "extract",
+   "msg": "영상 355초, 사진 355장"
+  },
+  {
+   "t": 1793520167.8,
+   "stage": "listen",
+   "msg": "말 27구간 받아씀",
+   "n": 27,
+   "cost": 0.0178
+  },
+  {
+   "t": 1793520198.3,
+   "stage": "split",
+   "msg": "1번째 시도: 단계 18개, 문제 0개 (31초, $0.167)",
+   "n": 18,
+   "problems": [],
+   "warnings": [
+    "7·8단계 사이 106~146초가 비어 있습니다.",
+    "8·9단계 사이 154~195초가 비어 있습니다."
+   ],
+   "cost": 0.1672
+  },
+  {
+   "t": 1793520200.2,
+   "stage": "highlight",
+   "msg": "1단계 'hand sanitizer': 상자 찾음(hand sanitizer, 손과 겹침)",
+   "i": 1,
+   "total": 18
+  },
+  {
+   "t": 1793520201.9,
+   "stage": "highlight",
+   "msg": "2단계 'privacy curtain': 상자 찾음(privacy curtain, 손과 겹침)",
+   "i": 2,
+   "total": 18
+  },
+  {
+   "t": 1793520214.8,
+   "stage": "highlight",
+   "msg": "3단계 'bed control': 못 찾음",
+   "i": 3,
+   "total": 18
+  },
+  {
+   "t": 1793520217.1,
+   "stage": "highlight",
+   "msg": "4단계 'gloves': 상자 찾음(gloves, 손과 겹침)",
+   "i": 4,
+   "total": 18
+  },
+  {
+   "t": 1793520218.5,
+   "stage": "highlight",
+   "msg": "5단계 'small cup': 상자 찾음(small cup, 손과 겹침)",
+   "i": 5,
+   "total": 18
+  },
+  {
+   "t": 1793520220.3,
+   "stage": "highlight",
+   "msg": "6단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 6,
+   "total": 18
+  },
+  {
+   "t": 1793520225.5,
+   "stage": "highlight",
+   "msg": "7단계 'toothbrush': 상자 찾음(toothbrush, 손과 겹침, 사진 104→105초)",
+   "i": 7,
+   "total": 18
+  },
+  {
+   "t": 1793520227.3,
+   "stage": "highlight",
+   "msg": "8단계 'emesis basin': 상자 찾음(pink kidney-shaped plastic, 손과 겹침)",
+   "i": 8,
+   "total": 18
+  },
+  {
+   "t": 1793520230.0,
+   "stage": "highlight",
+   "msg": "9단계 'small cup': 상자 찾음(small light-blue plastic, 손과 겹침)",
+   "i": 9,
+   "total": 18
+  },
+  {
+   "t": 1793520234.0,
+   "stage": "highlight",
+   "msg": "10단계 'toothbrush': 못 찾음",
+   "i": 10,
+   "total": 18
+  },
+  {
+   "t": 1793520240.4,
+   "stage": "highlight",
+   "msg": "11단계 'emesis basin': 상자 찾음(pink kidney-shaped plastic, 손과 겹침, 사진 216→217초)",
+   "i": 11,
+   "total": 18
+  },
+  {
+   "t": 1793520241.9,
+   "stage": "highlight",
+   "msg": "12단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 12,
+   "total": 18
+  },
+  {
+   "t": 1793520245.0,
+   "stage": "highlight",
+   "msg": "13단계 'emesis basin': 상자 찾음(pink kidney-shaped plastic, 손과 겹침)",
+   "i": 13,
+   "total": 18
+  },
+  {
+   "t": 1793520246.9,
+   "stage": "highlight",
+   "msg": "14단계 'gloves': 상자 찾음(gloves, 손과 겹침)",
+   "i": 14,
+   "total": 18
+  },
+  {
+   "t": 1793520249.7,
+   "stage": "highlight",
+   "msg": "15단계 'hand sanitizer': 상자 찾음(hand sanitizer, 손과 안 겹침)",
+   "i": 15,
+   "total": 18
+  },
+  {
+   "t": 1793520251.3,
+   "stage": "highlight",
+   "msg": "16단계 'bed sheet': 상자 찾음(bed sheet, 손과 겹침)",
+   "i": 16,
+   "total": 18
+  },
+  {
+   "t": 1793520253.6,
+   "stage": "highlight",
+   "msg": "17단계 'privacy curtain': 상자 찾음(privacy curtain, 손과 겹침)",
+   "i": 17,
+   "total": 18
+  },
+  {
+   "t": 1793520259.8,
+   "stage": "highlight",
+   "msg": "18단계 'call light': 못 찾음",
+   "i": 18,
+   "total": 18
+  },
+  {
+   "t": 1793520259.8,
+   "stage": "done",
+   "msg": "완료:"
+  }
+ ]
+}

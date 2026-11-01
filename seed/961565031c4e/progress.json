@@ -1,0 +1,145 @@
+{
+ "video": "hotel_towel_fold.mp4",
+ "video_path": "",
+ "events": [
+  {
+   "t": 1793520564.2,
+   "stage": "start",
+   "msg": "961565031c4e_KKSIl9gbeBY.mp4 → 961565031c4e",
+   "local": false
+  },
+  {
+   "t": 1793520565.1,
+   "stage": "extract",
+   "msg": "영상 234초, 사진 234장"
+  },
+  {
+   "t": 1793520599.8,
+   "stage": "listen",
+   "msg": "말 8구간 받아씀",
+   "n": 8,
+   "cost": 0.0117
+  },
+  {
+   "t": 1793520618.7,
+   "stage": "split",
+   "msg": "1번째 시도: 단계 15개, 문제 0개 (19초, $0.109)",
+   "n": 15,
+   "problems": [],
+   "warnings": [
+    "7·8단계 사이 74~94초가 비어 있습니다."
+   ],
+   "cost": 0.1085
+  },
+  {
+   "t": 1793520620.4,
+   "stage": "highlight",
+   "msg": "1단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 1,
+   "total": 15
+  },
+  {
+   "t": 1793520623.0,
+   "stage": "highlight",
+   "msg": "2단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 2,
+   "total": 15
+  },
+  {
+   "t": 1793520624.9,
+   "stage": "highlight",
+   "msg": "3단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 3,
+   "total": 15
+  },
+  {
+   "t": 1793520626.6,
+   "stage": "highlight",
+   "msg": "4단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 4,
+   "total": 15
+  },
+  {
+   "t": 1793520629.4,
+   "stage": "highlight",
+   "msg": "5단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 5,
+   "total": 15
+  },
+  {
+   "t": 1793520632.0,
+   "stage": "highlight",
+   "msg": "6단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 6,
+   "total": 15
+  },
+  {
+   "t": 1793520633.8,
+   "stage": "highlight",
+   "msg": "7단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 7,
+   "total": 15
+  },
+  {
+   "t": 1793520636.2,
+   "stage": "highlight",
+   "msg": "8단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 8,
+   "total": 15
+  },
+  {
+   "t": 1793520638.5,
+   "stage": "highlight",
+   "msg": "9단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 9,
+   "total": 15
+  },
+  {
+   "t": 1793520640.0,
+   "stage": "highlight",
+   "msg": "10단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 10,
+   "total": 15
+  },
+  {
+   "t": 1793520642.0,
+   "stage": "highlight",
+   "msg": "11단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 11,
+   "total": 15
+  },
+  {
+   "t": 1793520644.1,
+   "stage": "highlight",
+   "msg": "12단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 12,
+   "total": 15
+  },
+  {
+   "t": 1793520645.1,
+   "stage": "highlight",
+   "msg": "13단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 13,
+   "total": 15
+  },
+  {
+   "t": 1793520647.4,
+   "stage": "highlight",
+   "msg": "14단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 14,
+   "total": 15
+  },
+  {
+   "t": 1793520648.7,
+   "stage": "highlight",
+   "msg": "15단계 'white towel': 상자 찾음(white towel, 손과 겹침)",
+   "i": 15,
+   "total": 15
+  },
+  {
+   "t": 1793520648.7,
+   "stage": "done",
+   "msg": "완료:"
+  }
+ ]
+}

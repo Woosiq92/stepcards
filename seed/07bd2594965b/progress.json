@@ -1,0 +1,80 @@
+{
+ "video": "dnd_car_transfer.mp4",
+ "video_path": "",
+ "events": [
+  {
+   "t": 1793519740.2,
+   "stage": "start",
+   "msg": "07bd2594965b_dnd_car_transfer.mp4 → 07bd2594965b",
+   "local": false
+  },
+  {
+   "t": 1793519740.6,
+   "stage": "extract",
+   "msg": "영상 69초, 사진 70장"
+  },
+  {
+   "t": 1793519747.8,
+   "stage": "listen",
+   "msg": "영상에 말소리가 없음",
+   "n": 0,
+   "cost": 0.0035
+  },
+  {
+   "t": 1793519762.6,
+   "stage": "split",
+   "msg": "1번째 시도: 단계 6개, 문제 0개 (15초, $0.043)",
+   "n": 6,
+   "problems": [],
+   "warnings": [],
+   "cost": 0.0427
+  },
+  {
+   "t": 1793519781.1,
+   "stage": "highlight",
+   "msg": "1단계 'patient's feet': 못 찾음",
+   "i": 1,
+   "total": 6
+  },
+  {
+   "t": 1793519783.9,
+   "stage": "highlight",
+   "msg": "2단계 'patient's torso': 상자 찾음(blue short-sleeve shirt around shoulders, 손과 겹침)",
+   "i": 2,
+   "total": 6
+  },
+  {
+   "t": 1793519795.3,
+   "stage": "highlight",
+   "msg": "3단계 'transfer belt': 상자 찾음(belt, 손과 겹침, 사진 33→34초)",
+   "i": 3,
+   "total": 6
+  },
+  {
+   "t": 1793519798.9,
+   "stage": "highlight",
+   "msg": "4단계 'patient's legs': 상자 찾음(beige pants over bent knees, 손과 겹침)",
+   "i": 4,
+   "total": 6
+  },
+  {
+   "t": 1793519801.4,
+   "stage": "highlight",
+   "msg": "5단계 'patient's legs': 상자 찾음(beige pants with blue strap around, 손과 겹침)",
+   "i": 5,
+   "total": 6
+  },
+  {
+   "t": 1793519803.1,
+   "stage": "highlight",
+   "msg": "6단계 'transfer belt': 상자 찾음(blue woven strap with loops, 손과 겹침)",
+   "i": 6,
+   "total": 6
+  },
+  {
+   "t": 1793519803.1,
+   "stage": "done",
+   "msg": "완료:"
+  }
+ ]
+}

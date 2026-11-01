@@ -1,0 +1,138 @@
+{
+ "duration": 69,
+ "status": "ok",
+ "problems": [],
+ "warnings": [],
+ "cards": [
+  {
+   "start": 14,
+   "end": 19,
+   "rep": 17,
+   "ko": "발을 바닥에 놓으세요.",
+   "en": "Place feet on ground.",
+   "object": "patient's feet",
+   "look": "dark sneakers on reddish pavement",
+   "n": 1,
+   "image": "cards/01.jpg",
+   "frame_t": 17,
+   "box": null,
+   "box_prompt": null,
+   "box_touches_hand": false,
+   "voice": null,
+   "view": "clip"
+  },
+  {
+   "start": 20,
+   "end": 30,
+   "rep": 25,
+   "ko": "앞으로 이동시키세요.",
+   "en": "Scoot patient forward.",
+   "object": "patient's torso",
+   "look": "blue short-sleeve shirt around shoulders",
+   "n": 2,
+   "image": "cards/02.jpg",
+   "frame_t": 25,
+   "box": [
+    910,
+    247,
+    1099,
+    525
+   ],
+   "box_prompt": "blue short-sleeve shirt around shoulders",
+   "box_touches_hand": true,
+   "voice": null,
+   "view": "clip"
+  },
+  {
+   "start": 31,
+   "end": 36,
+   "rep": 33,
+   "ko": "벨트 손잡이를 드세요.",
+   "en": "Lift transfer belt handles.",
+   "object": "transfer belt",
+   "look": "blue woven strap with loops",
+   "n": 3,
+   "image": "cards/03.jpg",
+   "frame_t": 34,
+   "box": [
+    580,
+    258,
+    1250,
+    630
+   ],
+   "box_prompt": "belt",
+   "box_touches_hand": true,
+   "voice": null,
+   "view": "clip"
+  },
+  {
+   "start": 37,
+   "end": 43,
+   "rep": 40,
+   "ko": "무릎 뒤를 드세요.",
+   "en": "Lift legs behind knees.",
+   "object": "patient's legs",
+   "look": "beige pants over bent knees",
+   "n": 4,
+   "image": "cards/04.jpg",
+   "frame_t": 40,
+   "box": [
+    632,
+    410,
+    1069,
+    719
+   ],
+   "box_prompt": "beige pants over bent knees",
+   "box_touches_hand": true,
+   "voice": null,
+   "view": "clip"
+  },
+  {
+   "start": 47,
+   "end": 56,
+   "rep": 55,
+   "ko": "다리를 차밖으로 내리세요.",
+   "en": "Bring legs out of car.",
+   "object": "patient's legs",
+   "look": "beige pants with blue strap around",
+   "n": 5,
+   "image": "cards/05.jpg",
+   "frame_t": 55,
+   "box": [
+    398,
+    488,
+    739,
+    719
+   ],
+   "box_prompt": "beige pants with blue strap around",
+   "box_touches_hand": true,
+   "voice": null,
+   "view": "clip"
+  },
+  {
+   "start": 57,
+   "end": 63,
+   "rep": 60,
+   "ko": "벨트 손잡이를 드세요.",
+   "en": "Lift transfer belt handles.",
+   "object": "transfer belt",
+   "look": "blue woven strap with loops",
+   "n": 6,
+   "image": "cards/06.jpg",
+   "frame_t": 60,
+   "box": [
+    749,
+    409,
+    958,
+    613
+   ],
+   "box_prompt": "blue woven strap with loops",
+   "box_touches_hand": true,
+   "voice": null,
+   "view": "clip"
+  }
+ ],
+ "title": "디앤디케어 · 차량 승하차 돕기 (견본)",
+ "edited_at": 1793521676.543902,
+ "seed_v": 1
+}

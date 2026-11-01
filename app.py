@@ -213,6 +213,7 @@ def runs(request: Request):
             cs = data["cards"] if data else []
             seed = SEED_INDEX.get(d.name, {})
             out.append({"id": d.name, "video": prog["video"], "title": (data or {}).get("title") or seed.get("title", ""), "title_en": seed.get("title_en", ""), "use": seed.get("use", ""),
+                        "job": seed.get("job_en" if request.query_params.get("ui") == "en" else "job", ""), "custom": seed.get("custom", False),
                         "done": data is not None, "count": len(cs),
                         "failed": data is None and (prog.get("events") or [{}])[-1].get("stage") == "error",
                         "issues": len(data["problems"]) if data else 0, "thumb": cs[0]["image"] if cs else None,

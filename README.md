@@ -28,7 +28,7 @@ Built first for the hardest case — learners with intellectual disabilities, wh
 | Assembly and setup | the maker | first-time buyers |
 | Family know-how (a parent's recipe) | family | family |
 
-Cards have been made and checked from six sample videos, one or more per row above: two latte videos (first-person, and a creator's recipe video), napkin folding, a Shoki dance lesson, a bedside-cabinet manual video and a family stew recipe. None of these situations has been tried with real learners or staff yet.
+Cards have also been made from 26 open (CC BY) demonstration videos matching jobs in Korea's 2026 national disability job program (care support, towel handling, library shelving, mail, cleaning and washing jobs); four of them ship as samples. Cards have been made and checked from six sample videos, one or more per row above: two latte videos (first-person, and a creator's recipe video), napkin folding, a Shoki dance lesson, a bedside-cabinet manual video and a family stew recipe. None of these situations has been tried with real learners or staff yet.
 
 ## What it does
 
@@ -178,4 +178,5 @@ Tests (checker, server, Coach decisions; no paid model calls): `.venv/bin/pip in
   - "How to SHOKI - Quick dance tutorial by Afro 101" by AFRO 101, YouTube `DgqYEe7sIQw`, CC BY.
   - "30년 장사한 엄마의 첫 레시피, 10분 바지락 순두부찌개" by 장사만30년미화씨, YouTube `GStjzzIi4ew`, CC BY.
   - "Barcelona 2 drawer bedside Assembly Instructions" by INSIDE HOUSE, YouTube `RIJc1qKefGg`, CC BY.
+  - National disability job samples (home page "Cards for Korea's national disability jobs"): "Car Transfers With Transfer Belt" by PT Shan, YouTube `708QT4y6lco`; "Oral Care" by WisTech Open | Open RN, YouTube `SQEjgHODEz0`; "호텔수건접기, 수건 예쁘게 개기, 쉽게 개는방법까지" by 귀주부, YouTube `KKSIl9gbeBY`; "Basic Shelving 2011" by thirdpresident, YouTube `-qOS2Uyu1Tw` — all CC BY (licence read from each video's YouTube metadata on 2026-11-01). Job names come from the Ministry of Health and Welfare's public guide 「2026년 장애인일자리 사업안내」 (2026-01-05): the 11 jobs tailored for people with severe disabilities are on p.70 (D&D Care is one of them); towel handling and book arrangement are other welfare-job duties on p.70–74.
   - Sample card sets in `seed/` (shown on a fresh deployment, one per use case) include small silent copies of the CC BY videos above.

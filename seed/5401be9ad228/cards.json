@@ -1,0 +1,257 @@
+{
+ "duration": 246,
+ "status": "ok",
+ "problems": [],
+ "warnings": [
+  "1·2단계 사이 63~80초가 비어 있습니다.",
+  "2·3단계 사이 85~107초가 비어 있습니다.",
+  "3·4단계 사이 112~160초가 비어 있습니다."
+ ],
+ "cards": [
+  {
+   "start": 54,
+   "end": 63,
+   "rep": 59,
+   "ko": "뒷표지의 새 스티커를 확인하세요.",
+   "en": "Check the back for a new sticker.",
+   "object": "book",
+   "look": "thick dark rectangular block with white label",
+   "n": 1,
+   "image": "cards/01.jpg",
+   "frame_t": 59,
+   "box": [
+    0,
+    0,
+    917,
+    648
+   ],
+   "box_prompt": "thick dark rectangular block with white label",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 80,
+   "end": 85,
+   "rep": 82,
+   "ko": "잘못 꽂힌 책을 바로잡으세요.",
+   "en": "Reshelve the misplaced book.",
+   "object": "book",
+   "look": "thin red rectangular block",
+   "n": 2,
+   "image": "cards/02.jpg",
+   "frame_t": 82,
+   "box": [
+    626,
+    0,
+    820,
+    417
+   ],
+   "box_prompt": "book",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 107,
+   "end": 112,
+   "rep": 108,
+   "ko": "카트의 책을 정리하세요.",
+   "en": "Sort the books on the cart.",
+   "object": "book",
+   "look": "red rectangular thick block",
+   "n": 3,
+   "image": "cards/03.jpg",
+   "frame_t": 110,
+   "box": [
+    181,
+    374,
+    620,
+    719
+   ],
+   "box_prompt": "book",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 160,
+   "end": 167,
+   "rep": 163,
+   "ko": "카트를 선반 앞으로 미세요.",
+   "en": "Push the cart to the shelf.",
+   "object": "book cart",
+   "look": "silver curved metal bar",
+   "n": 4,
+   "image": "cards/04.jpg",
+   "frame_t": 162,
+   "box": [
+    593,
+    533,
+    753,
+    719
+   ],
+   "box_prompt": "silver curved metal bar",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 168,
+   "end": 171,
+   "rep": 169,
+   "ko": "책 몇 권을 손에 드세요.",
+   "en": "Take a few books with you.",
+   "object": "stack of books",
+   "look": "three thick rectangular blocks in dark colors",
+   "n": 5,
+   "image": "cards/05.jpg",
+   "frame_t": 169,
+   "box": [
+    248,
+    132,
+    753,
+    719
+   ],
+   "box_prompt": "stack of books",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 175,
+   "end": 181,
+   "rep": 178,
+   "ko": "책을 제자리에 꽂으세요.",
+   "en": "Shelve the book in its place.",
+   "object": "book",
+   "look": "light green rectangular thick block",
+   "n": 6,
+   "image": "cards/06.jpg",
+   "frame_t": 178,
+   "box": [
+    729,
+    0,
+    860,
+    584
+   ],
+   "box_prompt": "book",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 182,
+   "end": 188,
+   "rep": 185,
+   "ko": "작가별로 책을 꽂으세요.",
+   "en": "Shelve by author order.",
+   "object": "book",
+   "look": "small black rectangular block with green print",
+   "n": 7,
+   "image": "cards/07.jpg",
+   "frame_t": 185,
+   "box": [
+    236,
+    0,
+    427,
+    242
+   ],
+   "box_prompt": "book",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 194,
+   "end": 196,
+   "rep": 195,
+   "ko": "북엔드를 바짝 당기세요.",
+   "en": "Slide the bookend snug.",
+   "object": "bookend",
+   "look": "black flat metal plate with oval hole",
+   "n": 8,
+   "image": "cards/08.jpg",
+   "frame_t": 195,
+   "box": [
+    576,
+    29,
+    830,
+    673
+   ],
+   "box_prompt": "bookend",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 203,
+   "end": 207,
+   "rep": 205,
+   "ko": "큰 책을 선반에 꽂으세요.",
+   "en": "Shelve the large book.",
+   "object": "book",
+   "look": "large dark red rectangular block",
+   "n": 9,
+   "image": "cards/09.jpg",
+   "frame_t": 205,
+   "box": [
+    47,
+    0,
+    643,
+    719
+   ],
+   "box_prompt": "book",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 209,
+   "end": 217,
+   "rep": 213,
+   "ko": "옆의 책들을 곧게 하세요.",
+   "en": "Straighten the neighboring books.",
+   "object": "row of books",
+   "look": "upright colorful rectangular blocks",
+   "n": 10,
+   "image": "cards/10.jpg",
+   "frame_t": 213,
+   "box": [
+    0,
+    0,
+    959,
+    575
+   ],
+   "box_prompt": "row of books",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 231,
+   "end": 235,
+   "rep": 233,
+   "ko": "책을 앞으로 전시하세요.",
+   "en": "Display the book face out.",
+   "object": "book",
+   "look": "tan rectangular thick block",
+   "n": 11,
+   "image": "cards/11.jpg",
+   "frame_t": 233,
+   "box": [
+    623,
+    136,
+    799,
+    558
+   ],
+   "box_prompt": "book",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  }
+ ],
+ "title": "도서정리 · 책 꽂기 (견본)",
+ "edited_at": 1793521676.5697532,
+ "seed_v": 1
+}

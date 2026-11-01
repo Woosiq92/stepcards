@@ -1,0 +1,459 @@
+{
+ "duration": 234,
+ "status": "ok",
+ "problems": [],
+ "warnings": [
+  "7·8단계 사이 74~94초가 비어 있습니다."
+ ],
+ "cards": [
+  {
+   "start": 25,
+   "end": 28,
+   "rep": 27,
+   "ko": "수건을 펴세요.",
+   "en": "Spread the towel.",
+   "object": "white towel",
+   "look": "soft white fabric",
+   "n": 1,
+   "image": "cards/01.jpg",
+   "frame_t": 27,
+   "box": [
+    182,
+    142,
+    848,
+    457
+   ],
+   "box_prompt": "white towel",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "fold"
+  },
+  {
+   "start": 29,
+   "end": 33,
+   "rep": 30,
+   "ko": "가장자리를 접으세요.",
+   "en": "Fold the edge inward.",
+   "object": "white towel",
+   "look": "soft white fabric",
+   "n": 2,
+   "image": "cards/02.jpg",
+   "frame_t": 30,
+   "box": [
+    451,
+    295,
+    860,
+    534
+   ],
+   "box_prompt": "white towel",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "fold"
+  },
+  {
+   "start": 36,
+   "end": 44,
+   "rep": 39,
+   "ko": "모서리를 세모로 접으세요.",
+   "en": "Fold the corner into a triangle.",
+   "object": "white towel",
+   "look": "soft white fabric",
+   "n": 3,
+   "image": "cards/03.jpg",
+   "frame_t": 39,
+   "box": [
+    256,
+    261,
+    831,
+    496
+   ],
+   "box_prompt": "white towel",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "fold"
+  },
+  {
+   "start": 45,
+   "end": 51,
+   "rep": 48,
+   "ko": "반대쪽을 접으세요.",
+   "en": "Fold the opposite side over.",
+   "object": "white towel",
+   "look": "soft white fabric",
+   "n": 4,
+   "image": "cards/04.jpg",
+   "frame_t": 48,
+   "box": [
+    253,
+    348,
+    832,
+    500
+   ],
+   "box_prompt": "white towel",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 52,
+   "end": 54,
+   "rep": 53,
+   "ko": "수건을 뒤집으세요.",
+   "en": "Flip the towel over.",
+   "object": "white towel",
+   "look": "soft white fabric",
+   "n": 5,
+   "image": "cards/05.jpg",
+   "frame_t": 53,
+   "box": [
+    282,
+    303,
+    799,
+    420
+   ],
+   "box_prompt": "white towel",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 55,
+   "end": 64,
+   "rep": 60,
+   "ko": "수건을 돌돌 마세요.",
+   "en": "Roll the towel up.",
+   "object": "white towel",
+   "look": "soft white fabric",
+   "n": 6,
+   "image": "cards/06.jpg",
+   "frame_t": 60,
+   "box": [
+    372,
+    306,
+    641,
+    548
+   ],
+   "box_prompt": "white towel",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 65,
+   "end": 74,
+   "rep": 70,
+   "ko": "끝을 안에 넣으세요.",
+   "en": "Tuck the end inside.",
+   "object": "white towel",
+   "look": "soft white fabric",
+   "n": 7,
+   "image": "cards/07.jpg",
+   "frame_t": 70,
+   "box": [
+    514,
+    192,
+    596,
+    356
+   ],
+   "box_prompt": "white towel",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 94,
+   "end": 104,
+   "rep": 99,
+   "ko": "수건을 네모로 접으세요.",
+   "en": "Fold the towel into a square.",
+   "object": "white towel",
+   "look": "soft white fabric",
+   "n": 8,
+   "image": "cards/08.jpg",
+   "frame_t": 99,
+   "box": [
+    355,
+    130,
+    681,
+    393
+   ],
+   "box_prompt": "white towel",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 105,
+   "end": 114,
+   "rep": 110,
+   "ko": "양쪽을 가운데로 접으세요.",
+   "en": "Fold both sides to the center.",
+   "object": "white towel",
+   "look": "soft white fabric",
+   "n": 9,
+   "image": "cards/09.jpg",
+   "frame_t": 110,
+   "box": [
+    346,
+    333,
+    745,
+    466
+   ],
+   "box_prompt": "white towel",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 125,
+   "end": 128,
+   "rep": 126,
+   "ko": "수건을 뒤집으세요.",
+   "en": "Flip the towel over.",
+   "object": "white towel",
+   "look": "soft white fabric",
+   "n": 10,
+   "image": "cards/10.jpg",
+   "frame_t": 126,
+   "box": [
+    454,
+    79,
+    632,
+    497
+   ],
+   "box_prompt": "white towel",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 129,
+   "end": 142,
+   "rep": 135,
+   "ko": "가장자리를 넣으세요.",
+   "en": "Tuck the edges in.",
+   "object": "white towel",
+   "look": "soft white fabric",
+   "n": 11,
+   "image": "cards/11.jpg",
+   "frame_t": 135,
+   "box": [
+    460,
+    241,
+    638,
+    550
+   ],
+   "box_prompt": "white towel",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 143,
+   "end": 160,
+   "rep": 150,
+   "ko": "윗부분을 넣으세요.",
+   "en": "Tuck the top in.",
+   "object": "white towel",
+   "look": "soft white fabric",
+   "n": 12,
+   "image": "cards/12.jpg",
+   "frame_t": 150,
+   "box": [
+    489,
+    289,
+    676,
+    436
+   ],
+   "box_prompt": "white towel",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 175,
+   "end": 182,
+   "rep": 179,
+   "ko": "수건을 반으로 접으세요.",
+   "en": "Fold the towel in half.",
+   "object": "white towel",
+   "look": "soft white fabric",
+   "n": 13,
+   "image": "cards/13.jpg",
+   "frame_t": 179,
+   "box": [
+    420,
+    355,
+    744,
+    478
+   ],
+   "box_prompt": "white towel",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 183,
+   "end": 188,
+   "rep": 185,
+   "ko": "한 번 더 접으세요.",
+   "en": "Fold it once more.",
+   "object": "white towel",
+   "look": "soft white fabric",
+   "n": 14,
+   "image": "cards/14.jpg",
+   "frame_t": 185,
+   "box": [
+    448,
+    401,
+    628,
+    518
+   ],
+   "box_prompt": "white towel",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  },
+  {
+   "start": 189,
+   "end": 206,
+   "rep": 198,
+   "ko": "말아 안에 넣으세요.",
+   "en": "Roll and tuck it in.",
+   "object": "white towel",
+   "look": "soft white fabric",
+   "n": 15,
+   "image": "cards/15.jpg",
+   "frame_t": 198,
+   "box": [
+    541,
+    313,
+    708,
+    410
+   ],
+   "box_prompt": "white towel",
+   "box_touches_hand": true,
+   "voice": "auto",
+   "view": "clip"
+  }
+ ],
+ "title": "스포츠이용시설 안내 · 수건 개기 (견본)",
+ "edited_at": 1793527300.430494,
+ "fold": {
+  "shape": {
+   "w": 2,
+   "h": 1,
+   "color": "#ffffff"
+  },
+  "steps": [
+   {
+    "n": 1,
+    "ops": []
+   },
+   {
+    "n": 2,
+    "ops": [
+     {
+      "op": "fold",
+      "from": "left",
+      "to": [
+       0.2,
+       0.5
+      ]
+     }
+    ]
+   },
+   {
+    "n": 3,
+    "ops": [
+     {
+      "op": "fold",
+      "from": "top-left",
+      "to": [
+       0.3,
+       1
+      ]
+     }
+    ]
+   },
+   {
+    "n": 4,
+    "ops": [
+     {
+      "op": "fold",
+      "from": [
+       0.7,
+       0
+      ],
+      "to": [
+       0.7,
+       1
+      ]
+     }
+    ]
+   },
+   {
+    "n": 5,
+    "ops": []
+   },
+   {
+    "n": 6,
+    "ops": []
+   },
+   {
+    "n": 7,
+    "ops": []
+   },
+   {
+    "n": 8,
+    "ops": []
+   },
+   {
+    "n": 9,
+    "ops": []
+   },
+   {
+    "n": 10,
+    "ops": []
+   },
+   {
+    "n": 11,
+    "ops": []
+   },
+   {
+    "n": 12,
+    "ops": []
+   },
+   {
+    "n": 13,
+    "ops": []
+   },
+   {
+    "n": 14,
+    "ops": []
+   },
+   {
+    "n": 15,
+    "ops": []
+   }
+  ],
+  "report": {
+   "1": "yes",
+   "2": "yes",
+   "3": "yes",
+   "4": "no",
+   "5": "no",
+   "6": "no",
+   "7": "no",
+   "8": "no",
+   "9": "no",
+   "10": "no",
+   "11": "no",
+   "12": "no",
+   "13": "no",
+   "14": "no",
+   "15": "no"
+  }
+ },
+ "seed_v": 1
+}

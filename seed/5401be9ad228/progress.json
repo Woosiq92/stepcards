@@ -1,0 +1,119 @@
+{
+ "video": "library_shelving.mp4",
+ "video_path": "",
+ "events": [
+  {
+   "t": 1793519740.3,
+   "stage": "start",
+   "msg": "5401be9ad228_library_shelving.mp4 → 5401be9ad228",
+   "local": false
+  },
+  {
+   "t": 1793519740.8,
+   "stage": "extract",
+   "msg": "영상 246초, 사진 247장"
+  },
+  {
+   "t": 1793519784.2,
+   "stage": "listen",
+   "msg": "말 22구간 받아씀",
+   "n": 22,
+   "cost": 0.0123
+  },
+  {
+   "t": 1793519811.8,
+   "stage": "split",
+   "msg": "1번째 시도: 단계 11개, 문제 0개 (28초, $0.100)",
+   "n": 11,
+   "problems": [],
+   "warnings": [
+    "1·2단계 사이 63~80초가 비어 있습니다.",
+    "2·3단계 사이 85~107초가 비어 있습니다.",
+    "3·4단계 사이 112~160초가 비어 있습니다."
+   ],
+   "cost": 0.0996
+  },
+  {
+   "t": 1793519814.9,
+   "stage": "highlight",
+   "msg": "1단계 'book': 상자 찾음(thick dark rectangular block with white label, 손과 겹침)",
+   "i": 1,
+   "total": 11
+  },
+  {
+   "t": 1793519817.3,
+   "stage": "highlight",
+   "msg": "2단계 'book': 상자 찾음(book, 손과 겹침)",
+   "i": 2,
+   "total": 11
+  },
+  {
+   "t": 1793519821.5,
+   "stage": "highlight",
+   "msg": "3단계 'book': 상자 찾음(book, 손과 겹침, 사진 108→110초)",
+   "i": 3,
+   "total": 11
+  },
+  {
+   "t": 1793519826.1,
+   "stage": "highlight",
+   "msg": "4단계 'book cart': 상자 찾음(silver curved metal bar, 손과 겹침, 사진 163→162초)",
+   "i": 4,
+   "total": 11
+  },
+  {
+   "t": 1793519827.7,
+   "stage": "highlight",
+   "msg": "5단계 'stack of books': 상자 찾음(stack of books, 손과 겹침)",
+   "i": 5,
+   "total": 11
+  },
+  {
+   "t": 1793519830.9,
+   "stage": "highlight",
+   "msg": "6단계 'book': 상자 찾음(book, 손과 겹침)",
+   "i": 6,
+   "total": 11
+  },
+  {
+   "t": 1793519834.4,
+   "stage": "highlight",
+   "msg": "7단계 'book': 상자 찾음(book, 손과 겹침)",
+   "i": 7,
+   "total": 11
+  },
+  {
+   "t": 1793519835.8,
+   "stage": "highlight",
+   "msg": "8단계 'bookend': 상자 찾음(bookend, 손과 겹침)",
+   "i": 8,
+   "total": 11
+  },
+  {
+   "t": 1793519839.5,
+   "stage": "highlight",
+   "msg": "9단계 'book': 상자 찾음(book, 손과 겹침)",
+   "i": 9,
+   "total": 11
+  },
+  {
+   "t": 1793519842.8,
+   "stage": "highlight",
+   "msg": "10단계 'row of books': 상자 찾음(row of books, 손과 겹침)",
+   "i": 10,
+   "total": 11
+  },
+  {
+   "t": 1793519844.7,
+   "stage": "highlight",
+   "msg": "11단계 'book': 상자 찾음(book, 손과 겹침)",
+   "i": 11,
+   "total": 11
+  },
+  {
+   "t": 1793519844.7,
+   "stage": "done",
+   "msg": "완료:"
+  }
+ ]
+}
