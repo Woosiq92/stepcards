@@ -36,7 +36,8 @@
   .logo .mark svg { width:20px; height:20px; }
   .steps { display:flex; align-items:center; gap:2px; margin:0 auto; background:var(--bg); padding:4px; border-radius:999px; }
   #uiseg .short, .step .short { display:none; } #uiseg .long, #uiseg .short { pointer-events:none; }
-  @media (max-width:720px) { #uiseg .short, .step .short { display:inline; } .step .long { display:none; } }
+  @media (max-width:720px) { #uiseg .short, .step .short { display:inline; } .step .long { display:none; } #uiseg button, .step { min-width:44px; min-height:44px; } }
+  .f3speed, .fh-rec input[type=checkbox] { min-height:40px; } .fh-rec input[type=checkbox] { width:22px; height:22px; accent-color:var(--accent); }
   .step { display:flex; align-items:center; gap:8px; padding:7px 14px 7px 8px; border-radius:999px; border:none; background:none; color:var(--muted); font-size:14px; font-weight:600; transition:background .15s, color .15s; }
   .step .dot { width:22px; height:22px; border-radius:50%; display:grid; place-items:center; background:var(--line); color:var(--ink2); font-size:12px; font-weight:700; }
   .step:hover:not(:disabled):not(.on) { color:var(--ink); }
@@ -99,6 +100,7 @@
   .news { display:grid; grid-template-columns:repeat(6,1fr); gap:28px 24px; } .newscard { grid-column:span 2; } .newscard:nth-child(4) { grid-column:2 / span 2; }
   .news.four { grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); } .news.four .newscard { grid-column:auto; }  /* 직무 견본 수가 바뀌어도 한 줄에 */
   @media (max-width:860px) { .news.four { grid-template-columns:1fr 1fr; } }
+  .notmeta { margin:-8px auto 18px; font-size:14px; }
   .jobsrc { max-width:720px; margin:-8px auto 22px; font-size:14px; }
   .newscard { color:var(--ink); font-weight:400; display:flex; flex-direction:column; gap:6px; } .newscard:hover { text-decoration:none; }
   .newscard img { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:24px; transition:transform .2s; } .newscard:hover img { transform:scale(1.015); }
@@ -136,6 +138,8 @@
   .fh-check { position:absolute; top:12px; right:12px; display:inline-flex; align-items:center; gap:6px; background:var(--ok); padding:6px 12px; border-radius:999px; font-size:14px; font-weight:700; }
   .fh-card { position:absolute; left:50%; bottom:14px; transform:translateX(-50%); background:rgba(11,16,21,.72); backdrop-filter:blur(8px); padding:8px 16px; border-radius:14px; font-size:18px; font-weight:800; white-space:nowrap; max-width:92%; overflow:hidden; text-overflow:ellipsis; }
   .fh-pov .ico, .fh-check .ico { width:16px; height:16px; }
+  .sumline { font-size:20px; font-weight:700; color:#fff; }
+  .safechip { display:inline-flex; align-items:center; gap:6px; align-self:flex-start; background:#fff4d6; color:#7a4b00; border:1px solid #f0d48a; border-radius:999px; padding:6px 12px; font-size:14px; font-weight:700; } .safechip .ico { width:16px; height:16px; }
   .fh-copy .kicker { color:#a9b8c6; font-size:14px; font-weight:600; } .fh-copy h2 { font-size:clamp(26px,3vw,36px); font-weight:500; line-height:1.25; margin:6px 0 14px; }
   .fh-steps { margin:0 0 20px; padding-left:20px; color:#cfd9e3; line-height:1.8; } .fh-btns { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
   .fh-btns .btn { background:rgba(255,255,255,.12); color:#fff; border-color:transparent; } .fh-btns .btn:hover { background:rgba(255,255,255,.2); }
@@ -251,7 +255,7 @@
   textarea.say { width:100%; border:1.5px solid transparent; border-radius:var(--r-s); padding:6px 10px; font:inherit; font-size:22px; font-weight:700; letter-spacing:-.02em; line-height:1.35; resize:none; background:transparent; color:var(--ink); overflow:hidden; transition:background .15s, border-color .15s; }
   textarea.say:hover { background:var(--raised); }
   textarea.say:focus { outline:none; border-color:var(--accent); background:#fff; box-shadow:var(--focus); }
-  textarea.say.en { font-size:15px; font-weight:500; color:var(--muted); letter-spacing:0; }
+  textarea.say.sub { font-size:15px; font-weight:500; color:var(--muted); letter-spacing:0; }
   textarea.say::placeholder { color:#a9b5c0; }
   .meta { color:var(--muted); font-size:13px; padding:4px 10px; }
   .row .issue { margin:8px 10px 0; }
@@ -474,7 +478,7 @@ async function route() {
   document.body.classList.toggle("tabmode", S.view === "tablet" || S.view === "coach");
   document.body.classList.toggle("homepage", S.view === "home");  // 첫 화면은 흰 바탕(이야기형)
   document.documentElement.lang = ui;
-  $("#uiseg").innerHTML = [["ko", "한국어", "한"], ["en", "English", "EN"]].map(([v, l, short]) => `<button class="${ui === v ? "on" : ""}" onclick="setUi('${v}')" aria-label="${l}"><span class="long">${l}</span><span class="short">${short}</span></button>`).join("");  // 휴대폰에서는 짧게
+  $("#uiseg").innerHTML = [["ko", "한국어", "한"], ["en", "English", "EN"]].map(([v, l, short]) => `<button class="${ui === v ? "on" : ""}" aria-pressed="${!!(ui === v)}" onclick="setUi('${v}')" aria-label="${l}"><span class="long">${l}</span><span class="short">${short}</span></button>`).join("");  // 휴대폰에서는 짧게
   header();
   ({ home, making, edit, use, tablet, coach, missing, admin })[S.view]();
 }
@@ -690,6 +694,7 @@ async function home() {
         <img src="/runs/${r.id}/${r.thumb}" alt=""><span class="kicker">${r.use === "special" ? T("특수교육 직무 훈련", "Special-education job training") : `${r.custom ? "★ " : ""}${esc(r.job)}`}</span><strong>${name(r)}</strong><span class="seemore">${icon("arrow")}<b>${T("예시 보기", "See example")}</b></span></a>`).join("")}</div>` : ""}
 
     <h2 class="center sect">${T("모두 Meta 모델로 돌아가요", "Runs on Meta models")}</h2>
+    <p class="center muted notmeta">${T("Meta 모델로 만들었지만 Meta 제품은 아니에요. 로직크래프트가 Meta AI 해커톤에서 만들었어요.", "Built with Meta models — not a Meta product. Made by LogicCraft for the Meta AI Developer Hackathon.")}</p>
     <div class="where two">${[
       [T("Meta Model API", "Meta Model API"), "Muse Spark · SAM 3.1 · Muse Image · Muse Voice Transcribe", T("카드를 만들고, 따라 하는 동안 단계를 알아보고, 됐는지 확인해요.", "Makes the cards, follows the steps and checks each result.")],
       [T("학교 컴퓨터에서", "On the school's computer"), T("Muse Glimmer 30B · 공개 가중치", "Muse Glimmer 30B · open weights"), T("같은 일을 학교 안에서. 학생 영상이 학교 밖으로 나가지 않아요.", "The same work inside the school. Student video never leaves it.")],
@@ -864,7 +869,7 @@ function edit() {
   const y = scrollY;
   $("#main").innerHTML = `
     <div class="toolbar">
-      <input class="titlein" value="${esc(S.data.title || "")}" placeholder="${T("과제 이름 (예: 아이스 라테 만들기)", "Task name (e.g. Iced latte)")}" oninput="S.data.title=this.value;scheduleSave()" aria-label="${T("과제 이름", "Task name")}">
+      <input class="titlein" value="${esc((ui === "en" && S.data.title_en) || S.data.title || "")}" ${ui === "en" && S.data.title_en ? "readonly" : ""} placeholder="${T("과제 이름 (예: 아이스 라테 만들기)", "Task name (e.g. Iced latte)")}" oninput="S.data.title=this.value;scheduleSave()" aria-label="${T("과제 이름", "Task name")}">
       <h2 style="margin:0">${T(`카드 ${cs.length}장`, `${cs.length} cards`)}</h2>
       <span id="chip">${chipHtml(Object.keys(per).length + global.length)}</span>
       <span class="saved" id="saved" aria-live="polite">${saveText()}</span>
@@ -902,13 +907,14 @@ function rowHtml(c, i, iss = []) {
         ${S.data.stage === "archived" ? "" : `<button class="linkbtn" onclick="toggle('strip',${c.n})">${strip ? T("장면 고르기 닫기 ▲", "Close frames ▲") : T("다른 장면 고르기 ▼", "Choose another frame ▼")}</button>`}
         <button class="linkbtn" onclick="illustrateCard(${i})" ${S.busy.has(c.n) ? "disabled" : ""} title="Muse Image · $0.01">${icon("draw")} ${c.ill ? T("다시 그리기", "Redraw") : T("그림으로", "Drawing")}</button>
         <span class="seg mini">${[["photo", T("사진", "Photo")], ...(c.ill ? [["ill", T("그림", "Drawing")]] : []), ...(S.data.stage === "archived" ? [] : [["clip", T("움직임", "Motion")]]), ...(S.data.fold ? [["fold", "3D"]] : [])].map(([v, l]) =>
-            `<button class="${(c.view || "photo") === v ? "on" : ""}" onclick="setView(${i},'${v}')">${l}</button>`).join("")}</span>
+            `<button class="${(c.view || "photo") === v ? "on" : ""}" aria-pressed="${!!((c.view || "photo") === v)}" onclick="setView(${i},'${v}')">${l}</button>`).join("")}</span>
         ${S.data.fold?.report?.[c.n] ? `<span class="f3tag ${S.data.fold.report[c.n] === "no" ? "no" : ""}" title="${T("3D 끝 모양을 시범 장면과 Muse Spark 가 비교한 결과. '다름'인 3D는 학습자 화면에서 움직임으로 바뀌어요.", "Muse Spark compared the 3D end shape with the demonstration. A 'different' 3D shows as motion to learners.")}">3D ${{ yes: T("대조 맞음", "matches"), no: T("다름", "differs"), unclear: T("알 수 없음", "unclear") }[S.data.fold.report[c.n]]}</span>` : ""}
       </div>
     </div>
     <div>
-      <textarea class="say" rows="1" placeholder="${T("동작 하나를 짧게 써 주세요 (예: 우유를 부으세요.)", "Korean sentence, one action (e.g. 우유를 부으세요.)")}" oninput="typed(${i},'ko',this)">${esc(c.ko)}</textarea>
-      <textarea class="say en" rows="1" placeholder="English sentence" oninput="typed(${i},'en',this)">${esc(c.en)}</textarea>
+      ${(k => ui === "en" ? k.reverse().join("") : k.join(""))([  // 화면 언어의 문장을 크게 위에, 다른 언어는 작게 아래에
+        `<textarea class="say ${ui === "en" ? "sub" : ""}" rows="1" lang="ko" placeholder="${T("동작 하나를 짧게 써 주세요 (예: 우유를 부으세요.)", "Korean sentence, one action (e.g. 우유를 부으세요.)")}" oninput="typed(${i},'ko',this)">${esc(c.ko)}</textarea>`,
+        `<textarea class="say ${ui === "en" ? "" : "sub"}" rows="1" lang="en" placeholder="${T("영어 문장", "English sentence, one action (e.g. Pour the milk.)")}" oninput="typed(${i},'en',this)">${esc(c.en)}</textarea>`])}
       <div class="meta">${T("영상", "Video")} ${fmt(c.start)} ~ ${fmt(c.end)}</div>
       <div id="iss${i}">${iss.map(x => `<div class="issue">${esc(x)}</div>`).join("")}</div>
       <div class="actions">
@@ -1256,7 +1262,7 @@ async function addCard(i) {
 function segHtml() {
   const x = S.data?.extra?.ok ? [["x", `${ui === "en" ? "English" : "한국어"} + ${S.data.extra.name}`]] : [];
   return `<span class="seg">${[["ko", "한국어"], ["en", "English"], ["both", T("둘 다", "Both")], ...x].map(([v, l]) =>
-    `<button class="${lang === v || (lang === "x" && !x.length && v === ui) ? "on" : ""}" onclick="setLang('${v}')">${l}</button>`).join("")}</span>`;
+    `<button class="${lang === v || (lang === "x" && !x.length && v === ui) ? "on" : ""}" aria-pressed="${!!(lang === v || (lang === "x" && !x.length && v === ui))}" onclick="setLang('${v}')">${l}</button>`).join("")}</span>`;
 }
 function use() {
   const cs = S.data.cards, nIss = (S.data.problems || []).length, pages = Math.ceil(cs.length / 6);
@@ -1278,11 +1284,12 @@ function use() {
       <div id="liveboard"></div>
       <section class="followhero">
         <div class="fh-media"><img src="${imgSrc(first)}" alt="">
-          <span class="fh-pov">${icon("glasses")} ${T("안경 시점", "Glasses view")}</span>
-          ${noDone() ? "" : `<span class="fh-check">${icon("check")} ${T("됐어요", "Done")}</span>`}
+          <span class="fh-pov">${icon("glasses")} ${T("눈높이 시점", "Eye-level view")}</span>
+
           <span class="fh-card">${esc(main(first))}</span></div>
         <div class="fh-copy">
           ${title ? `<span class="kicker">${title}</span>` : ""}
+          ${noDone() ? `<span class="safechip">${icon("check")} ${T("사람이 '다 했다'를 정해요", "A person decides when it's done")}</span>` : ""}
           ${noDone() ? `<h2>${T("안경에 카드를 띄우고, '다 했다'는 사람이 정해요", "Cards on the glasses; a person decides when each step is done")}</h2>
           <ol class="fh-steps">
             <li>${T("안경(또는 태블릿)에 지금 할 카드가 떠요", "The current card shows on the glasses (or a tablet)")}</li>
@@ -1304,7 +1311,7 @@ function use() {
           <span class="muted">${noDone() ? T("Meta AI 앱 → 웹앱 추가에 아래 주소를 넣거나 QR을 찍어요. 따라 하기의 카드가 렌즈에 떠요.", "Add this address as a Web App in the Meta AI app, or scan the QR. Coach cards appear on the lens.") : T("Meta AI 앱 → 웹앱 추가에 아래 주소를 넣거나 QR을 찍어요. 따라 하기의 카드와 확인 결과가 렌즈에 떠요.", "Add this address as a Web App in the Meta AI app, or scan the QR. Coach cards and check results appear on the lens.")}</span>
           <div class="fh-qr"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&m=${ui}&s=${pairCode}" alt="QR" width="112" height="112"><button class="btn" onclick="shareLink('glasses')">${icon("share")} ${T("링크 보내기", "Send link")}</button></div></div>
         <div class="fh-box"><strong>${icon("glasses")} ${T("어떻게 따라 하나요", "How it's followed")}</strong>
-          <span class="seg">${[["together", T("같이 하기", "Together")], ["alone", T("혼자 하기", "Alone")]].map(([v, l]) => `<button class="${(S.data.mode || "together") === v ? "on" : ""}" onclick="setFollow({mode:'${v}'})">${l}</button>`).join("")}</span>
+          <span class="seg">${[["together", T("같이 하기", "Together")], ["alone", T("혼자 하기", "Alone")]].map(([v, l]) => `<button class="${(S.data.mode || "together") === v ? "on" : ""}" aria-pressed="${!!((S.data.mode || "together") === v)}" onclick="setFollow({mode:'${v}'})">${l}</button>`).join("")}</span>
           <span class="muted">${alone() ? T("곁에 아무도 없어요(릴스 시청자, 집). '여기서 막혔어요'를 누르면 카드 번호만 만든 사람에게 모여요.", "Nobody nearby (Reels viewers, at home). 'Stuck here' sends only the card number to the maker.")
             : T("곁에 선생님·선배가 있어요. '도와줘요'를 누르면 아래 현황판에 떠요.", "A teacher or senior is nearby. 'Ask for help' shows on the live board.")}</span>
           <label class="fh-rec"><input type="checkbox" ${noDone() ? "checked" : ""} onchange="setFollow({no_done:this.checked})"> ${T("기계가 '됐어요'라고 판단하지 않기", "Don't let the app decide a step is done")}</label>
@@ -1501,7 +1508,7 @@ function coach() {
         <span>${T("안경 연결", "Glasses link")} · <b>${C.pair}</b><br><span class="d">${T("이 화면 전용 코드라, 같은 카드를 다른 학생이 써도 섞이지 않아요.", "This screen's own code, so other learners on the same cards don't mix.")}</span></span></div>
       <label class="livetoggle" ${noDone() ? "hidden" : ""}><input type="checkbox" ${C.live ? "checked" : ""} onchange="setLive(this.checked)"> ${T("따라 하는 동안 계속 확인하기 (단계 결과를 기준 사진과 비교)", "Keep checking while following (compare each step's result with its reference)")}</label>
       <div class="seg" id="chelpseg">${[[false, T("카드 다 보여 주기", "Show the whole card")], [true, T("필요할 때만 도움", "Help only when needed")]].map(([v, l]) =>
-        `<button class="${C.help === v ? "on" : ""}" onclick="setHelp(${v})">${l}</button>`).join("")}</div>
+        `<button class="${C.help === v ? "on" : ""}" aria-pressed="${!!(C.help === v)}" onclick="setHelp(${v})">${l}</button>`).join("")}</div>
       <div class="d" id="chelpd"></div>
       <button class="navb next" onclick="coachCamera()">${noDone() ? T("시작하기", "Start") : T("카메라 켜기", "Turn on camera")}</button>
       <label class="linkbtn" style="cursor:pointer">${T("영상 파일로 시험하기", "Try with a video file")}<input type="file" accept="video/*" hidden onchange="coachFile(this.files[0])"></label>
@@ -1643,11 +1650,12 @@ function coachEnd(finished) {
     fetch(`/api/runs/${S.run}/records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ s: C.pair, rows: Object.entries(C.max).map(([i, lv]) => ({ n: S.data.cards[+i].n, lv })) }) }).catch(() => {});
   if (finished) fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: S.idx, by: "coach", fin: true, s: C.pair }) }).catch(() => {});
   $(".coachv").insertAdjacentHTML("beforeend", `<div class="cstart" id="csum"><div class="glyph">${icon("check")}</div><div class="t">${finished ? T("다 했어요", "All steps done") : T("오늘 따라 하기", "Today's run")}</div>
-    ${C.help && rec.length ? `<div class="sumgrid">${by.map((ns, j) => `<div><b>${j ? T(`${lvName(j + 1)}까지`, `Up to ${lvName(j + 1).toLowerCase()}`) : T("글만 보고", "Text only")}</b><span>${ns.length ? T(`카드 ${ns.join(", ")}`, `Card${ns.length > 1 ? "s" : ""} ${ns.join(", ")}`) : "–"}</span></div>`).join("")}</div>
-    <div class="d">${S.rec ? T("기록에 남겼어요. 3번 화면의 '기록 보기'에서 볼 수 있어요.", "Saved to records. See 'View records' on the Follow & check page.") : T("이 기록은 저장하지 않아요. 필요하면 지금 적어 두세요.", "This is not saved. Write it down now if you need it.")}</div>` : ""}
+    ${C.help && rec.length ? `<div class="sumline">${(k => T(`카드 ${S.data.cards.length}장 중 ${k}장에서 그림·소리·움직임 도움`, `Picture, sound or motion help on ${k} of ${S.data.cards.length} cards`))(by[1].length + by[2].length + by[3].length)}</div>
+    <div class="sumgrid">${by.map((ns, j) => `<div><b>${j ? T(`${lvName(j + 1)}까지`, `Up to ${lvName(j + 1).toLowerCase()}`) : T("글만 보고", "Text only")}</b><span>${ns.length ? T(`카드 ${ns.join(", ")}`, `Card${ns.length > 1 ? "s" : ""} ${ns.join(", ")}`) : "–"}</span></div>`).join("")}</div>
+    <div class="d">${S.rec ? T("기록에 남겼어요. 3번 화면의 '기록 보기'에서 볼 수 있어요.", "Saved to records. See 'View records' on the Follow & check page.") : T("선생님께: 이 요약은 저장되지 않아요. 필요하면 적어 두세요.", "For the teacher: this summary isn't saved. Note it down if you need it.")}</div>` : ""}
     <button class="navb" onclick="shareRun()">${T("오늘 한 것 보내기", "Share today's run")}</button>
-    ${by[2].length + by[3].length ? `<button class="navb" onclick="sendStuck()">${T("막힌 카드 고치러 가기", "Fix the cards that were hard")}</button>` : ""}
-    <button class="navb next" onclick="go({run:S.run,view:'use'})">${T("나가기", "Exit")}</button></div>`);
+    ${by[2].length + by[3].length ? `<button class="navb next" onclick="sendStuck()">${T("막힌 카드 고치러 가기", "Fix the cards that were hard")}</button>` : ""}
+    <button class="navb ${by[2].length + by[3].length ? "" : "next"}" onclick="go({run:S.run,view:'use'})">${T("나가기", "Exit")}</button></div>`);  // 막힌 카드가 있으면 그것을 주 단추로
   C.sum = { finished: !!finished, upto: S.idx + 1, by };
   stopCoach(true);
   if (finished && C.voice && window.speechSynthesis) speechSynthesis.speak(utter(T("다 했어요.", "All steps done."), ui === "en" ? "en-US" : "ko-KR"));  // 멈춘 뒤에 읽어야 끊기지 않는다
