@@ -35,6 +35,9 @@ Ignore colour, hands, shadows, perspective and small size differences. If the cl
 Answer with JSON only: {"cards":[{"n":1,"match":"yes"|"no"|"unclear","fix":"if no: one short sentence on what the drawing should change"}]}"""
 
 
+MAX_STILL = 400_000  # 3D 그림 한 장(jpeg data URL) 최대 길이: 480x360 은 보통 30KB 안팎, 이보다 크면 잘못 온 값으로 본다
+
+
 def _ask(content, effort=None):
     kw = {"reasoning": {"effort": effort}} if effort else {}
     r = client.responses.create(model=STEP_MODEL, input=[{"role": "user", "content": content}], store=False, **kw)
@@ -73,7 +76,7 @@ def write_step(d, cards, n, prefix, current, problems=(), notes=()):
                                                          shape_a='"shape":{"w":1,"h":1,"color":"#rrggbb"},' if first else "")},
                {"type": "input_image", "image_url": data_url(frame(d, prev_t, last))},
                {"type": "input_image", "image_url": data_url(frame(d, c.get("end", 0), last))}]
-    if isinstance(current, str) and current.startswith("data:image/jpeg;base64,") and len(current) < 400_000:
+    if isinstance(current, str) and current.startswith("data:image/jpeg;base64,") and len(current) < MAX_STILL:
         content.append({"type": "input_image", "image_url": current})
     if problems or notes:
         content.append({"type": "input_text", "text": "Your last answer for this card had problems:\n- " + "\n- ".join([*problems, *notes]) + "\nFix them."})
@@ -93,7 +96,7 @@ def compare(d, cards, stills):
     content = [{"type": "input_text", "text": COMPARE}]
     for c in cards:
         s = stills.get(str(c["n"]))
-        if not (isinstance(s, str) and s.startswith("data:image/jpeg;base64,") and len(s) < 400_000):
+        if not (isinstance(s, str) and s.startswith("data:image/jpeg;base64,") and len(s) < MAX_STILL):
             continue
         content += [{"type": "input_text", "text": f'Card n={c["n"]}: {c.get("en", "")}'},
                     {"type": "input_image", "image_url": data_url(frame(d, c.get("end", 0), last))},

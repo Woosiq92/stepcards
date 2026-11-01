@@ -636,7 +636,8 @@ async function verifyNow(glassesReq) {
   try { const r = await fetch(`/api/runs/${S.run}/cards/${c.n}/verify`, { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ photo, record: S.rec, lv: S.view === "coach" ? C.lv || 0 : 0, s: C.pair, local: S.view === "coach" && C.local }) }); status = r.status; if (r.ok) d = await r.json(); } catch {}
   clog("verify", { n: idx + 1, result: d?.result || `error${status}`, ms: Date.now() - t0 });
-  if (!$("#vbox")) return;
+  if ($("#vbox") !== box) return;  // 그사이 닫고 새로 확인했으면 옛 결과는 버린다
+  if (glassesReq) setTimeout(() => { if ($("#vbox") === box) closeVerify(); }, 5000);  // 안경 사용자는 휴대폰 상자를 닫을 수 없다: 결과를 보인 뒤 저절로
   if (!d) {  // 5: 키가 없어서인지, 그냥 실패인지 정확히
     const why = status === 401 ? ["확인하려면 접속 키가 필요해요", "Checking needs the access key"] : status === 429 ? ["오늘 확인 한도를 다 썼어요", "Today's check limit is used up"] : ["확인하지 못했어요. 다시 해 주세요", "Could not check. Please try again"];
     box.querySelector(".vmsg").textContent = T(why[0] + ".", why[1] + "."); return fail(why);
@@ -1020,12 +1021,12 @@ function saveNow() {
   const cards = JSON.parse(JSON.stringify(S.data.cards)), title = S.data.title ?? "";
   S.saving = S.saving.then(async () => {
     setSave("saving");
-    const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards, title }) });
+    const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards, title, ...(S.foldDrop ? { fold: null } : {}) }) });
     if (r.status === 401) return setSave("readonly");
     if (r.status === 403) return setSave("others");  // 다른 교사의 카드 묶음
     if (!r.ok) throw new Error(r.status);
     const d = await r.json();
-    Object.assign(S.data, { problems: d.problems, warnings: d.warnings, status: d.status, extra: d.extra });  // 문장이 바뀌면 서버가 번역 확인을 푼다
+    Object.assign(S.data, { problems: d.problems, warnings: d.warnings, status: d.status, extra: d.extra, next_n: d.next_n }); S.foldDrop = false;  // 문장이 바뀌면 서버가 번역 확인을 푼다
     setSave("saved");
     if (S.view === "edit") updateIssues();
   }).catch(() => setSave("error"));
@@ -1118,8 +1119,15 @@ function undoable(msg, before) {
   toast(msg, T("되돌리기", "Undo"), undoLast);
 }
 function undoLast() { if (!S.undo) return; const u = S.undo; document.querySelector(".toast")?.remove(); S.data.cards = u; changed(); }
-function move(i, d) { const before = snapshot(), cs = S.data.cards; [cs[i], cs[i + d]] = [cs[i + d], cs[i]]; changed(); undoable(T("순서를 바꿨어요.", "Order changed."), before); }
-function del(i) { const before = snapshot(); S.data.cards.splice(i, 1); changed(); undoable(T("카드를 뺐어요.", "Card removed."), before); }
+// 3D 접기 프로그램은 카드 순서대로 접는다: 순서·장수가 바뀌면 맞지 않으니 빼고(3D 카드는 움직임으로) 다시 만들게 한다
+function foldStale() {
+  if (!S.data.fold) return;
+  S.data.fold = null; S.foldDrop = true;
+  S.data.cards.forEach(c => { if (c.view === "fold") c.view = S.data.stage === "archived" ? (c.ill ? "ill" : "photo") : "clip"; });
+  toast(T("카드 순서가 바뀌어 3D 접기를 뺐어요. '3D 접기 만들기'로 다시 만들 수 있어요.", "The card order changed, so the 3D folds were removed. Make them again with 'Make 3D folds'."));
+}
+function move(i, d) { const before = snapshot(), cs = S.data.cards; [cs[i], cs[i + d]] = [cs[i + d], cs[i]]; foldStale(); changed(); undoable(T("순서를 바꿨어요.", "Order changed."), before); }
+function del(i) { const before = snapshot(); S.data.cards.splice(i, 1); foldStale(); changed(); undoable(T("카드를 뺐어요.", "Card removed."), before); }
 function merge(i) {
   const before = snapshot(), cs = S.data.cards, a = cs[i], b = cs[i + 1];
   a.start = Math.min(a.start, b.start); a.end = Math.max(a.end, b.end);
@@ -1293,7 +1301,7 @@ async function addCard(i) {
     start = mid + 1; end = prev.end; prev.end = mid; prev.rep = Math.min(prev.rep, mid);
     if (prev.done_t != null && prev.done_t > mid) delete prev.done_t;
   }
-  const n = Math.max(...cs.map(c => c.n)) + 1;
+  const n = Math.max(S.data.next_n || 0, ...cs.map(c => c.n + 1)); S.data.next_n = n + 1; foldStale();  // 뺀 카드 번호를 다시 쓰지 않는다(서버 next_n 과 같은 규칙)
   cs.splice(i + 1, 0, { n, start, end, rep: start, ko: "", en: "", object: "", look: "", image: `cards/${pad(n)}.jpg`, box: null });
   S.strip.add(n);
   await reframe(i + 1, start + Math.floor((end - start) / 2));
@@ -1570,7 +1578,7 @@ function coach() {
     const d = await fetch(`/api/runs/${S.run}/now?s=${C.pair}`).then(r => r.json()).catch(() => null);
     if (d && d.ack && d.ack !== C.ackSeen) { C.ackSeen = d.ack; if (C.called === S.idx || d.ack > Date.now() / 1000 - 5) { callBtn(true); pill(T("도와주러 오고 있어요", "Help is on the way")); speak(true, false, T("도와주러 오고 있어요.", "Help is on the way.")); } }
     if (d && d.call && C.called !== S.idx && d.why === "glasses") { C.called = S.idx; callBtn(); }  // 안경에서 부름
-    if (d && d.by === "glasses" && d.v > (C.v || 0) && !d.fin && $("#csum")) { C.v = d.v; $("#csum").remove(); C.max = {}; S.idx = d.i; coachCard(true); }  // 끝 화면 뒤 안경에서 '처음으로'
+    if (d && d.by === "glasses" && d.v > (C.v || 0) && !d.fin && $("#csum")) { C.v = d.v; $("#csum").remove(); C.max = {}; S.idx = d.i; coachCard(true); coachCamera(); }  // 끝 화면 뒤 안경에서 '처음으로': 카메라·판단도 다시 켠다
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.fin) { C.v = d.v; coachEnd(true); }  // 안경에서 '다 했어요'
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.i !== S.idx) { C.v = d.v; clog("card", { cur: S.idx + 1, to: d.i + 1, by: "glasses" }); S.idx = d.i; C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); }
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.vreq && d.vreq !== C.vreqDone) { C.v = d.v; C.vreqDone = d.vreq; verifyNow(d.vreq); }
@@ -1795,6 +1803,8 @@ function viewSeen(d) {
   }
 }
 async function coachCamera() {
+  if (C.opening) return; C.opening = true; setTimeout(() => { C.opening = false; }, 1500);  // 권한 창이 뜬 사이 두 번 눌러도 한 번만
+  C.stream?.getTracks().forEach(t => t.stop());
   if (noDone()) {  // 사람을 돕는 일: 카메라가 '다 했다'를 정하지 않는다. 도움 단계·카드는 그대로, 넘기기는 사람이
     C.manual = true; coachStart(); aim(false); pill(T("직접 넘겨요 · '다 했다'는 사람이 정해요", "Turn cards by hand · a person decides when it's done")); return;
   }
@@ -1812,6 +1822,7 @@ function coachFile(f) {
   v.onended = () => { C.running = false; pill(T("영상이 끝났어요", "Video ended")); };
 }
 function coachStart() {
+  clearInterval(C.timer);  // 다시 시작해도 사진 타이머가 겹치지 않게
   $("#cstart").hidden = true; C.buf = []; C.running = true; pill(T("지켜보는 중", "Watching"));
   if (!noDone()) aim(true, S.data?.pov === "facing" ? T("이 카드의 동작이 네모 안에 보이게 카메라 앞에 서 주세요", "Stand in front of the camera so this card's action is inside the box") : C.front ? T("이 카드의 동작이 네모 안에 보이게 화면을 뒤로 젖히거나 카메라 앞으로 옮겨 주세요", "Tilt the screen back or move in front of the camera so this card's action is inside the box")
                     : T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box"));  // 처음엔 크게: 손이 보이면 저절로 작아진다
@@ -1822,7 +1833,7 @@ function coachStart() {
   C.helpTimer = setInterval(() => {
     if (C.help && C.running && !C.checking && C.lv < maxLv() && Date.now() - C.since > helpWait(S.data.cards[S.idx]) * 1000) helpUp();
     else if (C.help && C.running && !C.checking && C.lv >= maxLv() && Date.now() - C.since > helpWait(S.data.cards[S.idx]) * 1500) callMaker("auto");  // 도움을 다 써도 안 되면 사람을 부른다
-    if (C.running && Date.now() - C.lastMove > IDLE_MIN * 60000) coachPause();  // 켜 둔 채 잊어도 비용이 계속 나가지 않게
+    if (C.running && !noDone() && Date.now() - C.lastMove > IDLE_MIN * 60000) coachPause();  // 켜 둔 채 잊어도 비용이 계속 나가지 않게
   }, 1000);
   C.lastMove = Date.now();
   navigator.wakeLock?.request("screen").then(l => { C.lock = l; }).catch(() => {});  // 휴대폰 화면이 꺼지지 않게

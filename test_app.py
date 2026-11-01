@@ -264,6 +264,7 @@ def test_judge_key_daily_limit(monkeypatch):
     rid, d = make_run()
     monkeypatch.setattr(A, "APP_KEY", "teach-1"); monkeypatch.setattr(A, "JUDGE_KEY", "judge-9")
     monkeypatch.setitem(A.JUDGE_LIMITS, "agent", 2); A.JUDGE_USE.update(day="", n={})
+    (d / "owner.txt").write_text("judge")  # 심사 키는 자기가 올린 묶음만 고친다
     import agent
     monkeypatch.setattr(agent, "run", lambda *a: {"changes": [], "note": "", "problems": [], "checks": 0, "cost": 0})
     c = TestClient(A.app, base_url="https://testserver")
@@ -462,3 +463,26 @@ def test_learner_without_key_limited_and_credit_cap(monkeypatch, tmp_path):
     import pytest as _p
     with _p.raises(spend.CapReached):
         spend.guard()
+
+
+# 11-01 코드 검수 보안 수정: 심사 키 소유자 제한·견본 보호, 카드 값 검사(저장된 XSS·먹통), /now 입력 검사·결과 키 제한
+def test_review_security_fixes(monkeypatch):
+    rid, d = make_run()
+    monkeypatch.setattr(A, "APP_KEY", "teach-1"); monkeypatch.setattr(A, "JUDGE_KEY", "judge-9")
+    c = TestClient(A.app, base_url="https://testserver")
+    c.post("/login", data={"k": "judge-9"})
+    cards = json.loads((d / "cards.json").read_text())["cards"]
+    assert c.put(f"/api/runs/{rid}/cards", json={"cards": cards}).status_code == 403  # 남의 묶음
+    assert c.delete(f"/api/runs/{rid}").status_code == 403
+    monkeypatch.setitem(A.SEED_INDEX, rid, {"title": "견본"})
+    (d / "owner.txt").write_text("judge")
+    assert c.put(f"/api/runs/{rid}/cards", json={"cards": cards}).status_code == 403  # 견본은 관리자만
+    monkeypatch.delitem(A.SEED_INDEX, rid)
+    bad = [{**cards[0], "v": '"><img src=x onerror=alert(1)>'}]
+    assert c.put(f"/api/runs/{rid}/cards", json={"cards": bad}).status_code == 400
+    assert c.put(f"/api/runs/{rid}/cards", json={"cards": [{**cards[0], "n": "1"}]}).status_code == 400
+    assert c.put(f"/api/runs/{rid}/cards", json={"cards": [cards[0], {**cards[1], "n": cards[0]["n"]}]}).status_code == 400  # n 중복
+    assert c.put(f"/api/runs/{rid}/cards", json={"cards": cards}).status_code == 200
+    assert client.post(f"/api/runs/{rid}/now", json={"i": "x"}).status_code == 400
+    r = client.post(f"/api/runs/{rid}/now", json={"i": 0, "s": "q1", "vres": {"result": "done", "ko": "됐어요", "junk": "x" * 999}}).json()
+    assert r["vres"] == {"result": "done", "ko": "됐어요"}

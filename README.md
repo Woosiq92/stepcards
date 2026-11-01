@@ -106,7 +106,7 @@ Requirements: Python 3.11+, ffmpeg, a Meta Model API key.
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install openai python-dotenv pillow requests fastapi uvicorn python-multipart pytest
+.venv/bin/pip install openai python-dotenv pillow requests fastapi uvicorn python-multipart segno pytest
 echo 'MODEL_API_KEY=...' > .env          # never commit this file
 .venv/bin/python app.py                  # http://127.0.0.1:8790
 ```
@@ -124,14 +124,16 @@ Deploy (for example Railway, from this GitHub repository): the `Dockerfile` inst
 | Variable | Value |
 |---|---|
 | `MODEL_API_KEY` | Meta Model API key |
-| `APP_KEY` | an access key; anyone can view the cards, but adding videos, drawings, the agent, Coach mode and edits ask for this key once (they cost credits or change cards) |
-| `JUDGE_KEY` | optional second key for judges: everything works, with daily limits on the calls that cost credits (6 videos, 60 drawings, 20 agent requests, about 30 minutes of Coach mode) |
+| `APP_KEY` | the admin access key; anyone can view the cards, but adding videos, drawings, 3D folds, translation, the agent and edits ask for a key once (they cost credits or change cards). Learner devices need no key for Coach decisions, Check and learning records, within a daily limit per card set (900 decisions, 300 checks) |
+| `JUDGE_KEY` | optional second key for judges: everything works on card sets they upload (samples are read-only), with daily limits on the calls that cost credits (6 videos, 60 drawings, 20 agent requests, about 30 minutes of Coach mode) |
 | `TEACHER_KEYS` | optional per-teacher keys, `name:key,name:key`: each teacher sees the samples plus their own card sets, and can edit or delete only their own (Coach mode works on any set). `APP_KEY` stays the admin key |
 | `ALERT_WEBHOOK` | optional webhook URL (Discord or Slack style): a one-line alert when card making stops or the server hits an unhandled error |
 | `COMPACT_DAYS` / `ARCHIVE_DAYS` / `RETAIN_DAYS` / `CACHE_DAYS` | storage lifecycle (14 / 90 / off / 30 days), see Running it for real |
 | `TEACHER_QUOTA_MB` / `TEACHER_MAX_SETS` | per-teacher storage limits (5000 MB / 50 sets) |
 | `STEP_MODEL` / `SAM_MODEL` / `ASR_MODEL` | model names, if Meta renames or retires one |
-| `DATA_DIR` | a persistent volume path (for example `/data`), so card sets survive redeploys |
+| `DATA_DIR` | required in deployment: a persistent volume path (for example `/data`), so card sets, the state file and the spend ledger survive redeploys |
+| `SPEND_CAP_USD` | credit cap (default 140): once the spend ledger reaches it, every request that calls the Meta API is refused (viewing and turning cards by hand keep working) |
+| `SPEND_ALREADY_USD` | spend that happened outside this server's ledger (read it from the Meta developer console's billing page); added to the ledger total |
 
 The key is asked inside the app the first time an action needs it; a cookie keeps it for 30 days. On the glasses, add the web app as `https://<host>/glasses?run=<id>` (the Use page shows QR codes for it and for the tablet view). A phone camera or glasses web app needs HTTPS, which the host provides.
 

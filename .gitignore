@@ -12,3 +12,4 @@ demo/out/
 demo/tts/
 !seed/*/video.mp4
 spend.json
+state.json

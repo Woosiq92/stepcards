@@ -1,6 +1,6 @@
 # 영상 → 단계 카드 파이프라인 ①~④
 # 사용: .venv/bin/python pipeline.py 영상.mp4 [--fresh]
-import base64, hashlib, json, os, re, subprocess, sys, time
+import base64, hashlib, json, os, re, subprocess, sys, threading, time
 from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -59,7 +59,9 @@ class Run:
 
     def log(self, stage, msg, **extra):
         self.events.append({"t": round(time.time(), 1), "stage": stage, "msg": msg, **extra})
-        self.progress.write_text(json.dumps({"video": self.video.name, "video_path": str(self.video), "events": self.events}, ensure_ascii=False, indent=1))
+        tmp = self.progress.with_name(f".{threading.get_ident()}_progress.json")  # 1.2초마다 읽는 진행 화면이 반쯤 쓴 파일을 읽지 않게
+        tmp.write_text(json.dumps({"video": self.video.name, "video_path": str(self.video), "events": self.events}, ensure_ascii=False, indent=1))
+        os.replace(tmp, self.progress)
         print(f"[{stage}] {msg}")
 
     def path(self, name):
@@ -118,7 +120,7 @@ def listen(run):
     return turns
 
 
-# ②-1 "더 가까이 보기" 도구: 경계가 애매하면 모델이 스스로 그 구간을 1초에 4장으로 다시 본다
+# ②-1 "더 가까이 보기" 도구: 경계가 애매하면 모델이 스스로 그 구간을 1초에 LOOK_FPS 장으로 다시 본다
 LOOK_MAX_CALLS, LOOK_MAX_SPAN, LOOK_FPS = 6, 8, 2
 LOOK_TOOL = {"type": "function", "name": "look_closer",
              "description": f"See {LOOK_FPS} frames per second for a short part of the video (at most {LOOK_MAX_SPAN} seconds). "
@@ -198,7 +200,7 @@ def split_steps(run, duration, frames, speech=(), look=False, every=1, local=Fal
     content = []
     for i, p in enumerate(frames[::every]):
         content += [{"type": "input_text", "text": f"t={i * every}s"}, {"type": "input_image", "image_url": data_url(p)}]
-    if every > 1 and local:
+    if every > 1 and (local or not look):  # 확대 도구(look_closer)를 주지 않을 때는 쓰라고 하지 않는다
         content.append({"type": "input_text", "text": f"These frames are {every} seconds apart. Give step times in seconds of the video."})
     elif every > 1:
         content.append({"type": "input_text", "text": f"These overview frames are {every} seconds apart, so short steps and exact boundaries "
@@ -330,11 +332,13 @@ def highlight(run, steps, local=False):
 def alert(text):
     """오류 알림: ALERT_WEBHOOK(디스코드·슬랙 등 웹훅 주소)이 있으면 한 줄 보낸다. 알림이 실패해도 일은 계속"""
     url = os.environ.get("ALERT_WEBHOOK")
-    if url:
-        try:
-            requests.post(url, json={"content": text, "text": text}, timeout=5)
-        except requests.RequestException:
-            pass
+    if url:  # 요청을 처리하는 흐름을 멈추지 않게 따로 보낸다
+        def send():
+            try:
+                requests.post(url, json={"content": text, "text": text}, timeout=5)
+            except requests.RequestException:
+                pass
+        threading.Thread(target=send, daemon=True).start()
 
 
 def main(video, fresh=False, look=False, local=False):
@@ -368,10 +372,12 @@ def build(run, fresh, look=False, local=False):
         run.log("highlight", "저장된 카드 사용(캐시)")
     else:
         cards = highlight(run, result["steps"], local)
-        cards_file.write_text(json.dumps({"duration": duration, "status": result["status"], "problems": result["problems"],
-                                          "warnings": result["warnings"], "cards": cards}, ensure_ascii=False, indent=1))
+        tmp = cards_file.with_name(f".{threading.get_ident()}_cards.json")  # 반쯤 쓴 파일을 읽지 않게
+        tmp.write_text(json.dumps({"duration": duration, "status": result["status"], "problems": result["problems"],
+                                   "warnings": result["warnings"], "cards": cards}, ensure_ascii=False, indent=1))
+        os.replace(tmp, cards_file)
     run.path("audio.wav").unlink(missing_ok=True)  # 받아쓰기(speech.json)가 끝나면 다시 쓰지 않는다(묶음 크기의 약 20%)
-    run.log("done", f"완료: {run.dir}")
+    run.log("done", "완료")  # 서버 폴더 경로는 진행 화면에 내보내지 않는다
 
 
 if __name__ == "__main__":

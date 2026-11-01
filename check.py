@@ -4,7 +4,7 @@ import re
 KEYS = ("start", "end", "rep", "ko", "en", "object", "look")
 KO_MAX, EN_MAX = 25, 60
 GAP_WARN = 15
-TWO_ACTIONS = re.compile(r"[가-힣]+(고|며|면서)\s")  # "꽂고 저어주세요"처럼 동작이 이어지는 문장
+TWO_ACTIONS = re.compile(r"[가-힣]+(고|며|면서)\s(?!(계|있))")  # "꽂고 저어주세요"처럼 동작이 이어지는 문장. "누르고 계세요"(한 동작을 이어 함)는 제외
 # ㅅ 불규칙 동사는 '으' 앞에서 ㅅ이 빠진다(붓다→부으세요). 씻다·벗다는 규칙 동사라 받침 모양으로는 못 가려서 동사를 적어 둔다
 S_IRREGULAR = {"붓": "부", "젓": "저", "긋": "그", "잇": "이", "짓": "지", "낫": "나"}
 S_IRREGULAR_RE = re.compile("(" + "|".join(S_IRREGULAR) + ")으")

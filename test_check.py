@@ -107,3 +107,11 @@ def test_long_video_stays_under_api_image_limit(tmp_path, monkeypatch):
     run.progress = tmp_path / "progress.json"
     pipeline.split_steps(run, 559, [frame] * 559)
     assert counts and max(counts) <= pipeline.API_MAX_FRAMES
+
+
+def test_two_actions_skips_holding_form():
+    # "누르고 계세요"는 한 동작을 이어 하는 꼴이라 '동작 둘'이 아니다(11-01 검수). "꽂고 저으세요"는 여전히 잡는다
+    from check import TWO_ACTIONS
+    assert not TWO_ACTIONS.search("버튼을 3초 동안 누르고 계세요.")
+    assert not TWO_ACTIONS.search("손잡이를 잡고 있으세요.")
+    assert TWO_ACTIONS.search("빨대를 꽂고 저으세요.")

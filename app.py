@@ -81,7 +81,10 @@ STATE_LOCK = threading.Lock()
 def save_state():
     with STATE_LOCK:  # 동시에 들어온 요청이 같은 임시 파일을 바꿔치기하다 500 이 났다(11-01 진단)
         tmp = STATE.with_suffix(f".{threading.get_ident()}.tmp")
-        tmp.write_text(json.dumps({"now": NOW, "judge": JUDGE_USE, "public": PUBLIC_USE}, ensure_ascii=False))
+        for k in [k for k, x in list(NOW.items()) if time.time() - x.get("t", 0) > 86400]:
+            NOW.pop(k, None)
+        snap = {k: dict(x) for k, x in list(NOW.items())}
+        tmp.write_text(json.dumps({"now": snap, "judge": JUDGE_USE, "public": PUBLIC_USE}, ensure_ascii=False))
         os.replace(tmp, STATE)
 NOW = {}
 load_state()
@@ -120,6 +123,8 @@ async def need_key(request: Request, call_next):
     교사 키는 자기가 올린 카드 묶음만 고치고 지울 수 있다(따라 하기는 누구 것이든). 바꾸는 요청은 카드 묶음마다 기록을 남긴다.
     키는 화면 안 입력 칸에서 POST /login 으로 받는다. 안경·따라 하기의 지금 카드 맞추기(/now)는 키 없이"""
     path = request.url.path
+    if path != "/api/upload" and int(request.headers.get("content-length") or 0) > 12_000_000:  # 사진 6장 넘는 본문은 받지 않는다(메모리)
+        return JSONResponse({"error": "request too large"}, 413)
     if not APP_KEY or request.method in ("GET", "HEAD") or NOW_PATH.match(path):
         return await call_next(request)
     if path.endswith(PAID_PATHS) and spend.over():  # 누적 비용 상한: Meta 를 부르는 요청은 모두 거절(보기·손으로 넘기기는 그대로)
@@ -149,8 +154,11 @@ async def need_key(request: Request, call_next):
     if not role:
         return JSONResponse({"error": "key required"}, 401)
     use_only = path.endswith(("/coach", "/verify", "/records", "/log"))  # 따라 하기·확인하기·기록은 누구 카드 묶음이든(고치기가 아님)
-    if m and role.startswith("teacher:") and not use_only and owner_of(m.group(1)) != role:
-        return JSONResponse({"error": "another teacher's card set"}, 403)
+    if m and not use_only and role != "admin" and (RUNS / m.group(1)).is_dir():  # 교사·심사 키는 자기가 올린 묶음만 고치고 지운다
+        if m.group(1) in SEED_INDEX:
+            return JSONResponse({"error": "sample card sets can't be changed"}, 403)
+        if owner_of(m.group(1)) != role:
+            return JSONResponse({"error": "another teacher's card set"}, 403)
     if role == "judge":
         kind = next((k for k in JUDGE_LIMITS if path.rstrip("/").endswith(k)), None)
         if kind:  # 크레딧이 드는 요청만 센다. 날이 바뀌면 처음부터
@@ -199,6 +207,11 @@ def card_list(d):
     if data is None:
         raise HTTPException(404, "아직 카드가 없습니다")
     return data["cards"]
+
+
+def save_cards(d, data):
+    """cards.json 은 공개 GET·진행 폴링이 수시로 읽는다: 반쯤 쓴 파일을 읽지 않게 바꿔 끼워 쓴다"""
+    atomic(d / "cards.json", lambda tmp: tmp.write_text(json.dumps(data, ensure_ascii=False, indent=1)))
 
 
 def atomic(out, make):
@@ -290,7 +303,8 @@ async def upload(request: Request, file: UploadFile, local: bool = Form(False)):
         if not 0 < secs <= MAX_VIDEO_SEC:
             raise HTTPException(400, f"영상 길이는 {MAX_VIDEO_SEC // 60}분 이하여야 합니다" if secs else "영상을 읽지 못했습니다")
         dest = UPLOADS / f"{h.hexdigest()[:12]}_{Path(file.filename).name}"
-        if not dest.exists():
+        fresh = not dest.exists()
+        if fresh:
             os.replace(tmp, dest)
     finally:
         tmp.unlink(missing_ok=True)
@@ -298,6 +312,8 @@ async def upload(request: Request, file: UploadFile, local: bool = Form(False)):
     if role != "admin":  # 교사(심사) 한 사람이 저장소를 다 쓰지 않게
         n, used = storage.owned_usage(RUNS, UPLOADS, role)
         if n >= storage.TEACHER_MAX_SETS or used + dest.stat().st_size > storage.TEACHER_QUOTA_MB << 20:
+            if fresh:
+                dest.unlink(missing_ok=True)  # 한도를 넘어 거절한 영상은 남기지 않는다
             raise HTTPException(403, f"저장 한도({storage.TEACHER_MAX_SETS}묶음·{storage.TEACHER_QUOTA_MB}MB)를 넘었습니다")
     run = pipeline.Run(dest)
     if not (run.dir / "owner.txt").exists():  # 처음 올린 사람이 주인(교사 키는 자기 것만 고친다)
@@ -349,7 +365,9 @@ def translate_cards(run_id: str, body: dict):
     language = str(body.get("lang", "")).strip()[:40]
     if not language or not read(d, "cards.json"):
         raise HTTPException(400, "옮길 언어가 없습니다")
-    t = translate.run(read(d, "cards.json")["cards"], language)
+    src = read(d, "cards.json")["cards"]
+    asked = {c["n"]: c.get("ko", "") for c in src}  # 옮긴 그 문장(그사이 고친 문장을 '최신 번역'으로 착각하지 않게)
+    t = translate.run(src, language)
     if not t["cards"]:
         raise HTTPException(502, "번역 결과가 비었습니다. 다시 해 보세요")
     with CARDS_LOCK:
@@ -358,9 +376,9 @@ def translate_cards(run_id: str, body: dict):
         for c in data["cards"]:
             c.pop("x", None); c.pop("xb", None); c.pop("xsrc", None)
             if c["n"] in by:
-                c.update(x=by[c["n"]]["x"], xb=by[c["n"]].get("xb"), xsrc=c.get("ko", ""))
+                c.update(x=by[c["n"]]["x"], xb=by[c["n"]].get("xb"), xsrc=asked.get(c["n"], ""))
         data["extra"] = {"lang": language, "name": t["name"], "ok": False}
-        (d / "cards.json").write_text(json.dumps(data, ensure_ascii=False, indent=1))
+        save_cards(d, data)
     return {**data, "translate": {"problems": t["problems"], "cost": t["cost"]}}
 
 
@@ -369,6 +387,7 @@ def fold_step(run_id: str, body: dict):
     """3D 접기: 카드 하나의 동작만 받는다(앞 카드까지의 프로그램과 지금 3D 모양 그림을 보고). 저장 안 함"""
     import fold_gen
     d = run_dir(run_id)
+    storage.ensure_frames(d)  # 정리(compact)된 묶음은 1초 사진이 지워져 있다: 먼저 다시 뽑는다
     data = read(d, "cards.json")
     if not data or not isinstance(body.get("n"), int):
         raise HTTPException(400, "카드가 없습니다")
@@ -385,6 +404,7 @@ def fold_compare(run_id: str, body: dict):
     """3D 끝 모양과 시범 끝 장면을 Muse Spark 가 비교"""
     import fold_gen
     d = run_dir(run_id)
+    storage.ensure_frames(d)  # 정리(compact)된 묶음은 1초 사진이 지워져 있다: 먼저 다시 뽑는다
     data = read(d, "cards.json")
     stills = body.get("stills") if isinstance(body.get("stills"), dict) else {}
     if not data or not stills:
@@ -438,13 +458,43 @@ def save(run_id: str, body: dict):
         return _save(d, body)
 
 
+NUM_KEYS = ("start", "end", "rep", "frame_t", "done_t", "v")
+TEXT_KEYS = {"ko": 300, "en": 300, "object": 120, "look": 200, "check": 300, "x": 300, "xsrc": 300, "box_prompt": 120}
+
+
+def clean_cards(cards):
+    """클라이언트가 보낸 카드 배열을 그대로 믿지 않는다: n 은 서로 다른 양의 정수, 시간 값은 숫자, 글은 길이 제한(11-01 검수: 저장된 XSS·묶음 먹통)"""
+    if not isinstance(cards, list) or not cards or len(cards) > 300:
+        raise HTTPException(400, "카드 목록이 잘못됐습니다")
+    seen = set()
+    for c in cards:
+        if not isinstance(c, dict) or not isinstance(c.get("n"), int) or isinstance(c.get("n"), bool) or c["n"] < 1 or c["n"] in seen:
+            raise HTTPException(400, "카드 번호가 잘못됐습니다")
+        seen.add(c["n"])
+        for k in NUM_KEYS:
+            if c.get(k) is not None and (isinstance(c[k], bool) or not isinstance(c[k], (int, float))):
+                raise HTTPException(400, f"숫자여야 합니다: {k}")
+        for k, lim in TEXT_KEYS.items():
+            if c.get(k) is not None:
+                if not isinstance(c[k], str):
+                    raise HTTPException(400, f"글이어야 합니다: {k}")
+                c[k] = c[k][:lim]
+        if c.get("view") not in (None, "photo", "ill", "clip", "fold"):
+            raise HTTPException(400, "보기 값이 잘못됐습니다")
+        if c.get("box") is not None and not (isinstance(c["box"], list) and len(c["box"]) == 4 and all(isinstance(x, (int, float)) for x in c["box"])):
+            raise HTTPException(400, "상자 값이 잘못됐습니다")
+    return cards
+
+
 def _save(d, body):
     data = read(d, "cards.json")
+    body["cards"] = clean_cards(body.get("cards"))
     for c in body["cards"]:  # 사진·그림 경로는 실행 폴더의 cards/ 안 파일만
         for k in ("image", "ill"):
             if c.get(k) is not None and not (isinstance(c[k], str) and CARD_PATH.fullmatch(c[k])):
                 raise HTTPException(400, f"잘못된 파일 경로입니다: {k}")
     data["cards"] = body["cards"]
+    data["next_n"] = max(data.get("next_n", 0), max(c["n"] for c in data["cards"]) + 1)  # 카드 번호는 늘기만: 뺀 카드의 목소리·기록·3D 가 새 카드에 붙지 않게
     if isinstance(body.get("title"), str):
         data["title"] = body["title"].strip()[:60]
     if body.get("mode") in ("together", "alone"):  # 같이 하기(곁에 사람: 도와줘요) / 혼자 하기(여기서 막혔어요)
@@ -464,7 +514,7 @@ def _save(d, body):
     data["problems"], data["warnings"] = check(data["cards"], data.get("duration", len(list((d / "frames").glob("*.jpg")))))
     data["status"] = "ok" if not data["problems"] else "needs_review"
     data["edited_at"] = time.time()
-    (d / "cards.json").write_text(json.dumps(data, ensure_ascii=False, indent=1))
+    save_cards(d, data)
     return data
 
 
@@ -477,7 +527,10 @@ def reframe(run_id: str, n: int, t: int):
     card = next((c for c in card_list(d) if c["n"] == n), None)
     if card is None:
         raise HTTPException(404, "없는 카드입니다")
-    img, hl = inside(d, card["image"]), inside(d, card["image"].replace(".jpg", "_hl.jpg"))
+    dur = (read(d, "cards.json") or {}).get("duration")
+    if t < 0 or (dur and t >= dur):
+        raise HTTPException(400, "영상 길이 밖의 시각입니다")
+    img, hl = inside(d, card["image"]), inside(d, re.sub(r"\.(jpg|png)$", r"_hl.\1", card["image"]))  # png 원본을 덮어쓰지 않게
     pipeline.grab(read(d, "progress.json")["video_path"], t, img)  # 오래 걸리는 부분은 잠그지 않음
     box, used, touch = pipeline.find_box(img, card)
     hl.unlink(missing_ok=True)
@@ -495,7 +548,7 @@ def reframe(run_id: str, n: int, t: int):
         card.pop("ill", None)
         card["view"] = "photo"
         card.update(frame_t=t, rep=t, box=box, box_prompt=used, box_touches_hand=touch)
-        (d / "cards.json").write_text(json.dumps(data, ensure_ascii=False, indent=1))
+        save_cards(d, data)
     return card
 
 
@@ -507,7 +560,7 @@ def illustrate(run_id: str, n: int):
     card = next((c for c in data["cards"] if c["n"] == n), None)
     if card is None:
         raise HTTPException(404, "없는 카드입니다")
-    rel = card["image"].replace(".jpg", "_ill.jpg")
+    rel = re.sub(r"\.(jpg|png)$", "_ill.jpg", card["image"])  # png 원본을 덮어쓰지 않게
     inside(d, rel).write_bytes(pipeline.illustrate(inside(d, card["image"]), card.get("object", "")))  # 오래 걸리는 부분은 잠그지 않음
     with CARDS_LOCK:
         data = read(d, "cards.json")
@@ -515,7 +568,7 @@ def illustrate(run_id: str, n: int):
         if card is None:
             raise HTTPException(404, "없는 카드입니다")
         card.update(ill=rel, view="ill")
-        (d / "cards.json").write_text(json.dumps(data, ensure_ascii=False, indent=1))
+        save_cards(d, data)
     return card
 
 
@@ -523,13 +576,18 @@ def illustrate(run_id: str, n: int):
 def coach_check(run_id: str, body: dict):
     """따라 하기: 카메라 사진 몇 장으로 카드를 넘길지 정한다. 사진은 저장하지 않는다."""
     data = read(run_dir(run_id), "cards.json")
-    if data and data.get("no_done"):  # 사람을 돕는 일: 기계가 '다 했다'를 정하지 않는다(카드는 사람이 넘긴다)
-        raise HTTPException(409, "이 카드 묶음은 직접 넘겨요")
-    frames = [f for f in body.get("frames", [])[-6:] if isinstance(f, str) and f.startswith("data:image/jpeg;base64,")]
-    cur = int(body.get("cur", 1))
+    if not data:
+        raise HTTPException(404, "카드가 없습니다")
     ver = body.get("ver")
-    if ver is not None and data.get("edited_at") and ver != data["edited_at"]:  # 따라 하는 동안 교사가 카드를 고쳤다 → 화면이 새 카드를 받게
+    if ver is not None and data.get("edited_at") and ver != data["edited_at"]:  # 따라 하는 동안 교사가 카드를 고쳤다 → 화면이 새 카드를 받게(판단 끔으로 바꾼 것도)
         return {"decision": "reload", "seen": 0}
+    if data.get("no_done"):  # 사람을 돕는 일: 기계가 '다 했다'를 정하지 않는다(카드는 사람이 넘긴다)
+        raise HTTPException(409, "이 카드 묶음은 직접 넘겨요")
+    frames = [f for f in body.get("frames", [])[-6:] if isinstance(f, str) and f.startswith("data:image/jpeg;base64,") and len(f) < 1_500_000]  # 사진당 크기 제한(비용)
+    try:
+        cur = int(body.get("cur", 1))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "카드 번호가 틀렸습니다")
     if len(frames) < 2 or not 1 <= cur <= len(data["cards"]):
         raise HTTPException(400, "사진이 부족하거나 카드 번호가 틀렸습니다")
     ref = None
@@ -558,18 +616,27 @@ def now_key(run_id, s):
     return f"{run_id}|{s}" if s else run_id
 
 
+VRES_KEYS = ("id", "result", "ko", "en")  # 안경에 돌려주는 확인 결과(glassesResult 가 보내는 키만)
+
+
 @app.post("/api/runs/{run_id}/now")
 def now_set(run_id: str, body: dict):
     n = len(read(run_dir(run_id), "cards.json")["cards"])
     key = now_key(run_id, body.get("s", ""))
     prev = NOW.get(key, {})
     v = prev.get("v", 0) + 1
-    i = max(0, min(n - 1, int(body.get("i", 0))))
+    try:
+        i = max(0, min(n - 1, int(body.get("i", 0)))); int(body.get("lv") or 0); int(body.get("vreq") or 0)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "숫자가 아닙니다")
+    if key not in NOW and sum(1 for k in NOW if k.startswith(run_id)) >= 40:  # 묶음당 화면 수 상한(짝 코드를 바꿔 가며 늘리지 못하게): 오래된 것부터 지운다
+        old = min((k for k in NOW if k.startswith(run_id)), key=lambda k: NOW[k].get("t", 0))
+        NOW.pop(old, None)
     keep = prev.get("i") == i and not body.get("fin")  # '도와줘요'는 그 카드에 있는 동안만 켜 둔다(다음 카드로 가면 저절로 꺼짐)
     NOW[key] = {"call": prev.get("call", 0) if keep else 0, "why": prev.get("why", "") if keep else "","i": max(0, min(n - 1, int(body.get("i", 0)))), "again": bool(body.get("again")), "by": str(body.get("by", ""))[:10], "v": v,
                    "lv": max(0, min(4, int(body.get("lv") or 0))), "fin": bool(body.get("fin")), "t": round(time.time()),
                  # 안경 '확인' → 따라 하기 화면이 휴대폰 카메라로 찍어 확인(vreq), 결과를 안경에 돌려준다(vres)
-                 "vreq": int(body.get("vreq") or 0), "vres": {k: str(v)[:80] for k, v in (body.get("vres") or {}).items()} if isinstance(body.get("vres"), dict) else None}  # fin = 마지막 단계까지 마침  # 도움 단계(0=끔, 1 글 → 4 움직임)
+                 "vreq": int(body.get("vreq") or 0), "vres": {k: str(v)[:80] for k, v in list(body["vres"].items())[:8] if k in VRES_KEYS} if isinstance(body.get("vres"), dict) else None}  # fin = 마지막 단계까지 마침  # 도움 단계(0=끔, 1 글 → 4 움직임)
     save_state()
     return NOW[key]
 
@@ -647,6 +714,7 @@ def glass_img(run_id: str, i: int, ill: int = 1):
 
 @app.get("/api/runs/{run_id}/clip/{n}.mp4")
 def card_clip(run_id: str, n: int, g: int = 0):
+    g = 1 if g else 0
     """n번 카드의 움직임(대표 장면 앞뒤 최대 4초). g=1 은 안경 화면용(한 변 400px·7만 화소 아래)"""
     d = run_dir(run_id)
     if storage.stage(d) == "archived":
@@ -838,16 +906,23 @@ def card_after(run_id: str, n: int, t: int | None = None):
 
 def add_record(d, row):
     """교사가 '기록 남기기'를 켰을 때만: 이름 없이 날짜·카드·결과·도움 단계"""
-    with (d / "records.jsonl").open("a") as f:
-        f.write(json.dumps({"t": round(time.time()), **row}, ensure_ascii=False) + "\n")
+    f = d / "records.jsonl"
+    if f.exists() and f.stat().st_size > 1_000_000:  # 키 없이 쌓이는 기록: 오래된 것부터 버린다
+        f.write_text("\n".join(f.read_text().splitlines()[-5000:]) + "\n")
+    with f.open("a") as fh:
+        fh.write(json.dumps({"t": round(time.time()), **row}, ensure_ascii=False) + "\n")
 
 
 @app.post("/api/runs/{run_id}/records")
 def post_records(run_id: str, body: dict):
     """따라 하기 끝 화면의 카드별 도움 단계(기록 켰을 때)"""
     d = run_dir(run_id)
-    for r in (body.get("rows") or [])[:200]:
-        add_record(d, {"kind": "coach", "n": int(r.get("n", 0)), "lv": int(r.get("lv", 0)), "s": str(body.get("s", ""))[:8]})
+    try:
+        rows = [{"kind": "coach", "n": int(r.get("n", 0)), "lv": int(r.get("lv", 0)), "s": str(body.get("s", ""))[:8]} for r in (body.get("rows") or [])[:50]]
+    except (TypeError, ValueError, AttributeError):
+        raise HTTPException(400, "기록 형식이 잘못됐습니다")
+    for r in rows:
+        add_record(d, r)
     return {"ok": True}
 
 
@@ -918,7 +993,8 @@ def health():
     """상태 점검(Railway healthcheck·바깥 감시용): 저장 공간, 도는 작업, 키 여부"""
     du = shutil.disk_usage(RUNS)
     return {"ok": du.free > MIN_FREE_GB << 30 and du.used / du.total < 0.9, "free_gb": round(du.free / 2**30, 1), "used_pct": round(du.used / du.total * 100),
-            "card_sets": sum(1 for d in RUNS.iterdir() if d.is_dir()), "making": len(RUNNING), "api_key": bool(pipeline.API_KEY), "spend_capped": spend.over()}
+            "card_sets": sum(1 for d in RUNS.iterdir() if d.is_dir()), "making": len(RUNNING), "api_key": bool(pipeline.API_KEY), "spend_capped": spend.over(),
+            "persistent": bool(os.environ.get("DATA_DIR"))}  # 배포에 DATA_DIR(볼륨)이 없으면 장부·카드가 재배포 때 사라진다
 
 
 @app.get("/api/runs/{run_id}/export.zip")

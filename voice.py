@@ -65,16 +65,19 @@ def kinds(d, cards):
 def cut(d, card):
     """영상 속 그 단계의 말소리를 잘라 둔다(한 번만). 파일 경로 또는 None"""
     out = d / "voice" / f"{card['n']:02d}_auto.m4a"
-    if out.exists():
-        return out
     video, sp = video_path(d), span(card, turns(d))
+    mark = out.with_suffix(".span")  # 어느 구간에서 잘랐는지: 카드 시간을 고치면 다시 자른다(옛 구간 소리가 나오지 않게)
+    if out.exists() and (not video or (sp and mark.exists() and mark.read_text() == f"{sp[0]:.2f},{sp[1]:.2f}")):
+        return out  # 영상이 이미 보관돼 없으면 남겨 둔 소리를 쓴다
     if not (video and sp and has_audio(video)):
+        out.unlink(missing_ok=True)
         return None
     out.parent.mkdir(exist_ok=True)
     tmp = out.with_name("." + out.name)
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{sp[0]:.2f}", "-t", f"{sp[1] - sp[0]:.2f}", "-i", str(video), "-vn", "-ac", "1",
                     "-c:a", "aac", "-b:a", "48k", "-af", "loudnorm=I=-16:TP=-1.5", str(tmp)], check=True)
     tmp.replace(out)
+    mark.write_text(f"{sp[0]:.2f},{sp[1]:.2f}")
     return out
 
 
