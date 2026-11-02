@@ -196,6 +196,19 @@ if (scene === "jobs") {
   await rec.stop();
 }
 
+if (scene === "breadth") {
+  // 같은 과정으로 만든 다른 일들: 견본 카드 묶음을 태블릿 화면으로 차례로(라떼·찌개·서랍장·춤·돌봄·수어)
+  const sets = ["9ba0bf565609", "06d0c8e9935c", "fa37916f40e3", "d8e60e3947bd", "07bd2594965b", "f3d1c1514436"];
+  const p = await open(`/?ui=${L}#run=${sets[0]}&view=tablet`, 1440, 900);
+  const rec = await p.screencast({ path: OUT + "breadth.webm" });
+  mark("rec");
+  for (const r of sets) {
+    await p.goto(`${BASE}/?ui=${L}#run=${r}&view=tablet`, { waitUntil: "load" }); await wait(700);
+    await p.keyboard.press("ArrowRight"); mark(r); await wait(2600);
+  }
+  await rec.stop();
+}
+
 writeFileSync(OUT + `${scene}.marks.json`, JSON.stringify({ marks, errs }, null, 1));
 console.log(JSON.stringify({ marks, errs }));
 await Promise.race([Promise.all(browsers.map(b => b.close())), wait(8000)]);  // 영상이 도는 탭은 가끔 닫히지 않고 멈춘다

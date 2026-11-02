@@ -79,79 +79,90 @@ first_turn = min(((t, abs(float(re.search(r"at video ([\d.]+)s", w).group(1)) - 
 v_start = at("coach", "video start")
 last_turn = max(t for t, w in coach_m if w.startswith("card "))
 LAG_MED = round(sorted(lags)[len(lags) // 2])
-FOLLOW_X = max(2.0, round((last_turn - v_start + 6) / 32 * 2) / 2)  # 따라 하기 장면을 약 32초로(0.5 단위 배속, 화면 꼬리표에 그대로)
+FOLLOW_X = max(2.0, round((last_turn - v_start + 6) / 20 * 2) / 2)  # 따라 하기 장면을 약 20초로(0.5 단위 배속, 화면 꼬리표에 그대로)
 
 # (이름, 화면 배치, 원본 구간 [시작, 길이, 배속], 위쪽 꼬리표, 내레이션)
+# 발표 순서(11-02 사용자 결정): 문제 상황들 → 해결 → 작동 방식 → 어디까지 되나 → 학교·개인정보 → 마무리
+# 문제 장면은 견본의 CC BY 시범 영상(실제 장면)에 상황 이름표만 붙인다. 지어낸 장면·숫자 없음
+# (이름, 화면 배치, 원본 구간 [시작, 길이, 배속], 위쪽 꼬리표, 내레이션)
 SEGMENTS = [
-    ("open", "duo_coach", (max(0, first_turn - 7), 12, 1),
+    ("hook", "clip:8e1456e529ca:27", None, None,
+     "Some skills you can only learn by watching someone do them."),
+    ("p_cafe", "clip:807dcf4d2be2:30", None, "New cafe hire",
+     "A new cafe hire watches the barista once. Then it's their turn."),
+    ("p_reel", "clip:d8e60e3947bd:50", None, "Following a how-to Reel",
+     "Someone learning from a dance Reel pauses and rewinds, again and again."),
+    ("p_family", "clip:06d0c8e9935c:16:top", None, "A family recipe",
+     "A mother's recipe was never written down."),
+    ("p_job", "clip:961565031c4e:36", None, "Job training",
+     "And a job coach makes picture cards by hand for every task: film, pause, screenshot, write, print."),
+    ("p_sum", "statement", None, None,
+     "One demonstration goes by too fast. Step-by-step guides take hours to make."),
+    ("reveal", "duo_coach", (max(0, first_turn - 7), 12, 1),
      "Replay · the demonstration video plays as the camera · live Muse Spark decisions",
-     "Watch the card. A few seconds after the hands finish a step, StepCards shows the next one, on the phone and on the glasses."),
-    ("problem", "home", (0, 15, 1), None,
-     "StepCards is for special-education teachers and their learners with intellectual disabilities in job training. "
-     "Today, teachers make step-by-step picture cards by hand: film, pause, screenshot, write, print. "
-     "StepCards makes them from one demonstration video."),
+     "StepCards turns one demonstration video into checked step cards. The camera follows the hands, and a few seconds after a step is done, the next card appears, on the phone and on the glasses."),
     ("making", "single:making", None, "Real run · Muse Voice Transcribe · Muse Spark · SAM 3.1 · code checker",
-     "The teacher films the task once at eye level, the way Ray-Ban Meta glasses see it, and drops in the video. "
-     "Muse Voice Transcribe listens for spoken tips; this video has none. Muse Spark splits it into one-action steps, in plain Korean and English. "
+     "Film the task once at eye level, the way Ray-Ban Meta glasses see it, and drop in the video. "
+     "Muse Spark splits it into one-action steps, in plain Korean and English. "
      "Then code, not the model, checks every card, and sends failures back with the reason. " + RUN_NOTE +
-     "SAM 3.1 finds the object in the hand. " f"A {round(video_s / 60)}-minute video became {n_cards} cards in {make_s:.0f} seconds, for about {make_cost * 100:.0f} cents."),
+     f"A {round(video_s / 60)}-minute video became {n_cards} cards in {make_s:.0f} seconds, for about {make_cost * 100:.0f} cents."),
     ("edit", "single:edit", None, "Teacher review · every edit is checked again",
-     "The teacher stays in charge. Add a second action to a sentence, and the card turns red. Take it out, and it passes. "
+     "The person who knows the task stays in charge. Add a second action to a sentence, and the card turns red. Take it out, and it passes. "
      "Numbers nobody said, and left or right, are marked for a second look. "
      "Each card can be a photo, a motion clip from the video, or a 3D fold drawn from the demonstration."),
     ("follow", "duo_coach", (v_start, last_turn - v_start + 6, FOLLOW_X),
      f"Replay at {FOLLOW_X:g}× · the demonstration video plays as the camera · live Muse Spark decisions",
-     "On the learner's side, the cards follow the hands. Here the same napkin video plays as the camera. "
-     f"Muse Spark compares the camera with photos of each step from the demonstration. The cards turned on their own all the way to card {auto_to}, a median of {LAG_MED} seconds after each step ended. "
-     "The glasses view is built for Ray-Ban Display."),
+     "Muse Spark compares the camera with photos of each step from the demonstration. "
+     f"Here the cards turned on their own all the way to card {auto_to}, a median of {LAG_MED} seconds after each step ended."),
     ("help", "trio_help", (1.5, at("help", "learner sees help coming") + 3.5, 1), "Help only when needed · the teacher's board on the right",
      "Help starts as text only. When the learner is stuck, it grows one step at a time: a picture, the sentence read aloud, then a motion clip. "
      "When the help runs out, Ask for help reaches the teacher's board. On my way, and the learner sees that help is coming. "
      "No praise, no scores, no video stored."),
-    ("jobs", "single:jobs", None, "Sample cards · Korea's national jobs for people with severe disabilities · CC BY videos",
-     "Some work should not be judged by a machine. For care work, like helping someone into a car, the camera stays off, and a person decides when it's done. "
-     "We made sample cards for Korea's national jobs for people with severe disabilities, from openly licensed videos, including Korean Sign Language."),
+    ("breadth", "single:breadth", None, "Made with the same pipeline · CC BY demonstration videos",
+     "The same pipeline made cards for a cafe drink, a family stew, a cabinet and a dance, and for Korea's national jobs for people with severe disabilities: "
+     "care work, where the camera stays off and a person decides when it's done, and Korean Sign Language."),
     ("glimmer", "single:glimmer", None, f"Recorded run on this Mac · open-weight Muse Glimmer · {g_s} s · $0",
-     f"For schools that can't send video out, the same pipeline runs on open-weight Muse Glimmer on a Mac. "
-     f"This napkin video became {g_cards} checked cards in {g_s} seconds, at no API cost. "
-     "What we have not done yet: test with learners, and with a different person on a live camera."),
+     f"For schools that can't send video out, it runs on open-weight Muse Glimmer on a Mac: this napkin video became {g_cards} checked cards in {g_s} seconds, at no API cost. "
+     "Not done yet: tests with learners, and with a different person on a live camera."),
     ("close", "slide_close", None, None,
-     "One video. Checked cards. Help only when needed. StepCards."),
+     "Watch once. Follow step by step. Help only when needed. StepCards."),
 ]
 
 if KO:  # 한글판 꼬리표·내레이션(숫자는 위와 같은 기록에서)
     k = re.search(r"문제 (\d+)개", splits[0]["msg"]).group(1) if len(splits) > 1 else ""
     note = f"이번 실행에서는 첫 답이 규칙 {k}개를 어겨 이유와 함께 돌려보냈고, {len(splits)}번째 답이 통과했어요. " if len(splits) > 1 else "이번 실행에서는 모든 카드가 처음에 검사를 통과했어요. "
     KO_TEXT = {
-        "open": ("다시 재생 · 시범 영상을 카메라 대신 흘림 · Muse Spark 실제 판단",
-                 "카드를 보세요. 손이 한 단계를 끝내고 몇 초 뒤, 다음 카드가 휴대폰과 안경에 함께 떠요."),
-        "problem": (None, "StepCards는 특수교사와, 직업 훈련을 받는 지적장애 학생을 위한 도구예요. "
-                    "지금은 교사가 단계 그림 카드를 손으로 만들어요. 찍고, 멈추고, 캡처하고, 쓰고, 인쇄하죠. StepCards는 시범 영상 하나로 이 카드를 만들어요."),
+        "hook": (None, "누군가 하는 걸 보고서야 배울 수 있는 일이 있어요."),
+        "p_cafe": ("카페 신입", "카페 신입은 바리스타가 하는 걸 한 번 보고, 바로 자기 차례가 돼요."),
+        "p_reel": ("릴스 따라 하기", "춤 릴스를 따라 하는 사람은 멈추고 되감기를 계속해요."),
+        "p_family": ("엄마의 레시피", "엄마의 레시피는 어디에도 적혀 있지 않아요."),
+        "p_job": ("직업 훈련", "직업 훈련 교사는 일마다 그림 카드를 손으로 만들어요. 찍고, 멈추고, 캡처하고, 쓰고, 인쇄하죠."),
+        "p_sum": (None, "시범은 한 번에 지나가고, 단계 안내를 만들려면 몇 시간이 걸려요."),
+        "reveal": ("다시 재생 · 시범 영상을 카메라 대신 흘림 · Muse Spark 실제 판단",
+                   "StepCards는 시범 영상 하나를 검사한 단계 카드로 바꿔요. 카메라가 손을 보고, 한 단계가 끝나면 몇 초 뒤 다음 카드가 휴대폰과 안경에 함께 떠요."),
         "making": ("실제 실행 · Muse Voice Transcribe · Muse Spark · SAM 3.1 · 코드 검사기",
-                   "교사는 레이밴 메타 안경이 보는 것처럼 눈높이에서 한 번 시범을 찍어 영상을 넣어요. "
-                   "Muse Voice Transcribe가 말로 한 설명을 받아 적는데, 이 영상에는 말소리가 없어요. "
-                   "Muse Spark가 영상을 동작 하나씩의 단계로 나누고, 쉬운 한국어와 영어 문장을 써요. "
+                   "일을 아는 사람이 눈높이에서 한 번 찍어 영상을 넣어요. 레이밴 메타 안경이 보는 것처럼요. "
+                   "Muse Spark가 동작 하나씩의 단계로 나누고, 쉬운 한국어와 영어 문장을 써요. "
                    "그다음 모델이 아니라 코드가 모든 카드를 검사하고, 걸리면 이유를 붙여 돌려보내요. " + note +
-                   f"SAM 3.1은 손에 든 물건을 찾아요. {round(video_s / 60)}분짜리 영상이 {make_s:.0f}초 만에 카드 {n_cards}장이 됐고, 비용은 약 {make_cost * 100:.0f}센트였어요."),
-        "edit": ("교사 확인 · 고칠 때마다 다시 검사",
-                 "결정은 교사가 해요. 문장에 동작을 하나 더 넣으면 카드가 빨갛게 바뀌고, 빼면 통과해요. "
+                   f"{round(video_s / 60)}분짜리 영상이 {make_s:.0f}초 만에 카드 {n_cards}장이 됐고, 비용은 약 {make_cost * 100:.0f}센트였어요."),
+        "edit": ("확인 · 고칠 때마다 다시 검사",
+                 "결정은 일을 아는 사람이 해요. 문장에 동작을 하나 더 넣으면 카드가 빨갛게 바뀌고, 빼면 통과해요. "
                  "말하지 않은 숫자나 왼쪽·오른쪽은 한 번 더 보라고 표시해요. "
                  "카드마다 사진, 영상에서 뽑은 움직임, 시범을 따라 그린 3D 접기 중에서 고를 수 있어요."),
         "follow": (f"{FOLLOW_X:g}배속 다시 재생 · 시범 영상을 카메라 대신 흘림 · Muse Spark 실제 판단",
-                   "학생 쪽에서는 카드가 손을 따라가요. 여기서도 같은 냅킨 영상을 카메라 대신 흘렸어요. Muse Spark가 카메라 화면을 시범 영상의 단계 사진과 맞춰 봐요. "
-                   f"카드는 {auto_to}번까지 저절로 넘어갔고, 단계가 끝나고 중간값 {LAG_MED}초 뒤였어요. 안경 화면은 레이밴 디스플레이용으로 만들었어요."),
+                   "Muse Spark가 카메라 화면을 시범 영상의 단계 사진과 맞춰 봐요. "
+                   f"여기서는 카드가 {auto_to}번까지 저절로 넘어갔고, 단계가 끝나고 중간값 {LAG_MED}초 뒤였어요."),
         "help": ("필요할 때만 도움 · 오른쪽은 교사 현황판",
-                 "도움은 글만으로 시작해요. 학생이 막히면 한 칸씩 늘어나요. 그림, 문장 읽어 주기, 그다음 움직임이에요. "
+                 "도움은 글만으로 시작해요. 막히면 한 칸씩 늘어나요. 그림, 문장 읽어 주기, 그다음 움직임이에요. "
                  "도움을 다 써도 안 되면 '도와줘요'가 교사 현황판에 떠요. 교사가 '갈게요'를 누르면 학생 화면에 도와주러 온다고 나와요. "
                  "칭찬도, 점수도, 저장하는 영상도 없어요."),
-        "jobs": ("견본 카드 · 중증장애인 맞춤형 국가 일자리 직무 · CC BY 영상",
-                 "기계가 판단하면 안 되는 일도 있어요. 사람을 차에 태우는 돌봄 일은 카메라를 켜지 않고, 끝났는지는 사람이 정해요. "
-                 "중증장애인 맞춤형 국가 일자리 직무로 견본 카드를 만들었어요. 공개 라이선스 영상으로 만들었고, 한국 수어 인사도 있어요."),
+        "breadth": ("같은 과정으로 만든 견본 · CC BY 시범 영상",
+                    "같은 과정으로 카페 음료, 집 찌개, 서랍장 조립, 춤 카드를 만들었고, 중증장애인 맞춤형 국가 일자리 직무 카드도 만들었어요. "
+                    "사람을 돕는 돌봄 일은 카메라를 켜지 않고 끝났는지는 사람이 정해요. 한국 수어 인사도 있어요."),
         "glimmer": (f"이 맥에서 돌린 기록 · 공개 가중치 Muse Glimmer · {g_s}초 · $0",
-                    f"영상을 밖으로 보낼 수 없는 학교에서는 같은 과정을 공개 가중치 모델 Muse Glimmer로 맥에서 돌려요. "
-                    f"이 냅킨 영상이 {g_s}초 만에 검사를 통과한 카드 {g_cards}장이 됐고, API 비용은 0원이었어요. "
-                    "아직 하지 못한 것도 있어요. 학생과 함께한 시험, 그리고 다른 사람이 실제 카메라로 따라 하는 시험이에요."),
-        "close": (None, "영상 하나, 검사한 카드, 필요할 때만 도움. StepCards."),
+                    f"영상을 밖으로 보낼 수 없는 학교에서는 공개 가중치 모델 Muse Glimmer로 맥에서 돌려요. 이 냅킨 영상이 {g_s}초 만에 검사를 통과한 카드 {g_cards}장이 됐고, API 비용은 0원이었어요. "
+                    "아직 못 한 것은 학생과의 시험, 그리고 다른 사람이 실제 카메라로 따라 하는 시험이에요."),
+        "close": (None, "한 번 보고, 단계대로 따라 하고, 필요할 때만 도움. StepCards."),
     }
     SEGMENTS = [(n, lay, sp, *KO_TEXT[n]) for n, lay, sp, _, _ in SEGMENTS]
 
@@ -170,6 +181,30 @@ def slide_close():
         d.text((160, y), t, font=font(s, b), fill=c)
         y += int(s * 1.6)
     p = TMP / "slide_close.png"
+    img.save(p)
+    return p
+
+
+def statement_png(name):
+    text = next(t for n, _, _, _, t in SEGMENTS if n == name)
+    img = Image.new("RGB", (W, H), NAVY)
+    d = ImageDraw.Draw(img)
+    f = font(76, True)
+    rows = []
+    for sent in re.findall(r".+?[.!?](?=\s|$)", text) or [text]:  # 문장마다 새 줄, 화면 폭을 넘으면 낱말 단위로 나눔
+        row = ""
+        for w in sent.split():
+            if row and d.textlength(row + " " + w, font=f) > W - 240:
+                rows.append(row); row = w
+            else:
+                row = (row + " " + w).strip()
+        rows.append(row)
+    y = (H - len(rows) * 120) // 2
+    for r in rows:
+        r = r.strip()
+        d.text(((W - d.textlength(r, font=f)) / 2, y), r, font=f, fill=(255, 255, 255))
+        y += 120
+    p = TMP / f"statement_{name}.png"
     img.save(p)
     return p
 
@@ -239,6 +274,15 @@ def base_video(name, layout, span, seg_len):
     if layout == "slide_close":
         sh("ffmpeg", "-v", "error", "-y", "-loop", "1", "-i", slide_close(), *enc)
         return out
+    if layout == "statement":  # 문제를 한 줄로: 큰 글자만(자막 없이)
+        sh("ffmpeg", "-v", "error", "-y", "-loop", "1", "-i", statement_png(name), *enc)
+        return out
+    if layout.startswith("clip:"):  # 문제 상황: 견본의 실제 시범 영상(CC BY) 그대로, 소리 없이
+        _, rid, t, *opt = layout.split(":")
+        top = "crop=iw:ih*0.78:0:0," if "top" in opt else ""  # top: 원본에 박힌 자막(화면 아래)을 잘라 낸다
+        sh("ffmpeg", "-v", "error", "-y", "-ss", t, "-i", ROOT / "runs" / rid / "video.mp4", "-an", "-vf",
+           f"{top}scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},tpad=stop_mode=clone:stop_duration={seg_len},fps=30", *enc)
+        return out
     if layout.startswith("single:"):
         src = mp4(layout.split(":")[1])
         speed = max(1.0, duration(src) / seg_len)  # 녹화가 길면 빨리 감기, 짧으면 마지막 화면 정지
@@ -278,7 +322,7 @@ for idx, (name, layout, span, label, text) in enumerate(SEGMENTS):
     sents = re.findall(r".+?[.!?](?=\s|$)", text)  # "SAM 3.1" 의 점에서 끊지 않게: 뒤에 빈칸이나 끝이 올 때만
     total, t = sum(len(s) for s in sents), 0.3
     inputs, overlays = [], []
-    for k, s in enumerate(sents):
+    for k, s in enumerate(sents if layout != "statement" else []):  # 한 줄 정리 화면은 큰 글자가 곧 자막
         dt = nar * len(s) / total
         inputs.append(caption_png(s.strip(), idx * 100 + k)); overlays.append((0, H - 175, t, t + dt)); t += dt
     if label:
@@ -292,7 +336,7 @@ for idx, (name, layout, span, label, text) in enumerate(SEGMENTS):
     for k, (x, y, a, b) in enumerate(overlays):
         chain.append(f"{last}[{k + 1}:v]overlay={x}:{y}:enable='between(t,{a:.2f},{b:.2f})'[o{k}]"); last = f"[o{k}]"
     chain.append(f"[{len(inputs) + 1}:a]adelay=300|300,apad,atrim=0:{seg_len},aformat=sample_rates=44100:channel_layouts=stereo[a]")
-    sh(*cmd, "-filter_complex", ";".join(chain), "-map", last, "-map", "[a]", "-t", seg_len, "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", seg)
+    sh(*cmd, "-filter_complex", ";".join(chain), "-map", last if overlays else "0:v", "-map", "[a]", "-t", seg_len, "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", seg)
     parts.append(seg)
     print(f"{name}: {seg_len:.1f}s (말 {nar:.1f}s)")
 
