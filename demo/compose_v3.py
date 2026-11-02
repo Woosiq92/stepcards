@@ -97,6 +97,7 @@ SEGMENTS = [
      "SAM 3.1 finds the object in the hand. " f"A {round(video_s / 60)}-minute video became {n_cards} cards in {make_s:.0f} seconds, for about {make_cost * 100:.0f} cents."),
     ("edit", "single:edit", None, "Teacher review · every edit is checked again",
      "The teacher stays in charge. Add a second action to a sentence, and the card turns red. Take it out, and it passes. "
+     "Numbers nobody said, and left or right, are marked for a second look. "
      "Each card can be a photo, a motion clip from the video, or a 3D fold drawn from the demonstration."),
     ("follow", "duo_coach", (v_start, last_turn - v_start + 6, FOLLOW_X),
      f"Replay at {FOLLOW_X:g}× · the demonstration video plays as the camera · live Muse Spark decisions",
@@ -134,6 +135,7 @@ if KO:  # 한글판 꼬리표·내레이션(숫자는 위와 같은 기록에서
                    f"SAM 3.1은 손에 든 물건을 찾아요. {round(video_s / 60)}분짜리 영상이 {make_s:.0f}초 만에 카드 {n_cards}장이 됐고, 비용은 약 {make_cost * 100:.0f}센트였어요."),
         "edit": ("교사 확인 · 고칠 때마다 다시 검사",
                  "결정은 교사가 해요. 문장에 동작을 하나 더 넣으면 카드가 빨갛게 바뀌고, 빼면 통과해요. "
+                 "말하지 않은 숫자나 왼쪽·오른쪽은 한 번 더 보라고 표시해요. "
                  "카드마다 사진, 영상에서 뽑은 움직임, 시범을 따라 그린 3D 접기 중에서 고를 수 있어요."),
         "follow": (f"{FOLLOW_X:g}배속 다시 재생 · 시범 영상을 카메라 대신 흘림 · Muse Spark 실제 판단",
                    "학생 쪽에서는 카드가 손을 따라가요. 여기서도 같은 냅킨 영상을 카메라 대신 흘렸어요. Muse Spark가 카메라 화면을 시범 영상의 단계 사진과 맞춰 봐요. "
