@@ -103,9 +103,9 @@ if not KO:
          f"This is the learner's screen. The camera is on the left, the card on the right, and the glasses show the same card. "
          "The line under the camera says what the model sees, like \"still looks like before step 2,\" or \"step 2 looks like the demonstration, card 3.\" "
          f"In this replay the cards moved on by themselves up to card {auto_to}, about {LAG} seconds after each step."),
-        ("help", "trio", (3.0, at("help", "learner sees help coming") + 2.0, 1), "Help when stuck · teacher's board on the right",
+        ("help", "trio", (3.0, at("help", "learner sees help coming") + 2.0, 1), "Help when stuck · helper's board on the right",
          "Stuck? Help comes one step at a time. A picture, then the sentence read aloud, then a short clip. "
-         "If that's still not enough, tapping \"Ask for help\" puts the card number on the teacher's board. The teacher taps \"On my way,\" and the learner sees help is coming. There are no scores, and no video is kept."),
+         "If that's still not enough, tapping \"Ask for help\" puts the card number on the helper's board. They tap \"On my way,\" and the learner sees help is coming. There are no scores, and no video is kept."),
         ("breadth", "single:breadth", None, "Same app · CC BY demo videos",
          "The same way, open videos became cards for a cafe drink, a family stew, a cabinet, and a dance. "
          "And for jobs in Korea's national program for people with severe disabilities, where care work keeps the camera off and a person decides when each step is done."),
@@ -140,9 +140,9 @@ else:
          f"이건 따라 하는 사람의 화면이에요. 왼쪽이 카메라, 오른쪽이 카드이고, 안경에도 같은 카드가 떠요. "
          "카메라 아래 한 줄은 지금 본 것을 알려 줘요. '아직 2번 하기 전 모습이에요', '2번이 시범과 같아요, 3번 카드' 같은 식이에요. "
          f"이번 재생에서는 카드가 {auto_to}번까지 저절로 넘어갔어요. 단계를 마치고 {LAG}초쯤 지나서요."),
-        ("help", "trio", (3.0, at("help", "learner sees help coming") + 2.0, 1), "막힐 때만 도움 · 오른쪽은 선생님 현황판",
+        ("help", "trio", (3.0, at("help", "learner sees help coming") + 2.0, 1), "막힐 때만 도움 · 오른쪽은 도와줄 사람 현황판",
          "막히면 도움이 한 칸씩 늘어요. 그림, 문장 읽어 주기, 짧은 영상 순서예요. "
-         "그래도 안 되면 '도와줘요'를 눌러요. 그러면 선생님 현황판에 카드 번호가 떠요. 선생님이 '갈게요'를 누르면, 학생 화면에 도와주러 오고 있다고 나와요. 점수는 매기지 않고, 영상도 남기지 않아요."),
+         "그래도 안 되면 '도와줘요'를 눌러요. 그러면 도와줄 사람의 현황판에 카드 번호가 떠요. 그 사람이 '갈게요'를 누르면, 따라 하는 사람 화면에 도와주러 오고 있다고 나와요. 점수는 매기지 않고, 영상도 남기지 않아요."),
         ("breadth", "single:breadth", None, "같은 앱 · CC BY 시범 영상",
          "같은 방법으로 공개 영상에서 카페 음료, 집 찌개, 서랍장, 춤 카드도 만들었어요. "
          "중증장애인 맞춤형 국가 일자리의 직무 카드도 있어요. 돌봄 일에서는 카메라를 끄고, 단계를 마쳤는지는 사람이 정해요."),
