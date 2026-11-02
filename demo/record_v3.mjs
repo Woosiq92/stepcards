@@ -25,7 +25,8 @@ async function open(path, w, h) {  // 화면마다 브라우저를 따로: 헤�
   browsers.push(browser);
   const p = (await browser.pages())[0] || await browser.newPage();
   p.on("pageerror", e => errs.push(e.message));
-  await p.setViewport({ width: w, height: h });
+  // 2배 해상도로 찍어 1920 영상에서 글자가 또렷하게. 따라 하기(실제 판단)는 1배: 2배 녹화가 브라우저를 무겁게 해 판단이 밀렸다(넘김 지연 중간 23초)
+  await p.setViewport({ width: w, height: h, deviceScaleFactor: scene === "coach" ? 1 : 2 });
   await p.evaluateOnNewDocument(l => { try { const L = l; localStorage.setItem("lang", L); localStorage.setItem("ui", L); localStorage.setItem("help", "on"); } catch {} }, L);
   await p.goto(BASE + path, { waitUntil: "load" }); await wait(1500);  // 안경·현황판은 계속 묻느라 networkidle 이 안 온다
   return p;
@@ -62,7 +63,7 @@ async function rec(page, name) {
     writeFileSync(dir + `f${String(k).padStart(5, "0")}.jpg`, Buffer.from(f.data, "base64"));
     cdp.send("Page.screencastFrameAck", { sessionId: f.sessionId }).catch(() => {});
   });
-  await cdp.send("Page.startScreencast", { format: "jpeg", quality: 75, everyNthFrame: 2 });
+  await cdp.send("Page.startScreencast", { format: "jpeg", quality: 90, everyNthFrame: 2, maxWidth: 3840, maxHeight: 2400 });
   return { async stop() {
     const end = Date.now() / 1000;
     await cdp.send("Page.stopScreencast");
@@ -130,7 +131,7 @@ if (scene === "help") {
 if (scene === "making") {
   // 처음 화면에서 냅킨 시범 영상을 넣고(Meta API) 카드가 다 될 때까지
   const p = await open(`/?ui=${L}`, 1440, 900);
-  const rec = await p.screencast({ path: OUT + "making.webm" });
+  const recr = await rec(p, "making");
   mark("rec"); await wait(2000);
   await (await p.$("#file")).uploadFile(process.argv[3] || NAPKIN);  // 같은 파일이면 앞서 만든 카드로 바로 간다: 새로 만드는 모습은 바이트가 다른 복사본으로 mark("upload");
   await p.waitForFunction(() => location.hash.includes("making"), { timeout: 120000 });
@@ -138,14 +139,14 @@ if (scene === "making") {
   await p.waitForFunction(() => /Your cards are ready|Stopped with an error|카드가 다 만들어졌어요|만들다가 멈췄어요/.test(document.body.innerText), { timeout: 900000, polling: 2000 });
   mark("done"); await wait(2500);
   await clickText(p, "button", tx("Check the cards", "카드 확인하러 가기")); await wait(3500);
-  await rec.stop();
+  await recr.stop();
 }
 
 if (scene === "edit") {
   // 문장 하나 고치기(규칙 위반 빨강 → 되돌리면 통과) → 한 카드를 사진 · 움직임 · 3D 로 바꿔 보기
   const p = await open(`/?ui=${L}#run=${RUN}&view=edit`, 1440, 900);
   await wait(1000);
-  const rec = await p.screencast({ path: OUT + "edit.webm" });
+  const recr = await rec(p, "edit");
   mark("rec"); await wait(2500);
   const row = "#row1";
   await p.evaluate(r => document.querySelector(r).scrollIntoView({ block: "center", behavior: "smooth" }), row); await wait(1800);
@@ -161,52 +162,52 @@ if (scene === "edit") {
   mark("passed"); await wait(2000);
   const view = async label => { await clickText(p, `${row} .seg.mini button`, label); mark(label); await wait(3000); };
   await view(tx("Photo", "사진")); await view(tx("Motion", "움직임")); await view("3D"); await wait(2500);
-  await rec.stop();
+  await recr.stop();
 }
 
 if (scene === "glimmer") {
   // 이 맥에서(Muse Glimmer) 끝까지 만든 실제 실행 기록
   const p = await open(`/?ui=${L}#run=6d5279d1379e&view=making`, 1440, 900);
   await wait(1200);
-  const rec = await p.screencast({ path: OUT + "glimmer.webm" });
+  const recr = await rec(p, "glimmer");
   mark("rec"); await wait(3000); await smooth(p, 600, 2500); await wait(3000); await smooth(p, 1400, 2500); await wait(2500);
-  await rec.stop();
+  await recr.stop();
 }
 
 if (scene === "home") {
   const p = await open(`/?ui=${L}`, 1440, 900);
   await wait(1500);
-  const rec = await p.screencast({ path: OUT + "home.webm" });
+  const recr = await rec(p, "home");
   mark("rec"); await wait(5000);
   const y = await p.evaluate(() => { const h = [...document.querySelectorAll("h2,h3")].find(e => /disabilit|장애/i.test(e.textContent)); return h ? h.getBoundingClientRect().top + scrollY - 80 : 900; });
   await smooth(p, y, 2500); mark("jobs"); await wait(5000);
-  await rec.stop();
+  await recr.stop();
 }
 
 if (scene === "jobs") {
   // 국가 장애인 일자리 직무 카드: D&D 케어 승하차(사람을 돕는 일: 카메라 꺼짐) → 수어 인사(마주 보기) 태블릿
   const p = await open(`/?ui=${L}#run=07bd2594965b&view=coach`, 1440, 900);
   await wait(1500);
-  const rec = await p.screencast({ path: OUT + "jobs.webm" });
+  const recr = await rec(p, "jobs");
   mark("rec"); await wait(4500);
   await p.goto(`${BASE}/?ui=${L}#run=07bd2594965b&view=tablet`, { waitUntil: "networkidle0" }); mark("car tablet"); await wait(3000);
   await p.keyboard.press("ArrowRight"); await wait(2500);
   await p.goto(`${BASE}/?ui=${L}#run=f3d1c1514436&view=tablet`, { waitUntil: "networkidle0" }); mark("sign tablet"); await wait(3500);
   await p.keyboard.press("ArrowRight"); await wait(3000);
-  await rec.stop();
+  await recr.stop();
 }
 
 if (scene === "breadth") {
   // 같은 과정으로 만든 다른 일들: 견본 카드 묶음을 태블릿 화면으로 차례로(라떼·찌개·서랍장·춤·돌봄·수어)
   const sets = ["9ba0bf565609", "06d0c8e9935c", "fa37916f40e3", "d8e60e3947bd", "07bd2594965b", "f3d1c1514436"];
   const p = await open(`/?ui=${L}#run=${sets[0]}&view=tablet`, 1440, 900);
-  const rec = await p.screencast({ path: OUT + "breadth.webm" });
+  const recr = await rec(p, "breadth");
   mark("rec");
   for (const r of sets) {
     await p.goto(`${BASE}/?ui=${L}#run=${r}&view=tablet`, { waitUntil: "load" }); await wait(700);
     await p.keyboard.press("ArrowRight"); mark(r); await wait(2600);
   }
-  await rec.stop();
+  await recr.stop();
 }
 
 writeFileSync(OUT + `${scene}.marks.json`, JSON.stringify({ marks, errs }, null, 1));
