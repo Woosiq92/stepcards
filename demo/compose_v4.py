@@ -111,7 +111,7 @@ if not KO:
     ]
     GLASS, CLOSE = "Ray-Ban Display view · simulated", ["Show it once.", "Then they've got it."]
     CLOSE_SUB = ["Built with Meta models · Muse Spark · SAM 3.1 · Voice Transcribe · Muse Image · Muse Glimmer",
-                 "Not a Meta product · made by LogicCraft", "Opening scenes are images generated on this Mac (Z-Image Turbo) · demo videos CC BY · synthetic voice"]
+                 "Not a Meta product · made by LogicCraft", "Opening scenes are images generated on this Mac (Z-Image Turbo) · demo videos CC BY · voice by Google Chirp 3 HD"]
 else:
     retry_ko = "규칙에 어긋난 카드가 하나 있어서 다시 쓰게 했고, 두 번째에 통과했어요. " if retried else ""
     S = [
@@ -148,7 +148,7 @@ else:
     ]
     GLASS, CLOSE = "레이밴 디스플레이 착용 시야 · 시뮬레이션", ["한 번 보여 주면,", "따라 할 수 있어요."]
     CLOSE_SUB = ["Meta 모델로 만듦 · Muse Spark · SAM 3.1 · Voice Transcribe · Muse Image · Muse Glimmer",
-                 "Meta 제품 아님 · 로직크래프트 제작", "앞 장면 그림은 이 맥에서 생성(Z-Image Turbo) · 시범 영상 CC BY · 합성 음성"]
+                 "Meta 제품 아님 · 로직크래프트 제작", "앞 장면 그림은 이 맥에서 생성(Z-Image Turbo) · 시범 영상 CC BY · 목소리 Google Chirp 3 HD"]
 
 
 # ---- 그림 재료 ----
@@ -356,11 +356,33 @@ def base_video(name, layout, span, seg_len):
     return out
 
 
+# ---- 목소리: 구글 Chirp3-HD(디지털 챔피언 때 고른 Zephyr). 키(~/.gtts_key)가 없으면 맥 기본 음성 ----
+GKEY = Path("~/.gtts_key").expanduser()
+CACHE = ROOT / "demo" / "out" / "tts_cache"  # 같은 문장은 한 번만 만든다(비용)
+RATE = 1.12  # 1.0 이면 두 판 모두 3분 7초: 3분 안으로
+
+
+def voice(text):
+    import base64, hashlib, urllib.request
+    if not GKEY.exists():
+        out = TMP / f"say_{hashlib.sha1(text.encode()).hexdigest()[:12]}.aiff"
+        sh("say", "-v", "Yuna" if KO else "Samantha", "-r", "195" if KO else "178", "-o", out, text)
+        return out
+    lang, name = ("ko-KR", "ko-KR-Chirp3-HD-Zephyr") if KO else ("en-US", "en-US-Chirp3-HD-Zephyr")
+    CACHE.mkdir(parents=True, exist_ok=True)
+    out = CACHE / f"{hashlib.sha1((name + str(RATE) + text).encode()).hexdigest()[:16]}.mp3"
+    if not out.exists():
+        body = {"input": {"text": text}, "voice": {"languageCode": lang, "name": name}, "audioConfig": {"audioEncoding": "MP3", "speakingRate": RATE}}
+        req = urllib.request.Request("https://texttospeech.googleapis.com/v1/text:synthesize?key=" + GKEY.read_text().strip(),
+                                     data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+        out.write_bytes(base64.b64decode(json.loads(urllib.request.urlopen(req, timeout=120).read())["audioContent"]))
+    return out
+
+
 # ---- 장면마다: 화면 + 말 + 자막 + 꼬리표 ----
 parts, lens = [], []
 for idx, (name, layout, span, label, text) in enumerate(S):
-    aiff = TMP / f"{name}.aiff"
-    sh("say", "-v", "Yuna" if KO else "Samantha", "-r", "195" if KO else "178", "-o", aiff, text)
+    aiff = voice(text)
     nar = duration(aiff)
     seg_len = round(max(nar + 0.9 + XF, (span[1] / span[2]) if span else 0), 2)
     base = base_video(name, layout, span, seg_len)
