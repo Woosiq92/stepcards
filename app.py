@@ -476,7 +476,7 @@ def cards(run_id: str):
     # 교사 확인: 마지막으로 고친 뒤 '다 됐어요'를 눌렀는가(견본은 확인된 것으로)
     reviewed = run_id in SEED_INDEX or bool(data.get("reviewed_at") and data.get("reviewed_at") == data.get("edited_at"))
     return {**data, "caught": caught, "tries": len(splits), "title_en": SEED_INDEX.get(run_id, {}).get("title_en", ""),
-            "heard_nums": sorted(set(re.findall(r"\d+(?:[.,]\d+)?", heard))), "reviewed": reviewed,
+            "heard_nums": sorted(set(re.findall(r"\d+(?:[.,]\d+)?", heard))), "reviewed": reviewed, "sample": run_id in SEED_INDEX,
             "stage": storage.stage(d), "delete_on": storage.delete_on(d) if run_id not in SEED_INDEX else None}
 
 
@@ -766,6 +766,15 @@ def glass_img(run_id: str, i: int, ill: int = 1):
             im.paste((207, 211, 217), mask=lum.point(lambda v: 255 if v < 48 else 0))
         atomic(out, lambda tmp: im.save(tmp, "JPEG", quality=78))
     return FileResponse(out)
+
+
+@app.get("/api/runs/{run_id}/demo.mp4")
+def demo_video(run_id: str):
+    """'작동 보기': 견본의 시범 영상(CC BY)을 따라 하기 카메라 대신 흘린다. 교사가 올린 영상은 내주지 않는다"""
+    f = run_dir(run_id) / "video.mp4"
+    if run_id not in SEED_INDEX or not f.is_file():
+        raise HTTPException(404)
+    return FileResponse(f, media_type="video/mp4")
 
 
 @app.get("/api/runs/{run_id}/clip/{n}.mp4")
