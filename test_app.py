@@ -557,3 +557,14 @@ def test_card_say_and_demo_video(monkeypatch):
     assert client.get(f"/api/runs/{rid}/cards/9/say.mp3?l=ko").status_code == 404
     (d / "video.mp4").write_bytes(b"v")
     assert client.get(f"/api/runs/{rid}/demo.mp4").status_code == 404  # 견본이 아니면 시범 영상을 내주지 않는다
+
+
+def test_folder_move_keeps_review_and_is_listed(monkeypatch):
+    rid, d = make_run()
+    cards = client.get(f"/api/runs/{rid}/cards").json()["cards"]
+    client.put(f"/api/runs/{rid}/cards", json={"cards": cards, "reviewed": True})
+    assert client.post(f"/api/runs/{rid}/folder", json={"folder": "  카페   신입 교육  "}).json() == {"folder": "카페 신입 교육"}
+    assert client.get(f"/api/runs/{rid}/cards").json()["reviewed"] is True  # 폴더만 옮기면 확인은 그대로
+    row = next(r for r in client.get("/api/runs").json() if r["id"] == rid)
+    assert row["folder"] == "카페 신입 교육" and row["reviewed"] is True and row["edited"] and "used" in row
+    assert client.post(f"/api/runs/{rid}/folder", json={"folder": "x" * 80}).json()["folder"] == "x" * 30

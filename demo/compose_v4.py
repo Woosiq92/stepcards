@@ -51,7 +51,13 @@ def mp4(name):
 
 
 # ---- 기록에서 뽑은 숫자 ----
-MAKE = ROOT / "runs" / sys.argv[1]
+def rdir(rid):
+    """실행 폴더: runs/ 에 없으면 runs_trash/(11-03 목록 정리로 옮긴 데모용 실행)"""
+    d = ROOT / "runs" / rid
+    return d if d.exists() else ROOT / "runs_trash" / rid
+
+
+MAKE = rdir(sys.argv[1])
 prog = json.loads((MAKE / "progress.json").read_text())["events"]
 make_s = round(prog[-1]["t"] - prog[0]["t"])
 make_cost = round(sum(e.get("cost", 0) or 0 for e in prog) * 100)
@@ -59,7 +65,7 @@ video_min = round(int(re.search(r"영상 (\d+)초", next(e["msg"] for e in prog 
 n_cards = len(json.loads((MAKE / "cards.json").read_text())["cards"])
 retried = len([e for e in prog if e["stage"] == "split"]) > 1
 coach_m = marks("coach")
-ends = {c["n"]: c["end"] for c in json.loads((ROOT / "runs" / "d3d3d3d3d301" / "cards.json").read_text())["cards"]}
+ends = {c["n"]: c["end"] for c in json.loads((rdir("d3d3d3d3d301") / "cards.json").read_text())["cards"]}
 turns = [(t, int(re.search(r"card (\d+)", w).group(1)), float(re.search(r"at video ([\d.]+)s", w).group(1))) for t, w in coach_m if w.startswith("card ")]
 lags = [vt - ends[n - 1] for _, n, vt in turns]
 auto_to = max(n for _, n, _ in turns)

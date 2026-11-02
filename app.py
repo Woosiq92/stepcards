@@ -166,7 +166,7 @@ async def need_key(request: Request, call_next):
         if m.group(1) in SEED_INDEX:
             return JSONResponse({"error": "sample card sets can't be changed"}, 403)
         if owner_of(m.group(1)) != role:
-            return JSONResponse({"error": "another teacher's card set"}, 403)
+            return JSONResponse({"error": "someone else's card set"}, 403)
     if role == "judge":
         kind = next((k for k in JUDGE_LIMITS if path.rstrip("/").endswith(k)), None)
         if kind:  # 크레딧이 드는 요청만 센다. 날이 바뀌면 처음부터
@@ -275,8 +275,25 @@ def runs(request: Request):
                         "done": data is not None, "count": len(cs),
                         "failed": data is None and (prog.get("events") or [{}])[-1].get("stage") == "error",
                         "issues": len(data["problems"]) if data else 0, "thumb": seed.get("thumb") or (cs[0]["image"] if cs else None),  # 견본은 자막 없는 장면을 썸네일로
-                        "stage": storage.stage(d), "delete_on": None if d.name in SEED_INDEX else storage.delete_on(d)})
+                        "stage": storage.stage(d), "delete_on": None if d.name in SEED_INDEX else storage.delete_on(d),
+                        # 목록 정리(폴더·거르기·정렬): 폴더, 만든 사람 확인 여부, 마지막으로 고친 때·쓴 때
+                        "folder": (data or {}).get("folder", ""), "edited": (data or {}).get("edited_at") or d.stat().st_mtime, "used": storage.last_used(d),
+                        "reviewed": d.name in SEED_INDEX or bool(data and data.get("reviewed_at") and data.get("reviewed_at") == data.get("edited_at"))})
     return out
+
+
+@app.post("/api/runs/{run_id}/folder")
+def set_folder(run_id: str, body: dict):
+    """카드 묶음을 폴더로 옮긴다(빈 문자열 = 폴더 없음). 카드 내용은 그대로라 고친 시각·만든 사람 확인은 바뀌지 않는다"""
+    d = run_dir(run_id)
+    name = re.sub(r"\s+", " ", str(body.get("folder") or "")).strip()[:30]
+    with CARDS_LOCK:
+        data = read(d, "cards.json")
+        if data is None:
+            raise HTTPException(404, "아직 카드가 없습니다")
+        data["folder"] = name
+        save_cards(d, data)
+    return {"folder": name}
 
 
 @app.delete("/api/runs/{run_id}")

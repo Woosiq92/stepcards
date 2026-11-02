@@ -270,6 +270,23 @@
   textarea.say::placeholder { color:#a9b5c0; }
   .meta { color:var(--muted); font-size:13px; padding:4px 10px; }
   .row .issue { margin:8px 10px 0; }
+  /* 지난 카드 묶음 정리: 왼쪽 폴더(블로그 카테고리처럼), 위 검색·정렬·고르기, 상태 칩 */
+  .pastwrap { display:grid; grid-template-columns:200px 1fr; gap:20px; align-items:start; } .pastwrap.nofold { grid-template-columns:1fr; }  /* 폴더가 없으면 폴더 칸을 숨긴다(첫 폴더는 고르기 → 폴더로 옮기기) */
+  .folders { display:flex; flex-direction:column; gap:4px; position:sticky; top:12px; }
+  .folders .frow { display:flex; align-items:center; gap:2px; }
+  .folders .fold { flex:1; display:flex; justify-content:space-between; gap:8px; text-align:left; background:none; border:0; border-radius:10px; padding:9px 12px; font:inherit; color:var(--ink); cursor:pointer; }
+  .folders .fold span { color:var(--muted); font-variant-numeric:tabular-nums; } .folders .fold.on { background:var(--accent); color:#fff; } .folders .fold.on span { color:#dfe7ff; }
+  .folders .fren { background:none; border:0; color:var(--muted); cursor:pointer; padding:6px; border-radius:8px; } .folders .fren:hover { background:var(--line); }
+  #fedit, #pnew { display:flex; gap:6px; } .fname { flex:1; min-width:0; padding:8px 10px; border:1px solid var(--line); border-radius:10px; font:inherit; }
+  .pastbar { display:flex; gap:8px; flex-wrap:wrap; } .pastbar .pq { flex:1; min-width:160px; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font:inherit; }
+  .pastbar .psort { padding:9px 10px; border:1px solid var(--line); border-radius:10px; font:inherit; background:#fff; }
+  .pchips { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; } .pchips button { border:1px solid var(--line); background:#fff; border-radius:999px; padding:6px 12px; font:inherit; font-size:14px; cursor:pointer; } .pchips button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .pickbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; background:#eef2ff; border-radius:12px; padding:8px 12px; margin-bottom:10px; } .pickbar select { padding:7px 8px; border-radius:8px; border:1px solid var(--line); font:inherit; }
+  .pastcard { position:relative; } .pastcard.picked { outline:3px solid var(--accent); }
+  .pickbox { position:absolute; top:8px; left:8px; z-index:2; width:26px; height:26px; border-radius:7px; background:#fff; border:2px solid var(--accent); color:var(--accent); font-weight:800; display:flex; align-items:center; justify-content:center; }
+  .ptags { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; } .ptags span { font-size:12px; border-radius:999px; padding:2px 8px; }
+  .ptags .unrev { background:#FBEFD3; color:#8A5A00; } .ptags .arch { background:#eceff5; color:var(--muted); } .ptags .pf { background:#e8eefe; color:#2f4fb0; }
+  @media (max-width:720px) { .pastwrap { grid-template-columns:1fr; } .folders { flex-direction:row; overflow-x:auto; position:static; } .folders .fold { white-space:nowrap; } .folders .frow { flex:none; } }
   .row .rnote { margin:8px 10px 0; padding:8px 12px; border-radius:var(--r-s); background:#FBEFD3; color:#8A5A00; font-size:14px; line-height:1.4; }  /* 막지 않는 '확인 필요' */
   .unreviewed { display:inline-block; background:#FBEFD3; color:#8A5A00; border-radius:999px; padding:4px 12px; font-size:14px; font-weight:700; }
   .tab .unreviewed { position:absolute; top:16px; left:50%; transform:translateX(-50%); z-index:5; }
@@ -622,11 +639,11 @@ async function admin() {
   if (!r.ok) { $("#main").innerHTML = `<h2>${T("관리자 화면", "Admin")}</h2><p class="sub">${T("관리자 키로 들어와야 볼 수 있어요.", "Sign in with the admin key to see this page.")}</p><button class="btn primary" onclick="askKey().then(ok => ok && admin())">${T("관리자 키 넣기", "Enter admin key")}</button>`; return; }
   const d = await r.json(), used = d.total - d.free, stageName = s => ({ making: T("만드는 중", "making"), done: T("완성", "done"), compact: T("정리됨", "compacted"), archived: T("보관됨", "archived"), error: T("멈춤", "stopped") })[s] || s;
   $("#main").innerHTML = `<h2>${T("저장 공간 관리", "Storage")}</h2>
-    <p class="sub">${T(`전체 ${mb(d.total)} 중 ${mb(used)} 사용 (${Math.round(used / d.total * 100)}%) · 정리 ${d.policy.compact_days}일 · 보관 ${d.policy.archive_days}일 · 삭제 ${d.policy.retain_days || "끔"}${d.policy.retain_days ? "일" : ""} · 교사 한도 ${d.policy.max_sets}묶음·${d.policy.quota_mb}MB`,
-      `${mb(used)} of ${mb(d.total)} used (${Math.round(used / d.total * 100)}%) · compact after ${d.policy.compact_days} d · archive after ${d.policy.archive_days} d · delete ${d.policy.retain_days ? "after " + d.policy.retain_days + " d" : "off"} · per teacher ${d.policy.max_sets} sets, ${d.policy.quota_mb} MB`)}</p>
+    <p class="sub">${T(`전체 ${mb(d.total)} 중 ${mb(used)} 사용 (${Math.round(used / d.total * 100)}%) · 정리 ${d.policy.compact_days}일 · 보관 ${d.policy.archive_days}일 · 삭제 ${d.policy.retain_days || "끔"}${d.policy.retain_days ? "일" : ""} · 한 사람 한도 ${d.policy.max_sets}묶음·${d.policy.quota_mb}MB`,
+      `${mb(used)} of ${mb(d.total)} used (${Math.round(used / d.total * 100)}%) · compact after ${d.policy.compact_days} d · archive after ${d.policy.archive_days} d · delete ${d.policy.retain_days ? "after " + d.policy.retain_days + " d" : "off"} · per maker ${d.policy.max_sets} sets, ${d.policy.quota_mb} MB`)}</p>
     ${d.spend ? `<p class="${d.spend.usd >= d.spend.cap ? "red" : "muted"}">${T(`Meta API 사용 $${d.spend.usd} / 상한 $${d.spend.cap} (넘으면 AI 기능을 멈춰요)`, `Meta API spend $${d.spend.usd} / cap $${d.spend.cap} (AI features stop at the cap)`)}</p>` : ""}
     <div class="adminrow">${Object.entries(d.owners).map(([o, v]) => `<span class="chip ok">${esc(o)} · ${v.sets} · ${mb(v.bytes)}</span>`).join("")}
-      <a class="btn" href="/api/admin/backup.zip">${icon("share")} ${T("교사 자료 백업 받기", "Download teacher backup")}</a></div>
+      <a class="btn" href="/api/admin/backup.zip">${icon("share")} ${T("만든 사람별 자료 백업 받기", "Download backup by maker")}</a></div>
     <div class="tablewrap"><table class="admintable"><thead><tr><th>${T("카드 묶음", "Card set")}</th><th>${T("주인", "Owner")}</th><th>${T("단계", "Stage")}</th><th>${T("마지막 사용", "Last used")}</th><th>${T("영상", "Video")}</th><th>${T("사진·소리", "Frames·audio")}</th><th>${T("카드", "Cards")}</th><th>${T("합계", "Total")}</th><th></th></tr></thead>
     <tbody>${d.runs.sort((a, b) => b.size.total - a.size.total).map(x => `<tr><td><a href="#run=${x.id}&view=edit">${esc(runTitle(x))}</a></td><td>${esc(x.owner)}</td><td>${stageName(x.stage)}</td>
       <td>${x.last_used ? new Date(x.last_used * 1000).toLocaleDateString() : "–"}</td><td>${mb(x.size.video)}</td><td>${mb(x.size.frames + x.size.audio)}</td><td>${mb(x.size.cards)}</td><td><b>${mb(x.size.total)}</b></td>
@@ -782,7 +799,7 @@ async function home() {
           <button class="on" onclick="makeWhere(false)">${T("Meta API", "Meta API")}</button><button onclick="makeWhere(true)">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button></span>
         <span class="muted" id="mkwhered" hidden></span>
       </label>
-      <div class="trust center">${[T("칭찬도 점수도 없어요", "No praise, no scores"), T("사진은 남지 않아요", "No photos kept"), T("얼굴을 알아보지 않아요", "No face or voice ID"), T("마지막은 선생님이 정해요", "The teacher decides")].map(t => `<span>${icon("check")}${t}</span>`).join("")}</div>
+      <div class="trust center">${[T("칭찬도 점수도 없어요", "No praise, no scores"), T("사진은 남지 않아요", "No photos kept"), T("얼굴을 알아보지 않아요", "No face or voice ID"), T("마지막은 사람이 정해요", "A person decides")].map(t => `<span>${icon("check")}${t}</span>`).join("")}</div>
     </section>
 
     <h2 class="center sect">${T("가게에서도, 부엌에서도, 교실에서도", "In the café, the kitchen, the classroom")}</h2>
@@ -793,15 +810,9 @@ async function home() {
         <img src="/runs/${r.id}/${r.thumb}" alt=""><span class="kicker">${t}</span><strong>${name(r)}</strong><span class="seemore">${icon("arrow")}<b>${T("예시 보기", "See example")}</b></span></a>` : ""; }).join("")}</div>
 `;
     })()}
-    ${mine.length ? `<h3>${T("지난 카드 묶음", "Previous card sets")}</h3><div class="past">${mine.map(r => `
-      <a class="pastcard" href="#run=${r.id}&view=${r.done ? "edit" : "making"}">
-        ${r.thumb ? `<img src="/runs/${r.id}/${r.thumb}" alt="">` : '<div class="ph"></div>'}
-        <div class="pt"><strong>${esc(runTitle(r))}</strong>
-        ${r.delete_on && r.delete_on * 1000 - Date.now() < 7 * 864e5 ? `<span class="red">${T(`${Math.max(0, Math.ceil((r.delete_on * 1000 - Date.now()) / 864e5))}일 뒤 지워져요`, `deleted in ${Math.max(0, Math.ceil((r.delete_on * 1000 - Date.now()) / 864e5))} days`)}</span>` : ""}
-        <span class="muted">${r.done ? `${T(`카드 ${r.count}장`, `${r.count} cards`)}${r.issues ? ` · <span class="red">${T(`확인할 곳 ${r.issues}`, `${r.issues} to check`)}</span>` : T(" · 확인 끝", " · all checks passed")}` : r.failed ? `<span class="red">${T("멈췄어요", "stopped")}</span>` : T("만드는 중", "in progress")}</span></div>
-        ${r.use ? "" : `<button class="del" title="${T("지우기", "Delete")}" aria-label="${T("지우기", "Delete")}" onclick="event.preventDefault();delRun('${r.id}')">${icon("x")}</button>`}
-      </a>`).join("")}</div>` : ""}
+    ${mine.length ? `<section class="pastbox" id="pastbox"></section>` : ""}
     ${mine.length ? `<p class="muted adminlink"><a href="#view=admin">${T("저장 공간 관리(관리자)", "Storage (admin)")}</a></p>` : ""}`;
+  S.mine = mine; if (mine.length) pastList();
   const drop = $("#drop"), file = $("#file");
   file.onchange = () => file.files[0] && upload(file.files[0]);
   drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
@@ -809,6 +820,99 @@ async function home() {
   S.makeLocal = false;
   fetch("/api/local").then(r => r.json()).then(d => { if (d.ready && $("#mkwhere")) { $("#mkwhere").hidden = false; makeWhere(false); } }).catch(() => {});
   drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) upload(f); };
+}
+/* 지난 카드 묶음: 블로그 카테고리처럼 폴더(묶음 하나에 폴더 하나), 제목 검색, 상태 거르기, 정렬, 여러 개 골라 옮기기·지우기.
+   보는 방식(폴더·거르기·정렬·검색어)은 이 기기에만 남긴다 */
+const PV = (() => { try { return JSON.parse(localStorage.getItem("pastView") || "{}"); } catch { return {}; } })();
+S.pick = new Set();
+function pastSave() { try { localStorage.setItem("pastView", JSON.stringify({ q: PV.q || "", st: PV.st || "all", sort: PV.sort || "edited", folder: PV.folder ?? null })); } catch {} }
+const pastState = r => !r.done ? "making" : r.stage === "archived" ? "archived" : r.reviewed ? "reviewed" : "unreviewed";
+function pastShown() {  // 지금 폴더·상태·검색어·정렬로 보일 카드 묶음
+  const st = PV.st || "all", sort = PV.sort || "edited", q = (PV.q || "").trim().toLowerCase();
+  return S.mine.filter(r => PV.folder === null || PV.folder === undefined || (r.folder || "") === PV.folder)
+    .filter(r => (st === "all" || pastState(r) === st) && (!q || runTitle(r).toLowerCase().includes(q)))
+    .sort(sort === "name" ? (a, b) => runTitle(a).localeCompare(runTitle(b), ui) : sort === "used" ? (a, b) => (b.used || 0) - (a.used || 0) : (a, b) => (b.edited || 0) - (a.edited || 0));
+}
+function pastCardsHtml(shown) {
+  const picking = !!S.picking;
+  return shown.map(r => `
+          <a class="pastcard ${picking && S.pick.has(r.id) ? "picked" : ""}" href="#run=${r.id}&view=${r.done ? "edit" : "making"}" ${picking ? `onclick="event.preventDefault();pickToggle('${r.id}')"` : ""}>
+            ${picking ? `<span class="pickbox" aria-hidden="true">${S.pick.has(r.id) ? "✓" : ""}</span>` : ""}
+            ${r.thumb ? `<img src="/runs/${r.id}/${r.thumb}" alt="">` : '<div class="ph"></div>'}
+            <div class="pt"><strong>${esc(runTitle(r))}</strong>
+            ${r.delete_on && r.delete_on * 1000 - Date.now() < 7 * 864e5 ? `<span class="red">${T(`${Math.max(0, Math.ceil((r.delete_on * 1000 - Date.now()) / 864e5))}일 뒤 지워져요`, `deleted in ${Math.max(0, Math.ceil((r.delete_on * 1000 - Date.now()) / 864e5))} d`)}</span>` : ""}
+            <span class="muted">${r.done ? `${T(`카드 ${r.count}장`, `${r.count} cards`)}${r.issues ? ` · <span class="red">${T(`확인할 곳 ${r.issues}`, `${r.issues} to check`)}</span>` : ""}` : r.failed ? `<span class="red">${T("멈췄어요", "Stopped")}</span>` : T("만드는 중", "Making")}</span>
+            <span class="ptags">${r.done && !r.reviewed ? `<span class="unrev">${T("확인 전", "Not checked")}</span>` : ""}${r.stage === "archived" ? `<span class="arch">${T("보관됨", "Archived")}</span>` : ""}${r.folder ? `<span class="pf">${esc(r.folder)}</span>` : ""}</span></div>
+            ${picking ? "" : `<button class="del" title="${T("지우기", "Delete")}" aria-label="${T("지우기", "Delete")}" onclick="event.preventDefault();delRun('${r.id}')">${icon("x")}</button>`}
+          </a>`).join("") || `<p class="muted">${T("맞는 카드 묶음이 없어요.", "No card sets match.")}</p>`;
+}
+function pastList() {
+  const box = $("#pastbox"); if (!box) return;
+  const all = S.mine, st = PV.st || "all", sort = PV.sort || "edited";
+  const folders = [...new Set(all.map(r => r.folder).filter(Boolean))].sort((a, b) => a.localeCompare(b, ui));
+  if (PV.folder && PV.folder !== "" && !folders.includes(PV.folder)) PV.folder = null;  // 그 폴더가 비면 전체로
+  const shown = pastShown();
+  const cnt = f => all.filter(r => (r.folder || "") === f).length;
+  const fbtn = (f, label, n) => `<button class="fold ${PV.folder === f || (f === null && (PV.folder === null || PV.folder === undefined)) ? "on" : ""}" onclick='PV.folder=${JSON.stringify(f)};pastSave();pastList()'>${esc(label)}<span>${n}</span></button>`;
+  const chips = [["all", T("전체", "All")], ["unreviewed", T("확인 전", "Not checked")], ["reviewed", T("확인 끝", "Checked")], ["making", T("만드는 중", "Making")], ["archived", T("보관됨", "Archived")]];
+  const picking = !!S.picking;
+  box.innerHTML = `<h3>${T("지난 카드 묶음", "Previous card sets")}</h3>
+    <div class="pastwrap ${folders.length ? "" : "nofold"}">
+      <nav class="folders" aria-label="${T("폴더", "Folders")}" ${folders.length ? "" : "hidden"}>
+        ${fbtn(null, T("전체", "All"), all.length)}
+        ${folders.map(f => `<div class="frow">${fbtn(f, f, cnt(f))}<button class="fren" title="${T("이름 바꾸기", "Rename")}" aria-label="${T("이름 바꾸기", "Rename")}" onclick='folderRename(${JSON.stringify(f)})'>⋯</button></div>`).join("")}
+        ${cnt("") && folders.length ? fbtn("", T("폴더 없음", "No folder"), cnt("")) : ""}
+        <div id="fedit"></div>
+      </nav>
+      <div>
+        <div class="pastbar">
+          <input type="search" class="pq" placeholder="${T("제목으로 찾기", "Search titles")}" value="${esc(PV.q || "")}" oninput="PV.q=this.value;pastSave();document.getElementById('pastlist').innerHTML=pastCardsHtml(pastShown())">
+          <select class="psort" onchange="PV.sort=this.value;pastSave();pastList()" aria-label="${T("정렬", "Sort")}">
+            ${[["edited", T("최근 고친 순", "Recently edited")], ["used", T("최근 쓴 순", "Recently used")], ["name", T("이름순", "Name")]].map(([v, l]) => `<option value="${v}" ${sort === v ? "selected" : ""}>${l}</option>`).join("")}
+          </select>
+          <button class="btn" onclick="S.picking=!S.picking;S.pick.clear();pastList()">${picking ? T("고르기 끝", "Done") : T("고르기", "Select")}</button>
+        </div>
+        <div class="pchips">${chips.map(([v, l]) => `<button class="${st === v ? "on" : ""}" onclick="PV.st='${v}';pastSave();pastList()">${l}</button>`).join("")}</div>
+        ${picking ? `<div class="pickbar"><b>${T(`${S.pick.size}개 고름`, `${S.pick.size} selected`)}</b>
+          <select id="pmove" onchange="pickMove(this.value)" ${S.pick.size ? "" : "disabled"}><option value="">${T("폴더로 옮기기…", "Move to folder…")}</option>
+            ${folders.map(f => `<option value="f:${esc(f)}">${esc(f)}</option>`).join("")}<option value="new">${T("새 폴더 만들기…", "New folder…")}</option><option value="none">${T("폴더에서 빼기", "Remove from folder")}</option></select>
+          <button class="btn red" onclick="pickDelete()" ${S.pick.size ? "" : "disabled"}>${T("지우기", "Delete")}</button><span id="pnew"></span></div>` : ""}
+        <div class="past" id="pastlist">${pastCardsHtml(shown)}</div>
+      </div>
+    </div>`;
+}
+function pickToggle(id) { S.pick.has(id) ? S.pick.delete(id) : S.pick.add(id); pastList(); }
+async function moveTo(ids, folder) {
+  let bad = 0;
+  for (const id of ids) { const r = await fetch(`/api/runs/${id}/folder`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folder }) }).catch(() => null);
+    if (r?.ok) { const x = S.mine.find(m => m.id === id); if (x) x.folder = (await r.json()).folder; } else bad++; }
+  if (bad) toast(T(`${bad}개는 옮기지 못했어요.`, `${bad} could not be moved.`));
+}
+function folderInput(where, placeholder, done) {  // 브라우저 입력 창 대신 그 자리 입력 칸
+  const el = $(where); if (!el) return;
+  el.innerHTML = `<input class="fname" maxlength="30" placeholder="${esc(placeholder)}"><button class="btn primary">${T("확인", "OK")}</button>`;
+  const inp = el.querySelector("input"), go = () => { const v = inp.value.trim(); if (v) done(v); };
+  el.querySelector("button").onclick = go; inp.onkeydown = e => { if (e.key === "Enter") go(); if (e.key === "Escape") el.innerHTML = ""; }; inp.focus();
+}
+async function pickMove(v) {
+  const ids = [...S.pick];
+  if (v === "new") return folderInput("#pnew", T("새 폴더 이름", "New folder name"), async name => { await moveTo(ids, name); S.picking = false; S.pick.clear(); PV.folder = name; pastSave(); pastList(); });
+  if (!v) return;
+  await moveTo(ids, v === "none" ? "" : v.slice(2)); S.picking = false; S.pick.clear(); pastList();
+}
+function folderRename(f) {
+  folderInput("#fedit", T(`'${f}' 새 이름`, `New name for '${f}'`), async name => {
+    await moveTo(S.mine.filter(r => r.folder === f).map(r => r.id), name); if (PV.folder === f) PV.folder = name; pastSave(); pastList();
+  });
+}
+function pickDelete() {
+  const ids = [...S.pick];
+  toast(T(`고른 ${ids.length}개 카드 묶음과 올린 영상을 지울까요? 되돌릴 수 없어요.`, `Delete ${ids.length} card sets and their videos? This can't be undone.`), T("지우기", "Delete"), async () => {
+    let bad = 0;
+    for (const id of ids) { const r = await fetch(`/api/runs/${id}`, { method: "DELETE" }).catch(() => null); if (r?.ok) S.mine = S.mine.filter(m => m.id !== id); else bad++; }
+    S.pick.clear(); S.picking = false; pastList();
+    toast(bad ? T(`${bad}개는 지우지 못했어요. 만드는 중이면 끝난 뒤에 지워 주세요.`, `${bad} could not be deleted. If still being made, try after it finishes.`) : T("지웠어요.", "Deleted."));
+  });
 }
 // 지우기는 되돌릴 수 없어서 한 번 더 묻는다(브라우저 확인 창 대신 아래 알림의 단추)
 function delRun(id) {
@@ -954,7 +1058,7 @@ function saveText() {
   return { saved: T("✓ 저장됨", "✓ Saved"), dirty: T("고치는 중…", "Editing…"), saving: T("저장 중…", "Saving…"),
            error: T("저장하지 못했어요. 서버가 켜져 있는지 확인해 주세요.", "Could not save. Check that the server is running."),
            readonly: T("보기 전용이라 저장되지 않아요 · 접속 키가 있으면 다시 고쳐 보세요", "View only: changes are not saved without the access key"),
-           others: T("다른 선생님의 카드 묶음이라 고친 내용은 저장되지 않아요", "This is another teacher's card set, so changes are not saved") }[S.saveState];
+           others: T("다른 사람이 만든 카드 묶음이라 고친 내용은 저장되지 않아요", "Someone else made this card set, so changes are not saved") }[S.saveState];
 }
 function edit() {
   const cs = S.data.cards, { per, global, gaps } = issues();
@@ -1227,7 +1331,7 @@ async function recordVoice(i) {  // 교사만(고치기 화면). 한 번 더 누
 async function deleteVoice(i) {
   const c = S.data.cards[i], r = await fetch(`/api/runs/${S.run}/cards/${c.n}/voice`, { method: "DELETE" });
   if (r.ok) { c.voice = (await r.json()).voice; c.voiceV = Date.now(); if (S.view === "edit") edit(); }
-  else toast(r.status === 403 ? T("다른 선생님의 카드 묶음이라 지울 수 없어요.", "This is another teacher's card set, so it can't be deleted.") : T("녹음을 지우지 못했어요. 다시 해 주세요.", "Could not delete the recording. Please try again."));
+  else toast(r.status === 403 ? T("다른 사람이 만든 카드 묶음이라 지울 수 없어요.", "Someone else made this card set, so it can't be deleted.") : T("녹음을 지우지 못했어요. 다시 해 주세요.", "Could not delete the recording. Please try again."));
 }
 function doneT(c) {  // 완료 기준 시각: 교사가 고른 것, 없으면 카드 끝 뒤 다음 카드 전의 빈 시간(서버 verify.after_t 와 같은 식)
   if (c.done_t != null) return c.done_t;
@@ -1425,7 +1529,7 @@ function use() {
         <div class="fh-box"><strong>${icon("glasses")} ${T("어떻게 따라 하나요", "How it's followed")}</strong>
           <span class="seg">${[["together", T("같이 하기", "Together")], ["alone", T("혼자 하기", "Alone")]].map(([v, l]) => `<button class="${(S.data.mode || "together") === v ? "on" : ""}" aria-pressed="${!!((S.data.mode || "together") === v)}" onclick="setFollow({mode:'${v}'})">${l}</button>`).join("")}</span>
           <span class="muted">${alone() ? T("곁에 아무도 없어요(릴스 시청자, 집). '여기서 막혔어요'를 누르면 카드 번호만 만든 사람에게 모여요.", "Nobody nearby (Reels viewers, at home). 'Stuck here' sends only the card number to the maker.")
-            : T("곁에 선생님·선배가 있어요. '도와줘요'를 누르면 아래 현황판에 떠요.", "A teacher or senior is nearby. 'Ask for help' shows on the live board.")}</span>
+            : T("곁에 도와줄 사람이 있어요. '도와줘요'를 누르면 아래 현황판에 떠요.", "Someone who can help is nearby. 'Ask for help' shows on the live board.")}</span>
           <label class="fh-rec"><input type="checkbox" ${S.data.pov === "facing" ? "checked" : ""} onchange="setFollow({pov:this.checked ? 'facing' : 'first'})"> ${T("시범을 마주 보고 찍었어요 (수어·춤처럼)", "The demonstration faces the camera (signing, dance)")}</label>
           <label class="fh-rec"><input type="checkbox" ${noDone() ? "checked" : ""} onchange="setFollow({no_done:this.checked})"> ${T("기계가 '됐어요'라고 판단하지 않기", "Don't let the app decide a step is done")}</label>
           <span class="muted">${T("사람을 돕거나 다칠 수 있는 일(예: 차에 타는 것 돕기). 카메라 판단·확인하기가 꺼지고 카드는 사람이 넘겨요.", "For helping a person or anything risky (e.g. helping someone into a car). Camera decisions and Check are off; a person turns the cards.")}</span></div>
@@ -1477,7 +1581,7 @@ async function runX() {
   const l = $("#xlang").value.trim(); if (!l) return $("#xlang").focus();
   const b = $("#xgo"); b.disabled = true; b.textContent = T("옮기는 중…", "Translating…");
   const r = await fetch(`/api/runs/${S.run}/translate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lang: l }) }).catch(() => ({ ok: false }));
-  if (!r.ok) { b.disabled = false; b.textContent = T("옮기기", "Translate"); return toast(r.status === 401 ? T("옮기려면 접속 키가 필요해요.", "An access key is needed to translate.") : r.status === 403 ? T("다른 사람의 카드 묶음이에요.", "This is another teacher's card set.") : T("옮기지 못했어요. 다시 해 주세요.", "Could not translate. Please try again.")); }
+  if (!r.ok) { b.disabled = false; b.textContent = T("옮기기", "Translate"); return toast(r.status === 401 ? T("옮기려면 접속 키가 필요해요.", "An access key is needed to translate.") : r.status === 403 ? T("다른 사람이 만든 카드 묶음이에요.", "Someone else made this card set.") : T("옮기지 못했어요. 다시 해 주세요.", "Could not translate. Please try again.")); }
   const d = await r.json();
   S.data.cards = d.cards; S.data.extra = d.extra; S.xprob = d.translate.problems;
   $("#xbox").innerHTML = xboxHtml(); toast(T(`옮겼어요 · $${d.translate.cost}`, `Translated · $${d.translate.cost}`));
@@ -1490,7 +1594,7 @@ async function saveX(ok) {
   const extra = ok === null ? null : { ...S.data.extra, ok: !!ok };
   if (ok === null) S.data.cards.forEach(c => { delete c.x; delete c.xb; delete c.xsrc; });
   const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards: S.data.cards, title: S.data.title ?? "", extra }) });
-  if (!r.ok) return toast(r.status === 403 ? T("다른 사람의 카드 묶음이에요.", "This is another teacher's card set.") : T("저장하지 못했어요.", "Could not save."));
+  if (!r.ok) return toast(r.status === 403 ? T("다른 사람이 만든 카드 묶음이에요.", "Someone else made this card set.") : T("저장하지 못했어요.", "Could not save."));
   const d = await r.json(); S.data.extra = d.extra;
   if (!d.extra && lang === "x") setLang(ui);
   if (ok !== false) use();  // 확인·빼기는 카드 글자 고르기 칸도 바뀐다
@@ -1571,7 +1675,7 @@ function tablet() {
   const c = cs[S.idx], last = S.idx === cs.length - 1;
   $("#main").innerHTML = `<div class="tab">
     <button class="exit" onclick="go({run:S.run,view:'use'})">${icon("x")}${T("나가기", "Exit")}</button>
-    ${S.data.reviewed === false ? `<div class="unreviewed">${T("선생님 확인 전", "Not checked by the teacher yet")}</div>` : ""}
+    ${S.data.reviewed === false ? `<div class="unreviewed">${T("만든 사람 확인 전", "Not checked by the maker yet")}</div>` : ""}
     <div class="imgwrap">${media(c)}<div class="zone l" onclick="flip(-1)" role="button" aria-label="${T("이전 카드", "Previous card")}"></div><div class="zone r" onclick="flip(1)" role="button" aria-label="${T("다음 카드", "Next card")}"></div></div>
     <div class="txt" onclick="sayCard(S.data.cards[S.idx])" title="${T("눌러서 듣기", "Tap to hear")}">${text(c)} <span class="hear">${icon("sound")}</span></div>
     <div class="vrow">${S.data.stage === "archived" || noDone() ? "" : `<button class="verifybtn" onclick="verifyNow()">${icon("camera")} ${T("확인하기", "Check")}</button>`}${alone() ? `<button class="callbtn" id="tmark" onclick="markStuck(this)" ${S.marked?.has(c.n) ? "disabled" : ""}>${S.marked?.has(c.n) ? T("알렸어요", "Sent") : T("여기서 막혔어요", "Stuck here")}</button>` : ""}</div>
@@ -1611,7 +1715,7 @@ function coach() {
     <div class="cstart" id="cstart">
       <div class="glyph">${icon("glasses")}</div>
       <div class="t">${T("따라 하기", "Coach mode")}</div>
-      ${S.data.reviewed === false ? `<div class="unreviewed">${T("선생님이 아직 확인하지 않은 카드예요", "The teacher hasn't checked these cards yet")}</div>` : ""}
+      ${S.data.reviewed === false ? `<div class="unreviewed">${T("만든 사람이 아직 확인하지 않은 카드예요", "The maker hasn't checked these cards yet")}</div>` : ""}
       <div class="d">${noDone() ? T("사람을 돕는 일이라 카메라를 켜지 않아요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "This work helps a person, so the camera stays off. Turn cards with Back and Next; help grows when you're stuck.")
         : T("카메라가 손과 물건을 보고, 지금 할 카드를 띄워 줘요.<br>언제든 이전·다음 단추로 직접 넘길 수 있어요. 카메라 사진은 저장하지 않아요.",
         "The camera watches hands and objects and shows the card for the current step.<br>Back and Next always work by hand. Camera frames are never stored.")}</div>
@@ -1787,7 +1891,7 @@ function coachEnd(finished) {
   $(".coachv").insertAdjacentHTML("beforeend", `<div class="cstart" id="csum"><div class="glyph">${icon("check")}</div><div class="t">${finished ? T("다 했어요", "All steps done") : T("오늘 따라 하기", "Today's run")}</div>
     ${C.help && rec.length ? `<div class="sumline">${(k => T(`카드 ${S.data.cards.length}장 중 ${k}장에서 그림·소리·움직임 도움`, `Picture, sound or motion help on ${k} of ${S.data.cards.length} cards`))(by[1].length + by[2].length + by[3].length)}</div>
     <div class="sumgrid">${by.map((ns, j) => `<div><b>${j ? T(`${lvName(j + 1)}까지`, `Up to ${lvName(j + 1).toLowerCase()}`) : T("글만 보고", "Text only")}</b><span>${ns.length ? T(`카드 ${ns.join(", ")}`, `Card${ns.length > 1 ? "s" : ""} ${ns.join(", ")}`) : "–"}</span></div>`).join("")}</div>
-    <div class="d">${S.rec ? T("기록에 남겼어요. 3번 화면의 '기록 보기'에서 볼 수 있어요.", "Saved to records. See 'View records' on the Follow & check page.") : T("선생님께: 이 요약은 저장되지 않아요. 필요하면 적어 두세요.", "For the teacher: this summary isn't saved. Note it down if you need it.")}</div>` : ""}
+    <div class="d">${S.rec ? T("기록에 남겼어요. 3번 화면의 '기록 보기'에서 볼 수 있어요.", "Saved to records. See 'View records' on the Follow & check page.") : T("도와주는 분께: 이 요약은 저장되지 않아요. 필요하면 적어 두세요.", "For whoever is helping: this summary isn't saved. Note it down if you need it.")}</div>` : ""}
     <button class="navb" onclick="shareRun()">${T("오늘 한 것 보내기", "Share today's run")}</button>
     ${by[2].length + by[3].length ? `<button class="navb next" onclick="sendStuck()">${T("막힌 카드 고치러 가기", "Fix the cards that were hard")}</button>` : ""}
     <button class="navb ${by[2].length + by[3].length ? "" : "next"}" onclick="go({run:S.run,view:'use'})">${T("나가기", "Exit")}</button></div>`);  // 막힌 카드가 있으면 그것을 주 단추로
@@ -1809,7 +1913,7 @@ const alone = () => S.data?.mode === "alone", noDone = () => !!S.data?.no_done;
 async function setFollow(v) {  // 만든 사람만(키). 카드 묶음마다 한 번 정한다
   const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards: S.data.cards, title: S.data.title ?? "", ...v }) }).catch(() => null);
   if (!r) { toast(T("저장하지 못했어요. 다시 해 주세요.", "Could not save. Please try again.")); return use(); }
-  if (!r.ok) { toast(r.status === 403 ? T("다른 사람의 카드 묶음이에요.", "This is another teacher's card set.") : T("바꾸려면 접속 키가 필요해요.", "An access key is needed to change this.")); return use(); }
+  if (!r.ok) { toast(r.status === 403 ? T("다른 사람이 만든 카드 묶음이에요.", "Someone else made this card set.") : T("바꾸려면 접속 키가 필요해요.", "An access key is needed to change this.")); return use(); }
   const d = await r.json(); Object.assign(S.data, { mode: d.mode, no_done: d.no_done, pov: d.pov }); use();
 }
 async function markStuck(btn) {  // 키 없이, 카드 번호만. 같은 카드는 이 화면에서 한 번
@@ -2034,7 +2138,7 @@ async function reloadCards(data) {
   if (!data) { const r2 = await fetch(`/api/runs/${S.run}/cards`).catch(() => null); if (!r2?.ok) return; data = await r2.json(); }
   if (S.view !== "coach") return;
   S.data = data; const k = S.data.cards.findIndex(c => c.n === n); S.idx = k >= 0 ? k : Math.min(S.idx, S.data.cards.length - 1);
-  C.buf = []; C.prev = 0; C.pm = -1; coachCard(true); pill(T("선생님이 고친 카드로 바꿨어요", "Updated to the teacher's latest cards"));
+  C.buf = []; C.prev = 0; C.pm = -1; coachCard(true); pill(T("만든 사람이 고친 카드로 바꿨어요", "Updated to the maker's latest cards"));
   if (noDone() && !wasNoDone) {  // '사람이 정하기'로 바뀜: 카메라를 끄고 손으로 넘긴다(그대로 두면 409 를 받으며 판단을 계속 보냈다)
     C.manual = true; C.stream?.getTracks().forEach(t => t.stop()); C.stream = null;
     $(".coachv")?.classList.remove("follow"); $(".coachv")?.classList.add("nodone"); $(".verifybtn")?.remove();
