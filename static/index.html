@@ -1918,7 +1918,7 @@ async function coachLoop() {
       let d = null; const t0 = Date.now();  // 네트워크 오류도 '판단 못 함'으로 보고 계속 본다
       try { const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev, prev_match: C.pm ?? -1, on_card: C.started ? (Date.now() - (C.cardAt || Date.now())) / 1000 : null, local: C.local, live: C.live, ver: S.data.edited_at ?? null }) }); if (r.ok) d = await r.json();
         if (r.status === 401 || r.status === 429) { C.manual = true; pill(T("자동 넘김은 접속 키가 필요해요 · 이전·다음으로 넘겨요", "Auto-advance needs the access key · use Back and Next")); continue; } } catch { d = null; }
-      clog("decision", { cur, decision: d?.decision || "none", target: d?.target ?? "", ms: Date.now() - t0, in_view: d?.in_view ?? "" });
+      clog("decision", { cur, decision: d?.decision || "none", target: d?.target ?? "", ms: Date.now() - t0, in_view: d?.in_view ?? "", match: d?.match ?? "", done_step: d?.done_step ?? "" });  // 어느 시범 사진과 맞췄는지(늦거나 이른 넘김을 가리려고)
       if (!C.running || S.idx + 1 !== cur) continue;  // 그 사이 사람이 직접 넘겼으면 결과는 버린다
       if (!d) { pill(T("판단하지 못했어요 · 다시 보는 중", "No answer · watching again")); }
       else if (d.decision === "reload") {  // 선생님이 카드를 고쳤다: 새 카드를 받고, 보던 카드(번호 n)에서 이어 간다

@@ -949,7 +949,7 @@ def post_records(run_id: str, body: dict):
     return {"ok": True}
 
 
-LOG_KEYS = ("cur", "to", "by", "decision", "target", "ms", "n", "result", "lv", "finished")
+LOG_KEYS = ("cur", "to", "by", "decision", "target", "ms", "n", "result", "lv", "finished", "match", "done_step")  # match·done_step: 어느 시범 사진과 맞췄는지
 
 
 @app.post("/api/runs/{run_id}/log")

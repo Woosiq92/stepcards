@@ -78,6 +78,8 @@ first_turn = min(((t, abs(float(re.search(r"at video ([\d.]+)s", w).group(1)) - 
                   for t, w in coach_m if w.startswith("card ")), key=lambda x: x[1])[0]
 v_start = at("coach", "video start")
 last_turn = max(t for t, w in coach_m if w.startswith("card "))
+LAG_MED = round(sorted(lags)[len(lags) // 2])
+FOLLOW_X = max(2.0, round((last_turn - v_start + 6) / 32 * 2) / 2)  # 따라 하기 장면을 약 32초로(0.5 단위 배속, 화면 꼬리표에 그대로)
 
 # (이름, 화면 배치, 원본 구간 [시작, 길이, 배속], 위쪽 꼬리표, 내레이션)
 SEGMENTS = [
@@ -96,10 +98,10 @@ SEGMENTS = [
     ("edit", "single:edit", None, "Teacher review · every edit is checked again",
      "The teacher stays in charge. Add a second action to a sentence, and the card turns red. Take it out, and it passes. "
      "Each card can be a photo, a motion clip from the video, or a 3D fold drawn from the demonstration."),
-    ("follow", "duo_coach", (v_start, last_turn - v_start + 6, 2.5),
-     "Replay at 2.5× · the demonstration video plays as the camera · live Muse Spark decisions",
+    ("follow", "duo_coach", (v_start, last_turn - v_start + 6, FOLLOW_X),
+     f"Replay at {FOLLOW_X:g}× · the demonstration video plays as the camera · live Muse Spark decisions",
      "On the learner's side, the cards follow the hands. Here the same napkin video plays as the camera. "
-     f"Muse Spark decides which step the hands are on. The cards turned on their own up to card {auto_to}, {math.floor(min(lags))} to {math.ceil(max(lags))} seconds after each step was done. "
+     f"Muse Spark compares the camera with photos of each step from the demonstration. The cards turned on their own all the way to card {auto_to}, a median of {LAG_MED} seconds after each step ended. "
      "The glasses view is built for Ray-Ban Display."),
     ("help", "trio_help", (1.5, at("help", "learner sees help coming") + 3.5, 1), "Help only when needed · the teacher's board on the right",
      "Help starts as text only. When the learner is stuck, it grows one step at a time: a picture, the sentence read aloud, then a motion clip. "
@@ -111,8 +113,7 @@ SEGMENTS = [
     ("glimmer", "single:glimmer", None, f"Recorded run on this Mac · open-weight Muse Glimmer · {g_s} s · $0",
      f"For schools that can't send video out, the same pipeline runs on open-weight Muse Glimmer on a Mac. "
      f"This napkin video became {g_cards} checked cards in {g_s} seconds, at no API cost. "
-     "What doesn't work yet: in our napkin test, the later steps that unfold hidden layers were not recognized, so the learner taps Next. "
-     "And we have not yet tested with learners."),
+     "What we have not done yet: test with learners, and with a different person on a live camera."),
     ("close", "slide_close", None, None,
      "One video. Checked cards. Help only when needed. StepCards."),
 ]
@@ -134,9 +135,9 @@ if KO:  # 한글판 꼬리표·내레이션(숫자는 위와 같은 기록에서
         "edit": ("교사 확인 · 고칠 때마다 다시 검사",
                  "결정은 교사가 해요. 문장에 동작을 하나 더 넣으면 카드가 빨갛게 바뀌고, 빼면 통과해요. "
                  "카드마다 사진, 영상에서 뽑은 움직임, 시범을 따라 그린 3D 접기 중에서 고를 수 있어요."),
-        "follow": ("2.5배속 다시 재생 · 시범 영상을 카메라 대신 흘림 · Muse Spark 실제 판단",
-                   "학생 쪽에서는 카드가 손을 따라가요. 여기서도 같은 냅킨 영상을 카메라 대신 흘렸어요. Muse Spark가 손이 어느 단계에 있는지 판단해요. "
-                   f"카드는 {auto_to}번까지 저절로 넘어갔고, 단계가 끝나고 {math.floor(min(lags))}초에서 {math.ceil(max(lags))}초 뒤였어요. 안경 화면은 레이밴 디스플레이용으로 만들었어요."),
+        "follow": (f"{FOLLOW_X:g}배속 다시 재생 · 시범 영상을 카메라 대신 흘림 · Muse Spark 실제 판단",
+                   "학생 쪽에서는 카드가 손을 따라가요. 여기서도 같은 냅킨 영상을 카메라 대신 흘렸어요. Muse Spark가 카메라 화면을 시범 영상의 단계 사진과 맞춰 봐요. "
+                   f"카드는 {auto_to}번까지 저절로 넘어갔고, 단계가 끝나고 중간값 {LAG_MED}초 뒤였어요. 안경 화면은 레이밴 디스플레이용으로 만들었어요."),
         "help": ("필요할 때만 도움 · 오른쪽은 교사 현황판",
                  "도움은 글만으로 시작해요. 학생이 막히면 한 칸씩 늘어나요. 그림, 문장 읽어 주기, 그다음 움직임이에요. "
                  "도움을 다 써도 안 되면 '도와줘요'가 교사 현황판에 떠요. 교사가 '갈게요'를 누르면 학생 화면에 도와주러 온다고 나와요. "
@@ -147,7 +148,7 @@ if KO:  # 한글판 꼬리표·내레이션(숫자는 위와 같은 기록에서
         "glimmer": (f"이 맥에서 돌린 기록 · 공개 가중치 Muse Glimmer · {g_s}초 · $0",
                     f"영상을 밖으로 보낼 수 없는 학교에서는 같은 과정을 공개 가중치 모델 Muse Glimmer로 맥에서 돌려요. "
                     f"이 냅킨 영상이 {g_s}초 만에 검사를 통과한 카드 {g_cards}장이 됐고, API 비용은 0원이었어요. "
-                    "아직 안 되는 것도 있어요. 냅킨 시험에서 숨은 겹을 펴는 뒷단계는 알아보지 못해서, 학생이 '다음'을 직접 눌러요. 학생과 함께한 시험도 아직 하지 않았어요."),
+                    "아직 하지 못한 것도 있어요. 학생과 함께한 시험, 그리고 다른 사람이 실제 카메라로 따라 하는 시험이에요."),
         "close": (None, "영상 하나, 검사한 카드, 필요할 때만 도움. StepCards."),
     }
     SEGMENTS = [(n, lay, sp, *KO_TEXT[n]) for n, lay, sp, _, _ in SEGMENTS]
