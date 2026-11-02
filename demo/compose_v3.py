@@ -206,6 +206,30 @@ def label_png(text, name):
     return p
 
 
+T_GLASS = "레이밴 디스플레이 착용 시야 · 시뮬레이션" if KO else "Ray-Ban Display wearer's view · simulated"
+
+
+def pill_png(text, name):
+    """작은 꼬리표 한 개(글자 크기에 맞춘 그림)"""
+    f = font(22, True)
+    tw = int(ImageDraw.Draw(Image.new("RGBA", (1, 1))).textlength(text, font=f))
+    img = Image.new("RGBA", (tw + 28, 38), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle((0, 0, tw + 27, 37), radius=18, fill=(47, 99, 244, 235))
+    d.text((14, 6), text, font=f, fill=(255, 255, 255))
+    p = TMP / f"pill_{name}.png"
+    img.save(p)
+    return p
+
+
+def sim_panel(gi, si, scene_t, trim, ln, sp, seg_len):
+    """안경 착용 시야 580x440 → [panel]: 눈앞 장면(si 입력의 scene_t 초부터) + 안경테(si+1 입력) + 오른쪽 렌즈에 안경 화면(gi 입력)을 screen 합성.
+    검은색 = 투명(Ray-Ban Display 는 빛을 더하는 화면, 오른쪽 렌즈에만). 두 영상 색 형식을 RGB 로 맞춰야 색이 안 틀어진다"""
+    return (f"[{si}:v]trim=start={scene_t}:duration={ln},setpts=(PTS-STARTPTS)/{sp},crop=ih*4/3:ih,scale=580:440,fps=30,format=gbrp[sc];"
+            f"{trim(gi)},scale=222:222[g];color=c=black:s=580x440:r=30:d={seg_len}[blk];[blk][g]overlay=316:88:shortest=1,format=gbrp[hud];"
+            f"[sc][hud]blend=all_mode=screen:shortest=1,format=yuv420p[mix];[mix][{si + 1}:v]overlay=0:0[panel]")
+
+
 def base_video(name, layout, span, seg_len):
     out = TMP / f"{name}_v.mp4"
     enc = ["-t", seg_len, "-r", 30, "-pix_fmt", "yuv420p", "-c:v", "libx264", "-crf", "18", out]
@@ -228,14 +252,17 @@ def base_video(name, layout, span, seg_len):
     ss, ln, sp = span
     trim = lambda i: f"[{i}:v]trim=start={ss}:duration={ln},setpts=(PTS-STARTPTS)/{sp}"
     if layout == "duo_coach":  # 왼쪽 휴대폰 화면, 오른쪽 안경 화면
-        # 왼쪽 = 따라 하기 화면(카메라·판단 한 줄·목표 사진이 앱 안에 크게 있다), 오른쪽 = 안경
-        fc = (f"{trim(1)},scale=1260:788[a];{trim(2)},scale=540:540[b];"
-              f"[0][a]overlay=30:105[o1];[o1][b]overlay=1345:230,tpad=stop_mode=clone:stop_duration={seg_len}")
-        sh("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", bg, "-i", mp4("coach"), "-i", mp4("coach_glasses"), "-filter_complex", fc, *enc)
-    else:  # trio_help: 왼쪽 학습자, 오른쪽 위 안경, 오른쪽 아래 교사 현황판
-        fc = (f"{trim(1)},scale=1152:720[a];{trim(2)},scale=400:400[b];{trim(3)},scale=680:435[c];"
-              f"[0][a]overlay=30:110[o1];[o1][b]overlay=1370:60[o2];[o2][c]overlay=1210:480,tpad=stop_mode=clone:stop_duration={seg_len}")
-        sh("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", bg, "-i", mp4("help"), "-i", mp4("help_glasses"), "-i", mp4("help_teacher"), "-filter_complex", fc, *enc)
+        # 왼쪽 = 따라 하기 화면, 오른쪽 = 안경 착용 시야 시뮬레이션: 눈앞 장면(같은 시각의 카메라 영상) 위에 안경테,
+        # 오른쪽 렌즈에 안경 화면을 screen 합성(검은색 = 투명, Ray-Ban Display 는 오른쪽 렌즈에만 화면). 화면에 '시뮬레이션'이라고 밝힌다
+        fc = (f"{trim(1)},scale=1260:788[a];{sim_panel(2, 3, max(0, ss - v_start), trim, ln, sp, seg_len)};"
+              f"[0][a]overlay=30:105[o1];[o1][panel]overlay=1320:230[o2];[o2][5:v]overlay=1320:186,tpad=stop_mode=clone:stop_duration={seg_len}")
+        sh("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", bg, "-i", mp4("coach"), "-i", mp4("coach_glasses"), "-i", ROOT / "samples" / "napkin_butterfly.mp4",
+           "-i", ROOT / "demo" / "glasses_frame.png", "-i", pill_png(T_GLASS, "glass"), "-filter_complex", fc, *enc)
+    else:  # trio_help: 왼쪽 학습자, 오른쪽 위 안경 착용 시야(배경 = 7번 단계의 시범 장면), 오른쪽 아래 교사 현황판
+        fc = (f"{trim(1)},scale=1152:720[a];{sim_panel(2, 4, 73, trim, ln, sp, seg_len)};[panel]scale=464:352[pb];{trim(3)},scale=680:435[c];"
+              f"[0][a]overlay=30:110[o1];[o1][pb]overlay=1300:62[o2];[o2][c]overlay=1210:480[o3];[o3][6:v]overlay=1300:20,tpad=stop_mode=clone:stop_duration={seg_len}")
+        sh("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", bg, "-i", mp4("help"), "-i", mp4("help_glasses"), "-i", mp4("help_teacher"),
+           "-i", ROOT / "samples" / "napkin_butterfly.mp4", "-i", ROOT / "demo" / "glasses_frame.png", "-i", pill_png(T_GLASS, "glass"), "-filter_complex", fc, *enc)
     return out
 
 
