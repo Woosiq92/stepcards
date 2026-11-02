@@ -1,1 +1,119 @@
-{"807dcf4d2be2": {"title": "아이스 라테 만들기 · 눈높이 영상 (견본)", "use": "special", "title_en": "Iced latte · eye-level video (sample)"}, "8e1456e529ca": {"title": "냅킨 나비 접기 (견본)", "use": "staff", "title_en": "Napkin butterfly fold (sample)"}, "9ba0bf565609": {"title": "블랙 글레이즈드 라테 레시피 (견본)", "use": "creator", "title_en": "Black glazed latte recipe (sample)"}, "d8e60e3947bd": {"title": "쇼키 춤 기초 (견본)", "use": "creator", "title_en": "Shoki dance basics (sample)"}, "06d0c8e9935c": {"title": "바지락 순두부찌개 · 엄마 레시피 (견본)", "use": "family", "title_en": "Clam sundubu-jjigae · mom's recipe (sample)"}, "fa37916f40e3": {"title": "침대 옆 서랍장 조립 (견본)", "use": "assembly", "title_en": "Bedside cabinet assembly (sample)"}, "07bd2594965b": {"title": "디앤디케어 · 차량 승하차 돕기 (견본)", "use": "job", "title_en": "D&D Care · helping into a car (sample)", "job": "디앤디케어", "job_en": "D&D Care (peer support)", "custom": true, "credit": "https://youtu.be/708QT4y6lco · PT Shan · CC BY", "thumb": "cards/thumb.jpg"}, "69f2cf75f625": {"title": "디앤디케어 · 양치 돕기 (견본)", "use": "job", "title_en": "D&D Care · helping with tooth brushing (sample)", "job": "디앤디케어", "job_en": "D&D Care (peer support)", "custom": true, "credit": "https://youtu.be/SQEjgHODEz0 · WisTech Open | Open RN · CC BY", "thumb": "cards/05.jpg"}, "961565031c4e": {"title": "스포츠이용시설 안내 · 수건 개기 (견본)", "use": "job", "title_en": "Sports facility guide · folding towels (sample)", "job": "스포츠이용시설 안내", "job_en": "Sports facility guide", "custom": false, "credit": "https://youtu.be/KKSIl9gbeBY · 귀주부 · CC BY", "thumb": "cards/06.jpg"}, "5401be9ad228": {"title": "도서정리 · 책 꽂기 (견본)", "use": "job", "title_en": "Book arrangement · shelving books (sample)", "job": "도서정리", "job_en": "Book arrangement", "custom": false, "credit": "https://youtu.be/-qOS2Uyu1Tw · thirdpresident · CC BY", "thumb": "cards/07.jpg"}, "f3d1c1514436": {"title": "농-농케어 · 수어 인사 (견본)", "use": "job", "title_en": "Deaf peer care · greetings in Korean Sign Language (sample)", "job": "농-농케어", "job_en": "Deaf-to-deaf peer care", "custom": true, "credit": "https://youtu.be/UktSega5kmU · 박광철 목사 · CC BY"}}
+{
+ "807dcf4d2be2": {
+  "title": "아이스 라테 만들기 · 눈높이 영상 (견본)",
+  "use": "special",
+  "title_en": "Iced latte · eye-level video (sample)",
+  "cats": [
+   "job",
+   "food"
+  ]
+ },
+ "8e1456e529ca": {
+  "title": "냅킨 나비 접기 (견본)",
+  "use": "staff",
+  "title_en": "Napkin butterfly fold (sample)",
+  "cats": [
+   "food"
+  ]
+ },
+ "9ba0bf565609": {
+  "title": "블랙 글레이즈드 라테 레시피 (견본)",
+  "use": "creator",
+  "title_en": "Black glazed latte recipe (sample)",
+  "cats": [
+   "food"
+  ]
+ },
+ "d8e60e3947bd": {
+  "title": "쇼키 춤 기초 (견본)",
+  "use": "creator",
+  "title_en": "Shoki dance basics (sample)",
+  "cats": [
+   "move"
+  ]
+ },
+ "06d0c8e9935c": {
+  "title": "바지락 순두부찌개 · 엄마 레시피 (견본)",
+  "use": "family",
+  "title_en": "Clam sundubu-jjigae · mom's recipe (sample)",
+  "cats": [
+   "food"
+  ]
+ },
+ "fa37916f40e3": {
+  "title": "침대 옆 서랍장 조립 (견본)",
+  "use": "assembly",
+  "title_en": "Bedside cabinet assembly (sample)",
+  "cats": [
+   "build"
+  ]
+ },
+ "07bd2594965b": {
+  "title": "디앤디케어 · 차량 승하차 돕기 (견본)",
+  "use": "job",
+  "title_en": "D&D Care · helping into a car (sample)",
+  "job": "디앤디케어",
+  "job_en": "D&D Care (peer support)",
+  "custom": true,
+  "credit": "https://youtu.be/708QT4y6lco · PT Shan · CC BY",
+  "thumb": "cards/thumb.jpg",
+  "cats": [
+   "job",
+   "care"
+  ]
+ },
+ "69f2cf75f625": {
+  "title": "디앤디케어 · 양치 돕기 (견본)",
+  "use": "job",
+  "title_en": "D&D Care · helping with tooth brushing (sample)",
+  "job": "디앤디케어",
+  "job_en": "D&D Care (peer support)",
+  "custom": true,
+  "credit": "https://youtu.be/SQEjgHODEz0 · WisTech Open | Open RN · CC BY",
+  "thumb": "cards/05.jpg",
+  "cats": [
+   "job",
+   "care"
+  ]
+ },
+ "961565031c4e": {
+  "title": "스포츠이용시설 안내 · 수건 개기 (견본)",
+  "use": "job",
+  "title_en": "Sports facility guide · folding towels (sample)",
+  "job": "스포츠이용시설 안내",
+  "job_en": "Sports facility guide",
+  "custom": false,
+  "credit": "https://youtu.be/KKSIl9gbeBY · 귀주부 · CC BY",
+  "thumb": "cards/06.jpg",
+  "cats": [
+   "job",
+   "house"
+  ]
+ },
+ "5401be9ad228": {
+  "title": "도서정리 · 책 꽂기 (견본)",
+  "use": "job",
+  "title_en": "Book arrangement · shelving books (sample)",
+  "job": "도서정리",
+  "job_en": "Book arrangement",
+  "custom": false,
+  "credit": "https://youtu.be/-qOS2Uyu1Tw · thirdpresident · CC BY",
+  "thumb": "cards/07.jpg",
+  "cats": [
+   "job"
+  ]
+ },
+ "f3d1c1514436": {
+  "title": "농-농케어 · 수어 인사 (견본)",
+  "use": "job",
+  "title_en": "Deaf peer care · greetings in Korean Sign Language (sample)",
+  "job": "농-농케어",
+  "job_en": "Deaf-to-deaf peer care",
+  "custom": true,
+  "credit": "https://youtu.be/UktSega5kmU · 박광철 목사 · CC BY",
+  "cats": [
+   "job",
+   "talk"
+  ]
+ }
+}

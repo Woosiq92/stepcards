@@ -161,7 +161,7 @@ async def need_key(request: Request, call_next):
         return r
     if not role:
         return JSONResponse({"error": "key required"}, 401)
-    use_only = path.endswith(("/coach", "/verify", "/records", "/log"))  # 따라 하기·확인하기·기록은 누구 카드 묶음이든(고치기가 아님)
+    use_only = path.endswith(("/coach", "/verify", "/records", "/log", "/copy"))  # 복사는 견본·남의 묶음에서도(새 묶음은 내 것)  # 따라 하기·확인하기·기록은 누구 카드 묶음이든(고치기가 아님)
     if m and not use_only and role != "admin" and (RUNS / m.group(1)).is_dir():  # 교사·심사 키는 자기가 올린 묶음만 고치고 지운다
         if m.group(1) in SEED_INDEX:
             return JSONResponse({"error": "sample card sets can't be changed"}, 403)
@@ -277,9 +277,41 @@ def runs(request: Request):
                         "issues": len(data["problems"]) if data else 0, "thumb": seed.get("thumb") or (cs[0]["image"] if cs else None),  # 견본은 자막 없는 장면을 썸네일로
                         "stage": storage.stage(d), "delete_on": None if d.name in SEED_INDEX else storage.delete_on(d),
                         # 목록 정리(폴더·거르기·정렬): 폴더, 만든 사람 확인 여부, 마지막으로 고친 때·쓴 때
+                        "cats": seed.get("cats", []), "mode": (data or {}).get("mode", "together"), "no_done": bool((data or {}).get("no_done")), "fold3d": bool((data or {}).get("fold")),
                         "folder": (data or {}).get("folder", ""), "edited": (data or {}).get("edited_at") or d.stat().st_mtime, "used": storage.last_used(d),
                         "reviewed": d.name in SEED_INDEX or bool(data and data.get("reviewed_at") and data.get("reviewed_at") == data.get("edited_at"))})
     return out
+
+
+@app.post("/api/runs/{run_id}/copy")
+def copy_run(run_id: str, request: Request):
+    """견본(또는 내 카드 묶음)을 내 카드 묶음으로 복사해 고쳐 쓴다. 새 id, 주인은 복사한 사람, 만든 사람 확인은 다시 처음부터"""
+    src = run_dir(run_id)
+    data = read(src, "cards.json")
+    if data is None:
+        raise HTTPException(404, "아직 카드가 없습니다")
+    role = getattr(request.state, "who", "admin")
+    if role != "admin":  # 저장 한도(올리기와 같은 기준)
+        n, used = storage.owned_usage(RUNS, UPLOADS, role)
+        if n >= storage.TEACHER_MAX_SETS or used + storage.size(src)["total"] > storage.TEACHER_QUOTA_MB << 20:
+            raise HTTPException(403, f"저장 한도({storage.TEACHER_MAX_SETS}묶음·{storage.TEACHER_QUOTA_MB}MB)를 넘었습니다")
+    new = uuid.uuid4().hex[:12]
+    dst = RUNS / new
+    shutil.copytree(src, dst, ignore=shutil.ignore_patterns("owner.txt", "audit.jsonl", "coach_log.jsonl", "records.jsonl", "marks.jsonl", "used", "*.tmp"))
+    (dst / "owner.txt").write_text(role)
+    prog = read(dst, "progress.json") or {}
+    if prog.get("video_path"):  # 영상 경로는 복사본의 영상으로
+        prog["video_path"] = str(dst / "video.mp4") if (dst / "video.mp4").exists() else prog["video_path"]
+        text = json.dumps(prog, ensure_ascii=False, indent=1)
+        atomic(dst / "progress.json", lambda t: t.write_text(text))
+    seed = SEED_INDEX.get(run_id, {})
+    title = (data.get("title") or seed.get("title") or "").replace(" (견본)", "").strip()
+    for k in ("seed_v", "reviewed_at", "folder"):
+        data.pop(k, None)
+    data["title"] = (title + (" 사본" if title else "사본"))[:60]
+    data["edited_at"] = time.time()
+    save_cards(dst, data)
+    return {"id": new}
 
 
 @app.post("/api/runs/{run_id}/folder")

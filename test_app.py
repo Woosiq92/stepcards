@@ -568,3 +568,16 @@ def test_folder_move_keeps_review_and_is_listed(monkeypatch):
     row = next(r for r in client.get("/api/runs").json() if r["id"] == rid)
     assert row["folder"] == "카페 신입 교육" and row["reviewed"] is True and row["edited"] and "used" in row
     assert client.post(f"/api/runs/{rid}/folder", json={"folder": "x" * 80}).json()["folder"] == "x" * 30
+
+
+def test_copy_run_makes_my_own_unreviewed_set(monkeypatch):
+    rid, d = make_run()
+    client.put(f"/api/runs/{rid}/cards", json={"cards": client.get(f"/api/runs/{rid}/cards").json()["cards"], "reviewed": True, "title": "냅킨 접기"})
+    (d / "coach_log.jsonl").write_text("x")
+    r = client.post(f"/api/runs/{rid}/copy")
+    assert r.status_code == 200
+    new = r.json()["id"]
+    got = client.get(f"/api/runs/{new}/cards").json()
+    assert new != rid and got["title"] == "냅킨 접기 사본" and got["reviewed"] is False  # 복사본은 다시 확인
+    assert not (A.RUNS / new / "coach_log.jsonl").exists() and A.owner_of(new) == "admin"
+    assert len(got["cards"]) == len(client.get(f"/api/runs/{rid}/cards").json()["cards"])

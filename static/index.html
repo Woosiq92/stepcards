@@ -270,6 +270,25 @@
   textarea.say::placeholder { color:#a9b5c0; }
   .meta { color:var(--muted); font-size:13px; padding:4px 10px; }
   .row .issue { margin:8px 10px 0; }
+  /* 처음 화면 탭·카드 라이브러리 */
+  .htabs { display:flex; gap:8px; justify-content:center; margin:28px auto 8px; flex-wrap:wrap; }
+  .htabs button { display:flex; align-items:center; gap:8px; border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:999px; padding:12px 22px; font:inherit; font-size:17px; font-weight:700; cursor:pointer; }
+  .htabs button span { background:var(--line); border-radius:999px; padding:1px 9px; font-size:13px; font-variant-numeric:tabular-nums; }
+  .htabs button.on { background:var(--ink); color:#fff; border-color:var(--ink); } .htabs button.on span { background:rgba(255,255,255,.18); }
+  .htabs .ico { width:18px; height:18px; }
+  .lib { max-width:1180px; margin:0 auto; padding:8px 20px 24px; }
+  .libtop { display:flex; align-items:center; gap:16px; flex-wrap:wrap; justify-content:space-between; } .libtop h2 { margin:0; }
+  .libtop .lq { flex:0 1 320px; padding:10px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; }
+  .libchips b { font-weight:600; color:var(--muted); margin-left:2px; } .libchips button.on b { color:#cfd6ff; }
+  .libh { margin:22px 0 10px; } .lib .jobsrc { margin:-4px 0 12px; }
+  .libgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:16px; }
+  .libcard { background:#fff; border:1px solid var(--line); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; }
+  .libimg img { width:100%; aspect-ratio:16/10; object-fit:cover; display:block; }
+  .libbody { padding:12px 14px 14px; display:flex; flex-direction:column; gap:6px; flex:1; } .libbody a { color:inherit; text-decoration:none; }
+  .libbody strong { font-size:17px; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .ltags { display:flex; gap:4px; flex-wrap:wrap; } .ltags span { font-size:12px; border-radius:999px; padding:2px 8px; background:#eef1f8; color:var(--muted); }
+  .lacts { display:flex; gap:6px; flex-wrap:wrap; margin-top:auto; padding-top:6px; } .lacts .btn { padding:7px 12px; font-size:14px; }
+  .mhero.full { min-height:min(64vh, 560px); }  /* 히어로를 줄여 라이브러리가 첫 화면에서 보이게 */
   /* 지난 카드 묶음 정리: 왼쪽 폴더(블로그 카테고리처럼), 위 검색·정렬·고르기, 상태 칩 */
   .pastwrap { display:grid; grid-template-columns:200px 1fr; gap:20px; align-items:start; } .pastwrap.nofold { grid-template-columns:1fr; }  /* 폴더가 없으면 폴더 칸을 숨긴다(첫 폴더는 고르기 → 폴더로 옮기기) */
   .folders { display:flex; flex-direction:column; gap:4px; position:sticky; top:12px; }
@@ -758,7 +777,7 @@ async function home() {
         <span class="mpov">${icon("glasses")} <span class="long">${T("하는 사람의 눈높이에서 찍은 시범 (Ray-Ban Meta 시점)", "Demonstration filmed at the doer's eye level (Ray-Ban Meta view)")}</span><span class="short">${T("눈높이에서 찍은 시범", "Filmed at eye level")}</span></span>
         <h2>${T("한 번 보여 주면, 다음부턴 혼자서", "Show it once. Then they've got it.")}</h2>
         <p>${T("시범 영상 하나가 따라 하기 카드가 되고, 막히는 순간에만 손을 내밀어요.", "One demonstration turns into follow-along cards that step in only when someone gets stuck.")}</p>
-        <div class="mbtns"><a class="pill" href="#" onclick="event.preventDefault();document.getElementById('start').scrollIntoView({behavior:'smooth'})">${T("영상 넣기", "Add a video")}</a>${ex[0] ? `<a class="pill ghost" href="#run=${ex[0].id}&view=use">${T("예시 보기", "See an example")}</a>` : ""}</div>
+        <div class="mbtns"><a class="pill" href="#" onclick="event.preventDefault();homeTab('mine');document.getElementById('start').scrollIntoView({behavior:'smooth'})">${T("영상 넣기", "Add a video")}</a>${ex[0] ? `<a class="pill ghost" href="#run=${ex[0].id}&view=use">${T("예시 보기", "See an example")}</a>` : ""}</div>
       </div>
       <div class="mstrip"><span class="mlabel">${T("도움은 필요할 때만 늘어나요", "Help grows only when needed")}</span>
         <span class="msteps">${[1, 2, 3, 4].map(l => `<span><i>${helpIcon(l)}</i>${lvName(l)}</span>`).join('<b class="mline"></b>')}</span>
@@ -766,11 +785,11 @@ async function home() {
       ${has(L) ? `<button class="mpause" onclick="const v=this.parentElement.querySelector('video');v.paused?v.play():v.pause();this.innerHTML=v.paused?'▶':'❚❚'" aria-label="${T("영상 멈추기", "Pause video")}">❚❚</button>` : ""}
     </section>
 
-    ${runs.some(x => x.use === "job" && x.done) ? `<h2 class="center sect first">${T("특수교육과 장애인 일자리", "Special education and disability jobs")}</h2>
-    <p class="center muted jobsrc">${T("특수교육 직업훈련 견본과, 보건복지부 「2026년 장애인일자리 사업안내」의 직무에 맞는 공개(CC BY) 시범 영상으로 만든 카드예요. ★ = 심한장애인 맞춤형 직무(11개, p.70)", "A special-education job-training sample, and cards made from open (CC BY) demonstration videos matching jobs in the Ministry of Health and Welfare's 2026 disability job program guide. ★ = one of the 11 jobs tailored for people with severe disabilities (p.70)")}</p>
-    <div class="news four">${runs.filter(x => (x.use === "job" || x.use === "special") && x.done).sort((a, b) => (b.use === "special") - (a.use === "special") || b.custom - a.custom).map(r => `<a class="newscard" href="#run=${r.id}&view=use">
-        <img src="/runs/${r.id}/${r.thumb}" alt=""><span class="kicker">${r.use === "special" ? T("특수교육 직무 훈련", "Special-education job training") : `${r.custom ? "★ " : ""}${esc(r.job)}`}</span><strong>${name(r)}</strong><span class="seemore">${icon("arrow")}<b>${T("예시 보기", "See example")}</b></span></a>`).join("")}</div>` : ""}
-
+    <nav class="htabs" role="tablist">
+      <button role="tab" id="tb-lib" onclick="homeTab('lib')">${icon("tablet")} ${T("카드 라이브러리", "Card library")}<span>${runs.filter(r => r.use && r.done).length}</span></button>
+      <button role="tab" id="tb-mine" onclick="homeTab('mine')">${icon("check")} ${T("내 카드", "My cards")}<span>${mine.length}</span></button>
+    </nav>
+    <div class="htab" id="hlib"><section class="lib" id="lib"></section>
     ${has(N) ? `<section class="mstory full dark">
       <h2>${T("막힐 때만, 딱 그만큼", "Help when stuck. Just enough.")}</h2>
       <p>${T("처음엔 글만 보여요. 손이 멈추면 그림, 그다음엔 소리, 그래도 어려우면 움직이는 장면까지.", "Words first. If the hands stop, a picture. Then a voice. Then the move itself.")}</p>
@@ -786,6 +805,8 @@ async function home() {
       <a class="pill" href="#run=${N}&view=tablet">${icon("camera")} ${T("확인해 보기", "Try a check")}</a>
     </section>` : ""}
 
+    </div>
+    <div class="htab" id="hmine">
     <section class="mstart" id="start">
       <h2 class="center">${T("찍어 둔 영상 하나면 돼요", "All it takes is one video")}</h2>
       <p class="center sub">${T("손이 잘 보이는 1~10분짜리면 충분해요. 동작마다 카드 한 장, 문장은 짧고 쉽게 나와요.", "One to ten minutes, hands in view. One card per action, in short, plain words.")}</p>
@@ -801,18 +822,12 @@ async function home() {
       </label>
       <div class="trust center">${[T("칭찬도 점수도 없어요", "No praise, no scores"), T("사진은 남지 않아요", "No photos kept"), T("얼굴을 알아보지 않아요", "No face or voice ID"), T("마지막은 사람이 정해요", "A person decides")].map(t => `<span>${icon("check")}${t}</span>`).join("")}</div>
     </section>
-
-    <h2 class="center sect">${T("가게에서도, 부엌에서도, 교실에서도", "In the café, the kitchen, the classroom")}</h2>
-    <div class="news four">${[
-      ["staff", T("신입 직원 교육", "New staff training")], ["family", T("가족 손기술 남기기", "Family know-how")],
-      ["creator", T("크리에이터 따라 하기", "Follow-along for creators")], ["assembly", T("조립·설치 안내", "Assembly and setup")],
-    ].map(([u, t]) => { const r = runs.find(x => x.use === u && x.done); return r ? `<a class="newscard" href="#run=${r.id}&view=use">
-        <img src="/runs/${r.id}/${r.thumb}" alt=""><span class="kicker">${t}</span><strong>${name(r)}</strong><span class="seemore">${icon("arrow")}<b>${T("예시 보기", "See example")}</b></span></a>` : ""; }).join("")}</div>
-`;
-    })()}
-    ${mine.length ? `<section class="pastbox" id="pastbox"></section>` : ""}
-    ${mine.length ? `<p class="muted adminlink"><a href="#view=admin">${T("저장 공간 관리(관리자)", "Storage (admin)")}</a></p>` : ""}`;
+    ${mine.length ? `<section class="pastbox" id="pastbox"></section>` : `<p class="center muted">${T("아직 만든 카드 묶음이 없어요. 위에 영상을 넣거나, 라이브러리에서 '복사해서 고치기'로 시작해요.", "No card sets yet. Add a video above, or start from 'Copy and edit' in the library.")}</p>`}
+    ${mine.length ? `<p class="muted adminlink"><a href="#view=admin">${T("저장 공간 관리(관리자)", "Storage (admin)")}</a></p>` : ""}
+    </div>`;
+    })()}`;
   S.mine = mine; if (mine.length) pastList();
+  S.lib = runs.filter(r => r.use && r.done); libList(); homeTab(HT());
   const drop = $("#drop"), file = $("#file");
   file.onchange = () => file.files[0] && upload(file.files[0]);
   drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
@@ -820,6 +835,60 @@ async function home() {
   S.makeLocal = false;
   fetch("/api/local").then(r => r.json()).then(d => { if (d.ready && $("#mkwhere")) { $("#mkwhere").hidden = false; makeWhere(false); } }).catch(() => {});
   drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) upload(f); };
+}
+/* 처음 화면 탭: 카드 라이브러리(모두가 쓰는 견본) / 내 카드(내가 만든 것). 고른 탭은 이 기기에만 */
+const HT = () => { try { return localStorage.getItem("homeTab") || "lib"; } catch { return "lib"; } };
+function homeTab(t) {
+  for (const [k, id] of [["lib", "hlib"], ["mine", "hmine"]]) {
+    const on = k === t, tab = $("#tb-" + k), pane = $("#" + id);
+    if (pane) pane.hidden = !on; if (tab) { tab.classList.toggle("on", on); tab.setAttribute("aria-selected", on); }
+  }
+  try { localStorage.setItem("homeTab", t); } catch {}
+}
+/* 카드 라이브러리: 하는 일로 나눈 분류 칩, 제목 찾기. '전체'에서는 생활 속 쓰임새를 먼저, 특수교육·장애인 일자리는 그 아래(출처·★ 설명과 함께) */
+const LIBCAT = [["job", T("직업 훈련", "Job training")], ["food", T("카페·음식", "Cafe & food")], ["house", T("집안일", "Housework")], ["build", T("조립", "Assembly")],
+  ["care", T("돌봄", "Care")], ["talk", T("의사소통", "Communication")], ["move", T("운동·춤", "Movement")]];
+const LV = { cat: "all", q: "" };
+const libKicker = r => r.use === "special" ? T("특수교육 직무 훈련", "Special-education job training") : r.use === "job" ? `${r.custom ? "★ " : ""}${esc(r.job)}`
+  : { staff: T("신입 직원 교육", "New staff training"), family: T("가족 손기술 남기기", "Family know-how"), creator: T("크리에이터 따라 하기", "Follow-along for creators"), assembly: T("조립·설치 안내", "Assembly and setup") }[r.use] || "";
+function libCard(r) {
+  const tags = [r.mode === "alone" ? T("혼자 하기", "On your own") : T("같이 하기", "With a helper"), r.no_done ? T("사람이 정함", "A person decides") : T("카메라가 넘김", "Camera turns cards"), r.fold3d ? "3D" : ""].filter(Boolean);
+  return `<article class="libcard">
+    <a href="#run=${r.id}&view=use" class="libimg"><img src="/runs/${r.id}/${r.thumb}" alt=""></a>
+    <div class="libbody"><span class="kicker">${libKicker(r)}</span><a href="#run=${r.id}&view=use"><strong>${esc(runTitle(r).replace(/ \((견본|sample)\)$/, ""))}</strong></a>
+      <span class="muted">${T(`카드 ${r.count}장`, `${r.count} cards`)}</span>
+      <span class="ltags">${tags.map(t => `<span>${t}</span>`).join("")}</span>
+      <span class="lacts"><a class="btn primary" href="#run=${r.id}&view=coach">${T("따라 하기", "Follow")}</a><a class="btn" href="#run=${r.id}&view=use">${T("카드 보기", "View cards")}</a>
+        <button class="btn" onclick="copyRun('${r.id}')">${T("복사해서 고치기", "Copy and edit")}</button></span></div>
+  </article>`;
+}
+function libBodyHtml() {  // 분류·검색어로 보일 카드(검색 칸은 그대로 두고 이것만 다시 그린다: 한글 조합이 끊기지 않게)
+  const all = S.lib || [], q = LV.q.trim().toLowerCase();
+  const hit = r => (LV.cat === "all" || (r.cats || []).includes(LV.cat)) && (!q || runTitle(r).toLowerCase().includes(q) || (r.job || "").toLowerCase().includes(q));
+  const every = all.filter(r => r.use !== "job" && r.use !== "special"), jobs = all.filter(r => r.use === "job" || r.use === "special").sort((a, b) => (b.use === "special") - (a.use === "special") || b.custom - a.custom);
+  const grid = list => `<div class="libgrid">${list.map(libCard).join("")}</div>`;
+  return LV.cat === "all" && !q
+    ? `${every.length ? `<h3 class="libh">${T("가게에서도, 부엌에서도, 교실에서도", "In the cafe, the kitchen, the classroom")}</h3>${grid(every)}` : ""}
+       ${jobs.length ? `<h3 class="libh">${T("특수교육과 장애인 일자리", "Special education and disability jobs")}</h3>
+       <p class="muted jobsrc">${T("특수교육 직업훈련 견본과, 보건복지부 「2026년 장애인일자리 사업안내」의 직무에 맞는 공개(CC BY) 시범 영상으로 만든 카드예요. ★ = 심한장애인 맞춤형 직무(11개, p.70)", "A special-education job-training sample, and cards made from open (CC BY) demonstration videos matching jobs in Korea's 2026 disability jobs guide. ★ = one of the 11 jobs tailored for people with severe disabilities (p.70)")}</p>${grid(jobs)}` : ""}`
+    : (all.filter(hit).length ? grid(all.filter(hit)) : `<p class="muted">${T("맞는 카드가 없어요.", "No cards match.")}</p>`);
+}
+function libList() {
+  const box = $("#lib"); if (!box) return;
+  const all = S.lib || [];
+  box.innerHTML = `<div class="libtop"><h2>${T("카드 라이브러리", "Card library")}</h2>
+      <input type="search" class="lq" placeholder="${T("제목·직무로 찾기", "Search titles and jobs")}" value="${esc(LV.q)}" oninput="LV.q=this.value;document.getElementById('libbody').innerHTML=libBodyHtml()"></div>
+    <div class="pchips libchips">${[["all", T("전체", "All"), all.length], ...LIBCAT.map(([k, l]) => [k, l, all.filter(r => (r.cats || []).includes(k)).length]).filter(x => x[2])]
+      .map(([k, l, n]) => `<button class="${LV.cat === k ? "on" : ""}" onclick="LV.cat='${k}';libList()">${l} <b>${n}</b></button>`).join("")}</div>
+    <div id="libbody">${libBodyHtml()}</div>`;
+}
+// 복사해서 고치기: 견본을 내 카드 묶음으로 가져와 고친다(키가 있어야 함)
+async function copyRun(id) {
+  const r = await fetch(`/api/runs/${id}/copy`, { method: "POST" }).catch(() => null);
+  if (!r?.ok) return toast(r?.status === 401 ? T("복사하려면 접속 키가 필요해요.", "An access key is needed to copy.") : r?.status === 403 ? T("저장 한도를 넘었어요. 안 쓰는 카드 묶음을 지워 주세요.", "You've reached your storage limit.") : T("복사하지 못했어요.", "Could not copy."));
+  const d = await r.json(); toast(T("내 카드로 복사했어요. 고쳐서 써요.", "Copied to My cards. Edit it to make it yours."));
+  try { localStorage.setItem("homeTab", "mine"); } catch {}
+  go({ run: d.id, view: "edit" });
 }
 /* 지난 카드 묶음: 블로그 카테고리처럼 폴더(묶음 하나에 폴더 하나), 제목 검색, 상태 거르기, 정렬, 여러 개 골라 옮기기·지우기.
    보는 방식(폴더·거르기·정렬·검색어)은 이 기기에만 남긴다 */
