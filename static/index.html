@@ -447,6 +447,23 @@
     .againtag { top:auto; bottom:170px; font-size:17px; }
     .tab .bar { padding:12px 16px calc(16px + env(safe-area-inset-bottom)); }
   }
+  /* 가로로 낮은 화면(휴대폰 가로): 위에서 아래로 쌓으면 그림 칸이 89x67px 뿐이었다 → 왼쪽 절반 = 그림(따라 하는 중이면 카메라+그림),
+     오른쪽 = 진행·문장·도움 줄·단추를 아래에서부터. 같은 무게의 기존 규칙을 이기도록 스타일 맨 끝에 둔다 */
+  @media (orientation:landscape) and (max-height:520px) {
+    .tab { padding-left:52%; justify-content:flex-end; }
+    .tab .imgwrap, .tab.coachv.follow .cstage { position:absolute; left:0; top:0; bottom:0; width:52%; padding:46px 12px 12px 16px; align-items:center; justify-content:center; }
+    .tab.coachv.follow .cstage { display:flex; flex-direction:row; gap:10px; }
+    .tab.coachv .imgwrap, .tab.coachv.follow .cstage { padding-top:88px; }  /* 따라 하기는 왼쪽 위 진행·상태 알약 아래부터 */
+    .tab.coachv.follow .cstage .imgwrap { position:relative; inset:auto; width:auto; padding:0; }
+    .tab.coachv.follow .cstage .cam { max-height:100%; } .tab.coachv.follow .cam video { max-height:calc(100% - 34px); }
+    .coachv.follow .cam .judge { font-size:13px; padding:6px 10px; }
+    .tab .ttop { margin-bottom:auto; padding-right:190px; }
+    .tab .txt, .coachv .txt { font-size:clamp(20px, 3vw, 28px); padding:6px 16px 2px; width:auto; margin:0; }
+    .tab .hrow { padding:4px 16px; }
+    .tab .bar { padding:8px 16px 12px; gap:8px; } .tab .navb { padding:12px 14px; min-width:0; font-size:16px; }
+    .tab .mid .dots { display:none; }
+    .cstart { justify-content:flex-start; overflow-y:auto; padding-top:16px; padding-bottom:16px; }
+  }
 </style>
 </head>
 <body>
