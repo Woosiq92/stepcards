@@ -11,6 +11,7 @@ ap.add_argument("--speed", type=float, default=1.0)  # 학습자가 시범보다
 ap.add_argument("--variant", default="none")  # 같은 영상을 다른 카메라처럼: zoom(가운데 80% 확대), dim(어둡고 흐림)
 ap.add_argument("--live", action="store_true")  # 화면 기본값(실시간 확인 켬)처럼 지금 카드의 끝 사진을 같이 준다
 ap.add_argument("--states", action="store_true")  # 11-02 새 방식: 시범의 단계 끝 사진과 맞추기
+ap.add_argument("--settle", action="store_true")  # 11-02: 손이 멈춘 순간 한 번 더 묻기(동시에 최대 2개), 화면과 같은 규칙
 ap.add_argument("--out", default="")
 a = ap.parse_args()
 
@@ -37,7 +38,7 @@ if a.live:
 
 t, cur, prev, since, log, moves, pm = 1.0, 1, 0, 0.0, [], [], -1
 cost = 0.0
-while t < dur and cur <= len(cards):
+while not a.settle and t < dur and cur <= len(cards):
     if t - since < 0.999:  # 넘긴 뒤에는 사진 2장(1초)이 다시 쌓일 때까지(1.0 과 비교하면 부동소수점 오차로 같은 줄을 영영 돌았다)
         t = since + 1.0
         continue
@@ -57,6 +58,54 @@ while t < dur and cur <= len(cards):
         moves.append({"to": "end", "vt": round(t_ans * a.speed, 1)}); break
     t = t_ans + 0.4
 
+if a.settle:  # 앞의 순차 흉내는 버리고 사건 순서대로 다시: 0.5초마다 사진, 멈춤 감지, 답은 도착 시각 순으로 반영
+    from PIL import Image
+    small = {}
+    def gray(t):
+        k = min(len(shots) - 1, max(0, int(t * FPS)))
+        if k not in small:
+            small[k] = list(Image.open(shots[k]).convert("L").resize((32, 18)).getdata())
+        return small[k]
+    t, cur, prev, pm, since, log, moves, cost = 1.0, 1, 0, -1, 0.0, [], [], 0.0
+    pending, main_next, last, moved = [], 1.0, None, False  # pending = [(도착 시각, 보낸 때 카드, 결과, 주 질문?)]
+    def send(t, main):
+        global cost
+        frames = [shot(t - 0.5), shot(t)]
+        refs = coach.state_refs(d, cards, cur) if a.states else None
+        r = coach.check(cards, cur, frames, prev, False, None, refs, pm, bool(refs) and coach.change(d, cards, cur) < coach.SIMILAR, (t - since) if since else t)
+        cost += r["cost"]
+        pending.append((t + r["latency"], cur, r, main))
+        log.append({"vt": round(t * a.speed, 1), "cur": cur, "main": main, **{k: r.get(k) for k in ("decision", "match", "done_step")}, "lat": r["latency"]})
+    while t < dur and cur <= len(cards):
+        for item in sorted([p for p in pending if p[0] <= t], key=lambda p: p[0]):  # 도착한 답
+            pending.remove(item)
+            at_t, c0, r, main = item
+            if main:
+                main_next = at_t + 0.4
+            if c0 != cur:
+                continue  # 그 사이 카드가 바뀌었으면 버린다(화면과 같음)
+            prev, pm = r["seen"], r.get("done_step", -1)
+            to = cur + 1 if r["decision"] == "next" else r["target"] if r["decision"] == "jump" else None
+            if to and 1 <= to <= len(cards):
+                moves.append({"to": to, "vt": round(at_t * a.speed, 1)}); cur, prev, since = to, 0, at_t
+            elif r["decision"] == "finished":
+                moves.append({"to": "end", "vt": round(at_t * a.speed, 1)}); cur = len(cards) + 1
+        if cur > len(cards):
+            break
+        g = gray(t)
+        if last is not None:
+            m = sum(abs(x - y) for x, y in zip(g, last)) / len(g)
+            if m >= 4:
+                moved = True
+            elif m < 2 and moved:
+                moved = False
+                if len(pending) < 2 and t - since >= 0.999:
+                    send(t, False)
+        last = g
+        if not any(p[3] for p in pending) and t >= main_next and t - since >= 0.999:
+            send(t, True)
+        t = round(t + 0.5, 3)
+
 ends = {c["n"]: c["end"] for c in cards}
 rows = []
 for m in moves:
@@ -66,7 +115,7 @@ for m in moves:
 reached = max([m["to"] for m in moves if m["to"] != "end"] or [1])
 lags = [r["lag"] for r in rows if r["to"] != "end"]
 early = [r for r in rows if r["lag"] < -2]  # 앞 단계가 끝나기 2초 넘게 전에 넘김 = 잘못 넘김
-summary = {"run": a.run, "states": a.states, "speed": a.speed, "variant": a.variant, "live": a.live, "cards": len(cards), "reached": reached,
+summary = {"run": a.run, "states": a.states, "settle": a.settle, "speed": a.speed, "variant": a.variant, "live": a.live, "cards": len(cards), "reached": reached,
            "finished": any(m["to"] == "end" for m in moves), "moves": rows,
            "lag_median": sorted(lags)[len(lags) // 2] if lags else None, "lag_max": max(lags) if lags else None, "early": len(early),
            "calls": len(log), "cost": round(cost, 3)}

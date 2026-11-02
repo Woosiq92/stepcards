@@ -4,7 +4,7 @@ import json, os, re, threading, time
 from openai import OpenAI
 import pipeline
 
-FRAMES = 2  # 최근 사진 수. 4장보다 빠르고 답은 같았음(coach_bench.py)
+FRAMES = int(os.environ.get("COACH_FRAMES") or 2)  # 최근 사진 수. 4장보다 빠르고 답은 같았음(coach_bench.py). 환경 변수는 측정용
 # 이 맥에서 돌리는 공개 가중치 Muse Glimmer(llama-server). 사진이 맥 밖으로 나가지 않는다
 LOCAL_URL = os.environ.get("GLIMMER_URL", "http://127.0.0.1:8791/v1")
 local_client = OpenAI(base_url=LOCAL_URL, api_key="local", timeout=60)
@@ -184,7 +184,7 @@ def check(cards, cur, frames, prev_seen=0, local=False, ref=None, refs=None, pre
             "latency": round(time.time() - t0, 2), "cost": round(cost, 4), "local": local, **seen_view, **(live or {})}
 
 
-AHEAD = 2  # 지금 단계 끝 다음으로 몇 단계 끝까지 보여 줄지(빨리 한 학습자도 따라잡게)
+AHEAD = int(os.environ.get("COACH_AHEAD") or 2)  # 지금 단계 끝 다음으로 몇 단계 끝까지 보여 줄지(빨리 한 학습자도 따라잡게). 환경 변수는 측정용
 
 
 def state_refs(d, cards, cur):

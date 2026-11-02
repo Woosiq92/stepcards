@@ -539,3 +539,21 @@ def test_teacher_review_mark(monkeypatch):
     cards[0]["ko"] = "컵을 드세요."
     assert client.put(f"/api/runs/{rid}/cards", json={"cards": cards}).status_code == 200  # 카드를 고침: 다시 확인 전
     assert get()["reviewed"] is False
+
+
+def test_card_say_and_demo_video(monkeypatch):
+    rid, d = make_run()
+    monkeypatch.setattr(A, "GTTS_KEY", "")
+    assert client.get(f"/api/runs/{rid}/cards/1/say.mp3?l=ko").status_code == 404  # 키가 없으면 화면이 기기 음성으로
+    monkeypatch.setattr(A, "GTTS_KEY", "k")
+    calls = []
+    import urllib.request, base64
+    class R:
+        def read(self): return json.dumps({"audioContent": base64.b64encode(b"ID3fake").decode()}).encode()
+    monkeypatch.setattr(urllib.request, "urlopen", lambda req, timeout=0: calls.append(req) or R())
+    assert client.get(f"/api/runs/{rid}/cards/1/say.mp3?l=ko").content == b"ID3fake"
+    assert client.get(f"/api/runs/{rid}/cards/1/say.mp3?l=ko").status_code == 200 and len(calls) == 1  # 같은 문장은 다시 만들지 않는다
+    assert client.get(f"/api/runs/{rid}/cards/1/say.mp3?l=x").status_code == 404
+    assert client.get(f"/api/runs/{rid}/cards/9/say.mp3?l=ko").status_code == 404
+    (d / "video.mp4").write_bytes(b"v")
+    assert client.get(f"/api/runs/{rid}/demo.mp4").status_code == 404  # 견본이 아니면 시범 영상을 내주지 않는다

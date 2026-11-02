@@ -768,6 +768,37 @@ def glass_img(run_id: str, i: int, ill: int = 1):
     return FileResponse(out)
 
 
+GTTS_KEY = os.environ.get("GTTS_KEY") or (Path("~/.gtts_key").expanduser().read_text().strip() if Path("~/.gtts_key").expanduser().exists() else "")
+SAY_VOICE = {"ko": ("ko-KR", "ko-KR-Chirp3-HD-Zephyr"), "en": ("en-US", "en-US-Chirp3-HD-Zephyr")}
+
+
+@app.get("/api/runs/{run_id}/cards/{n}/say.mp3")
+def card_say(run_id: str, n: int, l: str = "ko"):
+    """카드 문장을 자연스러운 목소리(구글 Chirp3-HD)로. 문장이 바뀌면 새로 만들고, 같은 문장은 만든 파일을 다시 쓴다.
+    키(GTTS_KEY)가 없거나 실패하면 404 → 화면이 기기 음성으로 읽는다. 카드에 있는 문장만 읽으니 만들 수 있는 양은 카드 수로 정해진다"""
+    import base64, urllib.request
+    d = run_dir(run_id)
+    data = read(d, "cards.json")
+    c = next((c for c in (data or {}).get("cards", []) if c.get("n") == n), None)
+    text = str((c or {}).get(l) or "").strip()
+    if not (GTTS_KEY and l in SAY_VOICE and text):
+        raise HTTPException(404)
+    out = d / "cards" / f"say_{n}_{l}_{hashlib.sha1(text.encode()).hexdigest()[:10]}.mp3"
+    if not (out.exists() and out.stat().st_size):
+        lang, name = SAY_VOICE[l]
+        body = {"input": {"text": text}, "voice": {"languageCode": lang, "name": name}, "audioConfig": {"audioEncoding": "MP3", "speakingRate": 0.95}}
+        try:
+            req = urllib.request.Request("https://texttospeech.googleapis.com/v1/text:synthesize?key=" + GTTS_KEY,
+                                         data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+            audio = base64.b64decode(json.loads(urllib.request.urlopen(req, timeout=20).read())["audioContent"])
+        except Exception:
+            raise HTTPException(404)
+        tmp = out.with_name(f".{os.getpid()}_{threading.get_ident()}_{out.name}")
+        tmp.write_bytes(audio)
+        os.replace(tmp, out)
+    return FileResponse(out, media_type="audio/mpeg", headers={"Cache-Control": "public, max-age=86400"})
+
+
 @app.get("/api/runs/{run_id}/demo.mp4")
 def demo_video(run_id: str):
     """'작동 보기': 견본의 시범 영상(CC BY)을 따라 하기 카메라 대신 흘린다. 교사가 올린 영상은 내주지 않는다"""
