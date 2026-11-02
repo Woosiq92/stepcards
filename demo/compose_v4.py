@@ -76,11 +76,11 @@ print(f"만들기 {make_s}s {make_cost}c {n_cards}장 재시도 {retried} / 자�
 if not KO:
     retry_en = "One card broke a rule, so it went back and came out right. " if retried else ""
     S = [
-        ("hook", "clip:8e1456e529ca:27", None, None, "Some things you only learn by watching."),
-        ("p_cafe", "clip:807dcf4d2be2:30", None, "First week at a cafe", "New at the cafe? You watch the barista once, and then it's your turn."),
-        ("p_reel", "clip:d8e60e3947bd:50", None, "Learning from a Reel", "Learning a dance from a Reel means pause, rewind, pause, rewind."),
-        ("p_family", "clip:06d0c8e9935c:16:top", None, "Mom's recipe", "Mom's recipe? It was never written down."),
-        ("p_job", "clip:961565031c4e:36", None, "Job training", "Job coaches still make picture cards by hand, screenshot after screenshot, for every task."),
+        ("hook", "gen:hook", None, "Generated scene", "Some things you only learn by watching."),
+        ("p_cafe", "gen:cafe", None, "First week at a cafe · generated scene", "New at the cafe? You watch the barista once, and then it's your turn."),
+        ("p_reel", "gen:reel", None, "Learning from a Reel · generated scene", "Learning a dance from a Reel means pause, rewind, pause, rewind."),
+        ("p_family", "gen:family", None, "Mom's recipe · generated scene", "Mom's recipe? It was never written down."),
+        ("p_job", "gen:job", None, "Job training · generated scene", "Job coaches still make picture cards by hand, screenshot after screenshot, for every task."),
         ("p_sum", "statement", None, None, "Watching once isn't enough. Writing it all down takes hours."),
         ("reveal", "duo", (max(0, first_turn - 7), 12, 1), "Replay · demo video used as the camera · live decisions",
          "StepCards turns one video into step cards. Then the camera watches your hands, and a few seconds after you finish a step, the next card shows up on your phone or your glasses."),
@@ -107,15 +107,15 @@ if not KO:
     ]
     GLASS, CLOSE = "Ray-Ban Display view · simulated", ["Show it once.", "Then they've got it."]
     CLOSE_SUB = ["Built with Meta models · Muse Spark · SAM 3.1 · Voice Transcribe · Muse Image · Muse Glimmer",
-                 "Not a Meta product · made by LogicCraft", "Demo videos CC BY, credited in the app · synthetic voice"]
+                 "Not a Meta product · made by LogicCraft", "Opening scenes are images generated on this Mac (Z-Image Turbo) · demo videos CC BY · synthetic voice"]
 else:
     retry_ko = "규칙에 어긋난 카드가 하나 있어서 다시 쓰게 했고, 두 번째에 통과했어요. " if retried else ""
     S = [
-        ("hook", "clip:8e1456e529ca:27", None, None, "보고 따라 해야만 배우는 일이 있죠."),
-        ("p_cafe", "clip:807dcf4d2be2:30", None, "카페 첫 출근", "카페 첫 출근 날, 바리스타가 한 번 보여 주면 바로 내 차례예요."),
-        ("p_reel", "clip:d8e60e3947bd:50", None, "릴스로 춤 배우기", "릴스로 춤을 배우면 멈추고, 되감고, 또 멈춰요."),
-        ("p_family", "clip:06d0c8e9935c:16:top", None, "엄마 레시피", "엄마 레시피는 어디에도 적혀 있지 않고요."),
-        ("p_job", "clip:961565031c4e:36", None, "직업 훈련", "직업 훈련 선생님은 아직도 그림 카드를 손으로 만들어요. 일마다 캡처하고 자르면서요."),
+        ("hook", "gen:hook", None, "생성한 장면", "보고 따라 해야만 배우는 일이 있죠."),
+        ("p_cafe", "gen:cafe", None, "카페 첫 출근 · 생성한 장면", "카페 첫 출근 날, 바리스타가 한 번 보여 주면 바로 내 차례예요."),
+        ("p_reel", "gen:reel", None, "릴스로 춤 배우기 · 생성한 장면", "릴스로 춤을 배우면 멈추고, 되감고, 또 멈춰요."),
+        ("p_family", "gen:family", None, "엄마 레시피 · 생성한 장면", "엄마 레시피는 어디에도 적혀 있지 않고요."),
+        ("p_job", "gen:job", None, "직업 훈련 · 생성한 장면", "직업 훈련 선생님은 아직도 그림 카드를 손으로 만들어요. 일마다 캡처하고 자르면서요."),
         ("p_sum", "statement", None, None, "한 번 봐서는 모자라고, 다 적자니 몇 시간이 걸려요."),
         ("reveal", "duo", (max(0, first_turn - 7), 12, 1), "다시 재생 · 시범 영상을 카메라 대신 · 실제 판단",
          "StepCards는 영상 하나로 단계 카드를 만들어요. 따라 할 때는 카메라가 손을 보고, 한 단계를 마치면 몇 초 뒤 다음 카드를 휴대폰이나 안경에 띄워요."),
@@ -140,7 +140,7 @@ else:
     ]
     GLASS, CLOSE = "레이밴 디스플레이 착용 시야 · 시뮬레이션", ["한 번 보여 주면,", "따라 할 수 있게."]
     CLOSE_SUB = ["Meta 모델로 만듦 · Muse Spark · SAM 3.1 · Voice Transcribe · Muse Image · Muse Glimmer",
-                 "Meta 제품 아님 · 로직크래프트 제작", "시범 영상 CC BY, 앱에 출처 표기 · 합성 음성"]
+                 "Meta 제품 아님 · 로직크래프트 제작", "앞 장면은 이 맥에서 생성한 그림(Z-Image Turbo) · 시범 영상 CC BY · 합성 음성"]
 
 
 # ---- 그림 재료 ----
@@ -272,6 +272,21 @@ def base_video(name, layout, span, seg_len):
         txt = text_png(CLOSE, name, 96, CLOSE_SUB + ["stepcards-production.up.railway.app"])
         sh("ffmpeg", "-v", "error", "-y", *bg, "-loop", 1, "-t", seg_len, "-i", txt, "-filter_complex",
            "[1:v]format=rgba,fade=in:st=0.1:d=0.6:alpha=1[t];[0:v][t]overlay=0:0", *enc)
+        return out
+    if layout.startswith("gen:") and not (ROOT / "demo" / "gen" / f"{layout[4:]}.mp4").exists():
+        # 생성 영상이 없으면 생성 그림(Z-Image Turbo)에 카메라 움직임: 천천히 다가가며 옆으로 조금 흐른다
+        # (11-02 Wan 2.2 1248x704 영상은 디코딩에서 스왑 37GB 로 강제 종료됐다)
+        src = ROOT / "demo" / "gen" / f"{layout[4:]}.png"
+        n = int(seg_len * FPS)
+        z = f"zoompan=z='1.04+0.08*on/{n}':x='(iw-iw/zoom)*(0.35+0.3*on/{n})':y='(ih-ih/zoom)/2':d={n}:s={W}x{H}:fps={FPS}"
+        sh("ffmpeg", "-v", "error", "-y", "-i", src, "-vf", f"scale={W * 2}:{H * 2}:force_original_aspect_ratio=increase:flags=lanczos,crop={W * 2}:{H * 2},{z}", *enc)
+        return out
+    if layout.startswith("gen:"):  # 문제 상황: 이 맥에서 생성한 2초 영상(Wan 2.2). 최대 2배까지 천천히 늘리고, 다가가는 줌, 모자라면 마지막 그림 유지
+        src = ROOT / "demo" / "gen" / f"{layout[4:]}.mp4"
+        slow = min(2.0, max(1.0, seg_len / duration(src)))
+        z = f"zoompan=z='1+0.05*on/({seg_len}*{FPS})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={W}x{H}:fps={FPS}"
+        sh("ffmpeg", "-v", "error", "-y", "-i", src, "-an", "-vf",
+           f"setpts=PTS*{slow:.3f},minterpolate=fps={FPS}:mi_mode=blend,scale={W * 2}:{H * 2}:force_original_aspect_ratio=increase:flags=lanczos,crop={W * 2}:{H * 2},{z},tpad=stop_mode=clone:stop_duration={seg_len}", *enc)
         return out
     if layout.startswith("clip:"):  # 문제 상황: 견본의 실제 시범 영상(CC BY), 천천히 다가가는 줌
         _, rid, t, *opt = layout.split(":")
