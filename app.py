@@ -4,7 +4,6 @@ import hashlib, hmac, io, json, os, re, shutil, threading, time, uuid
 from pathlib import Path
 from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
-from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageDraw
 import coach
 import pipeline
@@ -55,7 +54,7 @@ mark_interrupted()
 
 APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정: 키를 아는 사람만 크레딧을 쓰고 카드를 바꾸게
 JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 수 있지만 하루 한도가 있다(제출 설명에 적는 키)
-JUDGE_LIMITS = {"upload": 6, "illustrate": 60, "agent": 20, "translate": 10, "step": 400, "compare": 400, "coach": 900, "frame": 60, "retry": 6, "verify": 300}  # 하루 횟수. 따라 하기 900번 ≈ 30분
+JUDGE_LIMITS = {"upload": 15, "illustrate": 60, "agent": 20, "translate": 10, "step": 400, "compare": 400, "coach": 3000, "frame": 60, "retry": 15, "verify": 600}  # 하루 횟수, 심사위원 전원 합계(키가 하나라 사람을 못 가른다). 따라 하기 3000번 ≈ 2시간·약 $9. 전체는 비용 상한이 막는다
 JUDGE_USE = {"day": "", "n": {}}
 PUBLIC_LIMITS = {"coach": 900, "verify": 300, "records": 2000, "log": 2000}  # 키 없는 학습자 기기: 카드 묶음마다 하루(판단 약 $0.003·확인 약 $0.005 → 묶음당 하루 최대 약 $4)
 PUBLIC_USE = {"day": "", "n": {}}
@@ -144,13 +143,17 @@ async def need_key(request: Request, call_next):
         today = time.strftime("%Y-%m-%d")
         if PUBLIC_USE["day"] != today:
             PUBLIC_USE.update(day=today, n={})
+        if not (RUNS / m.group(1)).is_dir():  # 없는 카드 묶음 id 로는 세지도 않는다(상태 파일이 끝없이 커지지 않게)
+            return JSONResponse({"error": "no such card set"}, 404)
         used = PUBLIC_USE["n"].setdefault(m.group(1), {})
         if used.get(kind, 0) >= PUBLIC_LIMITS[kind]:
             return JSONResponse({"error": "daily limit for this card set"}, 429)
-        used[kind] = used.get(kind, 0) + 1
-        save_state()
         request.state.who = "learner"
-        return await call_next(request)
+        r = await call_next(request)
+        if r.status_code < 400:  # 처리된 요청만 센다: 빈·잘못된 요청 900번으로 돈 안 들이고 그날 따라 하기를 막을 수 있었다(11-02 검토)
+            used[kind] = used.get(kind, 0) + 1
+            save_state()
+        return r
     if not role:
         return JSONResponse({"error": "key required"}, 401)
     use_only = path.endswith(("/coach", "/verify", "/records", "/log"))  # 따라 하기·확인하기·기록은 누구 카드 묶음이든(고치기가 아님)
@@ -167,19 +170,33 @@ async def need_key(request: Request, call_next):
                 JUDGE_USE.update(day=today, n={})
             if JUDGE_USE["n"].get(kind, 0) >= JUDGE_LIMITS[kind]:
                 return JSONResponse({"error": "daily limit for the judge key"}, 429)
-            JUDGE_USE["n"][kind] = JUDGE_USE["n"].get(kind, 0) + 1
-            save_state()
     request.state.who = role
     if m and not use_only and (RUNS / m.group(1)).is_dir():  # 누가 무엇을 바꿨는지(따라 하기 판단은 너무 잦아서 뺀다)
         with (RUNS / m.group(1) / "audit.jsonl").open("a") as f:
             f.write(json.dumps({"t": round(time.time()), "who": role, "do": f"{request.method} {path[len(m.group(0)):] or '/'}"}, ensure_ascii=False) + "\n")
-    return await call_next(request)
+    r = await call_next(request)
+    if role == "judge" and kind and r.status_code < 400:  # 심사 키도 처리된 요청만 센다
+        JUDGE_USE["n"][kind] = JUDGE_USE["n"].get(kind, 0) + 1
+        save_state()
+    return r
 
 
 CARDS_LOCK = threading.Lock()  # cards.json 읽고-고치고-쓰기가 동시에 겹치지 않게
 RUNNING, RUNNING_LOCK = set(), threading.Lock()  # 파이프라인이 도는 실행 id: 같은 영상을 또 올려도 두 번 돌리지 않게
 CARD_PATH = re.compile(r"cards/[\w.-]+\.(jpg|png)")
-app.mount("/runs", StaticFiles(directory=RUNS), name="runs")  # 결과 폴더만 공개(리포 전체 X)
+RUN_FILE = re.compile(r"[\w.-]+\.(jpg|png)")
+
+
+@app.get("/runs/{run_id}/{sub}/{name}")
+def run_file(run_id: str, sub: str, name: str):
+    """키 없이 내주는 것은 카드 그림(cards/)과 장면 고르기 사진(frames/)뿐. 예전에는 실행 폴더 전체를 열어
+    따라 하기 기록·받아쓴 글·진행 기록·소유 교사 이름까지 주소만 알면 받을 수 있었다(11-02 검토)"""
+    if sub not in ("cards", "frames") or not RUN_FILE.fullmatch(name):
+        raise HTTPException(404)
+    f = run_dir(run_id) / sub / name
+    if not f.is_file():
+        raise HTTPException(404)
+    return FileResponse(f)
 
 
 def run_dir(run_id):

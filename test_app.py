@@ -486,3 +486,28 @@ def test_review_security_fixes(monkeypatch):
     assert client.post(f"/api/runs/{rid}/now", json={"i": "x"}).status_code == 400
     r = client.post(f"/api/runs/{rid}/now", json={"i": 0, "s": "q1", "vres": {"result": "done", "ko": "됐어요", "junk": "x" * 999}}).json()
     assert r["vres"] == {"result": "done", "ko": "됐어요"}
+
+
+# 11-02 장애 시나리오 검토: 실행 폴더 공개 범위, 한도는 처리된 요청만·있는 묶음만
+def test_run_files_only_card_pictures(monkeypatch):
+    rid, d = make_run()
+    (d / "coach_log.jsonl").write_text('{"s":"abcd"}\n')
+    (d / "owner.txt").write_text("teacher:kim")
+    (d / "frames").mkdir(exist_ok=True)
+    Image.new("RGB", (8, 8)).save(d / "frames" / "f001.jpg")
+    assert client.get(f"/runs/{rid}/cards/01.jpg").status_code == 200
+    assert client.get(f"/runs/{rid}/frames/f001.jpg").status_code == 200
+    for p in ("coach_log.jsonl", "owner.txt", "cards.json", "progress.json", "cards/../owner.txt", "clips/1.mp4"):
+        assert client.get(f"/runs/{rid}/{p}").status_code == 404, p
+
+
+def test_learner_limit_counts_only_handled_requests(monkeypatch):
+    rid, d = make_run()
+    monkeypatch.setattr(A, "APP_KEY", "secret")
+    monkeypatch.setitem(A.PUBLIC_LIMITS, "coach", 2)
+    A.PUBLIC_USE.update(day="", n={})
+    for _ in range(5):  # 사진 없는 요청은 400, 횟수를 깎지 않는다
+        assert client.post(f"/api/runs/{rid}/coach", json={"cur": 1, "frames": []}).status_code == 400
+    assert A.PUBLIC_USE["n"].get(rid, {}).get("coach", 0) == 0
+    assert client.post("/api/runs/nosuchrun123/coach", json={}).status_code == 404  # 없는 묶음은 세지도 않는다
+    assert "nosuchrun123" not in A.PUBLIC_USE["n"]

@@ -253,7 +253,8 @@
   .pic img, .pic video, .pic canvas.fold3d { width:100%; height:100%; object-fit:cover; display:block; }
   canvas.fold3d { background:#f4f1ea; cursor:pointer; } .f3wrap { position:relative; display:block; width:100%; height:100%; } .tab .imgwrap .f3wrap { display:inline-block; width:auto; height:auto; }
   .f3speed { position:absolute; left:10px; bottom:10px; font-size:13px; padding:5px 11px; border-radius:999px; border:1px solid #c9c2b2; background:#fffdf8; color:#11183a; cursor:pointer; }
-  canvas.fold3d[data-paused] + .f3speed::after { content:" · II"; } .tab .imgwrap canvas.fold3d { width:min(100%, 880px); aspect-ratio:4/3; height:auto; border-radius:var(--r-l); }
+  canvas.fold3d[data-paused] + .f3speed::after { content:" · II"; } .tab .imgwrap canvas.fold3d { width:min(100%, 880px, 133cqh); aspect-ratio:4/3; height:auto; border-radius:var(--r-l); }  /* 칸 높이(cqh)도 본다: 가로 화면·긴 문장에서 그림이 칸 밖으로 넘쳐 '다음' 단추를 덮었다(11-02 검토) */
+  .tab .imgwrap { container-type:size; }
   .f3tag { display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; background:var(--line); margin-left:6px; } .f3tag.no { background:#fbe3dc; color:#b4441f; }
   .f3log { font-size:13px; margin:8px 0; padding:10px 12px; border:1px solid var(--line); border-radius:12px; } .f3log div { margin:2px 0; }
   .pic .busy { position:absolute; inset:0; background:rgba(255,255,255,.8); backdrop-filter:blur(2px); display:grid; place-items:center; font-weight:600; color:var(--accent-ink); }
@@ -390,7 +391,7 @@
   .tab.coachv.follow:not(.lv1) .imgwrap::before { position:static; flex:none; }
   .tab.coachv.follow .imgwrap > * { min-height:0; }
   .tab.coachv.follow.aim .cam .judge { display:none; }  /* 맞추기 안내가 같은 자리에 겹쳐 보였다 */
-  .coachv.nodone .cam { display:none; }  /* 판단 끔(사람이 정하는 일): 카메라를 켜지 않으니 빈 상자도 두지 않는다 */
+  .coachv.nodone .cam, .coachv.nocam .cam { display:none; }  /* 판단 끔(사람이 정하는 일): 카메라를 켜지 않으니 빈 상자도 두지 않는다 */
   .coachv.follow .cam .judge { display:block; padding:10px 14px; font-size:18px; font-weight:600; line-height:1.35; color:#fff; background:#2a3366; }
   .coachv.follow .cam .judge.ok { background:var(--ok, #0A7A35); } .coachv.follow .cam .judge.near { background:#8A5A00; }
   @media (max-width:640px) {
@@ -413,6 +414,8 @@
   .livetoggle { display:flex; align-items:center; gap:8px; color:#cfd9e3; font-size:14px; max-width:520px; text-align:left; } .livetoggle input { width:18px; height:18px; accent-color:var(--accent); }
   .helpbtn { display:flex; flex-direction:column; align-items:center; gap:10px; background:var(--dark2); color:#cfd9e3; border:2px dashed var(--dark3); border-radius:var(--r-l); padding:40px 48px; font-size:20px; font-weight:700; }
   .helpbtn .ico { width:36px; height:36px; }
+  .tab .imgwrap .helpbtn { max-height:100%; overflow:hidden; }  /* 낮은 칸(가로 휴대폰)에서 위로 넘쳐 잘리지 않게 */
+  @container (max-height:150px) { .helpbtn { flex-direction:row; padding:12px 20px; font-size:16px; } .helpbtn .ico { width:22px; height:22px; } }
   #csum { z-index:6; }
   .sumgrid { display:grid; grid-template-columns:repeat(2,minmax(0,220px)); gap:10px; }
   .sumgrid div { background:var(--dark2); border-radius:var(--r); padding:12px 16px; display:flex; flex-direction:column; text-align:left; }
@@ -1848,12 +1851,16 @@ async function coachCamera() {
     C.manual = true; coachStart(); aim(false); pill(T("직접 넘겨요 · '다 했다'는 사람이 정해요", "Turn cards by hand · a person decides when it's done")); return;
   }
   try {
-    C.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 1280 }, audio: false });
+    // 마주 보고 찍은 시범(수어·춤)은 학습자가 화면을 보며 서야 하니 앞카메라, 나머지는 뒤카메라(눈높이)
+    C.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: S.data?.pov === "facing" ? "user" : "environment", width: 1280 }, audio: false });
     $("#cvid").srcObject = C.stream; await $("#cvid").play();
     // 노트북 앞 카메라는 맞은편에서 비춘다: 화면을 젖히라고 안내하고, 보내는 사진은 180도 돌린다
     C.front = isFront(C.stream.getVideoTracks()[0]);
     coachStart();
-  } catch { pill(T("카메라를 켤 수 없어요", "Camera unavailable")); toast(T("카메라 사용을 허락해 주세요.", "Please allow camera access.")); }
+  } catch {  // 카메라를 못 켜면(거부·없음) 시작 덮개에 갇히지 않게 손으로 넘기는 따라 하기로 시작한다(11-02 검토)
+    C.manual = true; coachStart(); aim(false); $(".coachv")?.classList.remove("follow"); $(".coachv")?.classList.add("nocam");
+    pill(T("카메라 없이 이전·다음으로 넘겨요", "No camera · use Back and Next")); toast(T("카메라를 켤 수 없어요. 허락하면 다시 켤 수 있어요.", "Camera unavailable. Allow camera access to turn it on again."));
+  }
 }
 function coachFile(f) {
   if (!f) return;
@@ -1957,7 +1964,10 @@ async function coachLoop() {
     if (!C.manual && !C.checking && C.buf.length >= 2 && cur <= cs.length) {
       let d = null; const t0 = Date.now();  // 네트워크 오류도 '판단 못 함'으로 보고 계속 본다
       try { const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev, prev_match: C.pm ?? -1, on_card: C.started ? (Date.now() - (C.cardAt || Date.now())) / 1000 : null, local: C.local, live: C.live, ver: S.data.edited_at ?? null }) }); if (r.ok) d = await r.json();
-        if (r.status === 401 || r.status === 429) { C.manual = true; pill(T("자동 넘김은 접속 키가 필요해요 · 이전·다음으로 넘겨요", "Auto-advance needs the access key · use Back and Next")); continue; } } catch { d = null; }
+        // 자동 넘김을 더 할 수 없는 응답: 같은 요청을 0.4초마다 끝없이 다시 보내며 '다시 보는 중'만 띄우던 것을 멈추고 이유를 말한다(11-02 검토)
+        const off = { 401: T("자동 넘김은 접속 키가 필요해요", "Auto-advance needs the access key"), 402: T("지금은 자동 넘김을 쓸 수 없어요", "Auto-advance is unavailable right now"),
+          409: T("이 카드는 사람이 '다 했다'를 정해요", "A person decides when this is done"), 429: T("오늘 자동 넘김 횟수를 다 썼어요", "Today's auto-advance limit is used up") }[r.status];
+        if (off) { C.manual = true; pill(`${off} · ${T("이전·다음으로 넘겨요", "use Back and Next")}`); const j = $("#cjudge"); if (j) { j.className = "judge"; j.textContent = off; } continue; } } catch { d = null; }
       clog("decision", { cur, decision: d?.decision || "none", target: d?.target ?? "", ms: Date.now() - t0, in_view: d?.in_view ?? "", match: d?.match ?? "", done_step: d?.done_step ?? "" });  // 어느 시범 사진과 맞췄는지(늦거나 이른 넘김을 가리려고)
       if (!C.running || S.idx + 1 !== cur) continue;  // 그 사이 사람이 직접 넘겼으면 결과는 버린다
       if (!d) { pill(T("판단하지 못했어요 · 다시 보는 중", "No answer · watching again")); }

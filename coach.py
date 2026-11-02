@@ -134,6 +134,8 @@ def ask_states(cards, cur, frames, refs, live=False):
         match = int(d.get("match", -1))
     except (TypeError, ValueError):
         match = -1
+    if not -1 <= match < len(refs):  # 보여 준 사진에 없는 번호: 확인 규칙을 건너뛰고 맨 끝 카드로 건너뛸 수 있었다(11-02 검토)
+        match = -1
     try:
         seen = int(d.get("seen") or 0)
     except (TypeError, ValueError):

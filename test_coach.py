@@ -103,3 +103,12 @@ def test_states_waits_half_the_demo_time(monkeypatch):
     monkeypatch.setattr(coach, "ask_states", lambda c, n, f, r, live=False: (1, 0, 0.0, {}, coach.view({})))
     assert coach.check(cards, 1, ["f"], 0, False, None, [("a", "u")], -1, False, 4)["decision"] == "wait"  # 20초 단계, 4초째
     assert coach.check(cards, 1, ["f"], 0, False, None, [("a", "u")], -1, False, 11)["decision"] == "next"
+
+
+def test_states_match_out_of_range_is_ignored(monkeypatch):
+    class R:  # 모델이 사진 4장에 9번이라고 답한 경우
+        output_text = '{"match": 9, "seen": 2}'
+        class usage: input_tokens = 0; output_tokens = 0
+    monkeypatch.setattr(coach.pipeline.client.responses, "create", lambda **k: R())
+    m, *_ = coach.ask_states(CARDS, 2, ["f"], [("a", "u")] * 4)
+    assert m == -1
