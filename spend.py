@@ -41,6 +41,6 @@ def add(usd):
     with LOCK:
         d = _read()
         d["usd"] = round(d["usd"] + float(usd), 6)
-        tmp = FILE.with_suffix(f".{threading.get_ident()}.tmp")
+        tmp = FILE.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")  # 프로세스가 둘이어도(측정기와 서버) 임시 파일이 겹치지 않게
         tmp.write_text(json.dumps(d))
         os.replace(tmp, FILE)

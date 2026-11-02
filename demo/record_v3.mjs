@@ -9,7 +9,7 @@ const BASE = "http://127.0.0.1:8790";
 const L = process.env.DEMO_LANG || "en";  // 화면 언어: en | ko(한글판)
 const KO = L === "ko", tx = (en, ko) => KO ? ko : en;
 const RUN = KO ? "d3d3d3d3d3k1" : "d3d3d3d3d301";  // 냅킨 견본의 데모 전용 복사본(견본은 건드리지 않는다)
-const OUT = new URL(`./out/v3${process.env.DEMO_LANG === "ko" ? "ko" : ""}/`, import.meta.url).pathname;
+const OUT = process.env.OUT_DIR || new URL(`./out/v3${process.env.DEMO_LANG === "ko" ? "ko" : ""}/`, import.meta.url).pathname;  // OUT_DIR: 데모 녹화를 덮지 않고 시험만 할 때
 const NAPKIN = new URL("../samples/napkin_butterfly.mp4", import.meta.url).pathname;
 mkdirSync(OUT, { recursive: true });
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -92,9 +92,10 @@ if (scene === "coach") {
   await input.uploadFile(NAPKIN); mark("video start");
   let last = 0;
   while (true) {  // 카드가 바뀔 때마다 영상 시각과 함께 적는다
-    const s = await p.evaluate(() => ({ i: S.idx, vt: document.querySelector("#cvid").currentTime, lv: C.lv }));
+    const s = await p.evaluate(() => ({ i: S.idx, vt: document.querySelector("#cvid").currentTime, lv: C.lv, ended: document.querySelector("#cvid").ended, fin: !!document.querySelector("#csum") }));
+    if (s.fin) { mark(`end screen at video ${s.vt.toFixed(1)}s`); break; }
     if (s.i !== last) { mark(`card ${s.i + 1} at video ${s.vt.toFixed(1)}s`); last = s.i; }
-    if (s.vt > 70) break;
+    if (s.vt > Number(process.env.UNTIL || 70) || s.ended) break;
     await wait(250);
   }
   await wait(1000);

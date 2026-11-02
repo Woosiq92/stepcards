@@ -661,7 +661,7 @@ function closeVerify() { const b = $("#vbox"); b?.stream?.getTracks().forEach(t 
 function goCard(i) {  // 확인한 카드 기준으로 다음 카드(그사이 자동으로 넘어갔어도 한 장을 건너뛰지 않게)
   if (S.view === "coach") clog("card", { cur: S.idx + 1, to: Math.max(0, Math.min(S.data.cards.length - 1, i)) + 1, by: "check" });
   S.idx = Math.max(0, Math.min(S.data.cards.length - 1, i));
-  if (S.view === "coach") { C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); } else tablet();
+  if (S.view === "coach") { C.buf = []; C.prev = 0; C.pm = -1; $("#cagain").hidden = true; coachCard(); } else tablet();
 }
 function glassesResult(d, req) {  // 안경 화면에도 결과 한 줄
   fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" },
@@ -1580,7 +1580,7 @@ function coach() {
     if (d && d.call && C.called !== S.idx && d.why === "glasses") { C.called = S.idx; callBtn(); }  // 안경에서 부름
     if (d && d.by === "glasses" && d.v > (C.v || 0) && !d.fin && $("#csum")) { C.v = d.v; $("#csum").remove(); C.max = {}; S.idx = d.i; coachCard(true); coachCamera(); }  // 끝 화면 뒤 안경에서 '처음으로': 카메라·판단도 다시 켠다
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.fin) { C.v = d.v; coachEnd(true); }  // 안경에서 '다 했어요'
-    else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.i !== S.idx) { C.v = d.v; clog("card", { cur: S.idx + 1, to: d.i + 1, by: "glasses" }); S.idx = d.i; C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); }
+    else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.i !== S.idx) { C.v = d.v; clog("card", { cur: S.idx + 1, to: d.i + 1, by: "glasses" }); S.idx = d.i; C.buf = []; C.prev = 0; C.pm = -1; $("#cagain").hidden = true; coachCard(); }
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.vreq && d.vreq !== C.vreqDone) { C.v = d.v; C.vreqDone = d.vreq; verifyNow(d.vreq); }
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && C.help && d.lv > C.lv) { C.v = d.v; helpUp(); }  // 안경에서 '도움'을 눌렀다
   }, 1000);
@@ -1764,7 +1764,7 @@ function sendStuck() {  // 끝 화면 → 고치기: 이 기기에서 소리·�
 }
 function coachCard(quiet) {
   const cs = S.data.cards, c = cs[S.idx];
-  if (C.shown !== S.idx) { stopVoice(); C.called = -1; C.vdiff = 0; callBtn(); C.shown = S.idx; C.lv = 1; C.since = Date.now(); C.lastMove = Date.now(); C.diffN = 0; C.diffFor = -1; $("#clive")?.setAttribute("hidden", ""); }
+  if (C.shown !== S.idx) { stopVoice(); C.called = -1; C.vdiff = 0; callBtn(); C.shown = S.idx; C.lv = 1; C.since = Date.now(); C.cardAt = Date.now(); C.lastMove = Date.now(); C.diffN = 0; C.diffFor = -1; $("#clive")?.setAttribute("hidden", ""); }
   if (C.started && C.help) C.max[S.idx] = Math.max(C.max[S.idx] || 0, C.lv);
   glassesSync(false);
   if (!quiet && (!C.help || C.lv >= 3)) speak();
@@ -1780,7 +1780,7 @@ function coachCard(quiet) {
   $("#cnext").onclick = last ? () => coachEnd(true) : () => coachFlip(1);
 }
 // 2초 안에 넘긴 카드는 '글만 보고 했어요'로 세지 않는다
-function coachFlip(d) { const was = S.idx; if (C.max?.[was] === 1 && Date.now() - C.since < 2000) delete C.max[was]; S.idx = Math.max(0, Math.min(S.data.cards.length - 1, S.idx + d)); if (S.idx !== was) clog("card", { cur: was + 1, to: S.idx + 1, by: "manual" }); C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); }
+function coachFlip(d) { const was = S.idx; if (C.max?.[was] === 1 && Date.now() - C.since < 2000) delete C.max[was]; S.idx = Math.max(0, Math.min(S.data.cards.length - 1, S.idx + d)); if (S.idx !== was) clog("card", { cur: was + 1, to: S.idx + 1, by: "manual" }); C.buf = []; C.prev = 0; C.pm = -1; $("#cagain").hidden = true; coachCard(); }
 function watching(d) {  // 학생 화면에는 '지켜보는 중'만. 판단 시간은 교사용으로 마우스를 올리면 보인다
   pill(T(`지켜보는 중${C.local ? " · 이 맥" : ""}`, `Watching${C.local ? " · this Mac" : ""}`));
   const el = $("#cpill"); if (el) el.title = `${d.latency} s`;
@@ -1828,7 +1828,7 @@ function coachStart() {
                     : T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box"));  // 처음엔 크게: 손이 보이면 저절로 작아진다
   $("#caimqr").hidden = !C.front || S.data?.pov === "facing";
   clearTimeout(C.aimTimer); C.aimTimer = setTimeout(() => { if (!C.noView) aim(false); }, 10000);  // 판단이 안 와도 10초 뒤 작게(카드를 오래 가리지 않게)
-  C.started = true; C.since = Date.now(); coachCard(); clog("start", { cur: S.idx + 1, n: S.data.cards.length });
+  C.started = true; C.since = C.cardAt = Date.now(); coachCard(); clog("start", { cur: S.idx + 1, n: S.data.cards.length });
   clearInterval(C.helpTimer);
   C.helpTimer = setInterval(() => {
     if (C.help && C.running && !C.checking && C.lv < maxLv() && Date.now() - C.since > helpWait(S.data.cards[S.idx]) * 1000) helpUp();
@@ -1916,17 +1916,17 @@ async function coachLoop() {
     const cs = S.data.cards, cur = S.idx + 1;
     if (!C.manual && !C.checking && C.buf.length >= 2 && cur <= cs.length) {
       let d = null; const t0 = Date.now();  // 네트워크 오류도 '판단 못 함'으로 보고 계속 본다
-      try { const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev, local: C.local, live: C.live, ver: S.data.edited_at ?? null }) }); if (r.ok) d = await r.json();
+      try { const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev, prev_match: C.pm ?? -1, on_card: C.started ? (Date.now() - (C.cardAt || Date.now())) / 1000 : null, local: C.local, live: C.live, ver: S.data.edited_at ?? null }) }); if (r.ok) d = await r.json();
         if (r.status === 401 || r.status === 429) { C.manual = true; pill(T("자동 넘김은 접속 키가 필요해요 · 이전·다음으로 넘겨요", "Auto-advance needs the access key · use Back and Next")); continue; } } catch { d = null; }
       clog("decision", { cur, decision: d?.decision || "none", target: d?.target ?? "", ms: Date.now() - t0, in_view: d?.in_view ?? "" });
       if (!C.running || S.idx + 1 !== cur) continue;  // 그 사이 사람이 직접 넘겼으면 결과는 버린다
       if (!d) { pill(T("판단하지 못했어요 · 다시 보는 중", "No answer · watching again")); }
       else if (d.decision === "reload") {  // 선생님이 카드를 고쳤다: 새 카드를 받고, 보던 카드(번호 n)에서 이어 간다
         const n = cs[S.idx]?.n, r2 = await fetch(`/api/runs/${S.run}/cards`).catch(() => null);
-        if (r2?.ok) { S.data = await r2.json(); const k = S.data.cards.findIndex(c => c.n === n); S.idx = k >= 0 ? k : Math.min(S.idx, S.data.cards.length - 1); C.buf = []; C.prev = 0; coachCard(true); pill(T("선생님이 고친 카드로 바꿨어요", "Updated to the teacher's latest cards")); }
+        if (r2?.ok) { S.data = await r2.json(); const k = S.data.cards.findIndex(c => c.n === n); S.idx = k >= 0 ? k : Math.min(S.idx, S.data.cards.length - 1); C.buf = []; C.prev = 0; C.pm = -1; coachCard(true); pill(T("선생님이 고친 카드로 바꿨어요", "Updated to the teacher's latest cards")); }
       }
       else {
-        C.prev = d.seen;
+        C.prev = d.seen; C.pm = d.done_step ?? -1;  // 앞뒤가 비슷한 단계는 두 번 연속 '끝'일 때만 넘긴다(서버가 판단)
         viewSeen(d);
         liveCheck(d);
         C.fin = d.decision === "finished" ? (C.fin || 0) + 1 : 0;
@@ -1934,7 +1934,8 @@ async function coachLoop() {
         const to = d.decision === "next" ? cur + 1 : d.decision === "jump" ? d.target : 0;
         if (Number.isInteger(to) && to >= 1 && to <= cs.length) {  // 없는 카드 번호는 무시
           S.idx = to - 1; clog("card", { cur, to, by: "auto" });
-          C.buf = []; C.prev = 0; $("#cagain").hidden = true; coachCard(); pill(T(`${S.idx + 1}번 카드로 넘겼어요`, `Moved to card ${S.idx + 1}`));
+          C.buf = []; C.prev = 0;  // C.pm(끝난 단계 번호)은 저절로 넘겨도 그대로(절대 번호)
+          $("#cagain").hidden = true; coachCard(); pill(T(`${S.idx + 1}번 카드로 넘겼어요`, `Moved to card ${S.idx + 1}`));
         }
         else if (d.decision === "again") {
           $("#cagain").hidden = false; glassesSync(true); if (C.againSaid !== S.idx) { C.againSaid = S.idx; speak(false, true); } C.buf = []; clearTimeout(C.againTimer); C.againTimer = setTimeout(() => { const a = $("#cagain"); if (a) a.hidden = true; }, 4000);

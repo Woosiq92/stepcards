@@ -590,11 +590,21 @@ def coach_check(run_id: str, body: dict):
         raise HTTPException(400, "카드 번호가 틀렸습니다")
     if len(frames) < 2 or not 1 <= cur <= len(data["cards"]):
         raise HTTPException(400, "사진이 부족하거나 카드 번호가 틀렸습니다")
-    ref = None
+    ref, d, local = None, run_dir(run_id), bool(body.get("local"))
     if body.get("live"):  # 실시간 확인: 지금 카드의 완료 기준 사진을 같은 판단에 넣는다
-        d = run_dir(run_id)
         ref = pipeline.data_url(verify.reference(d, data["cards"][cur - 1], "after"))
-    return coach.check(data["cards"], cur, frames, int(body.get("prev_seen") or 0), bool(body.get("local")), ref)
+    # Meta API 판단은 시범의 단계 끝 사진들과 맞춘다(이 맥 Glimmer 는 사진이 많으면 느려 예전 방식 그대로)
+    refs = None if local else coach.state_refs(d, data["cards"], cur)
+    try:
+        prev_match = int(body.get("prev_match", -1))
+    except (TypeError, ValueError):
+        prev_match = -1
+    try:
+        on_card = float(body["on_card"]) if body.get("on_card") is not None else None  # 이 카드가 뜬 지 몇 초
+    except (TypeError, ValueError):
+        on_card = None
+    return coach.check(data["cards"], cur, frames, int(body.get("prev_seen") or 0), local, ref, refs,
+                       prev_match, bool(refs) and coach.change(d, data["cards"], cur) < coach.SIMILAR, on_card)
 
 
 # 안경 화면(Ray-Ban Display 웹앱)과 따라 하기 화면이 같은 카드를 보게 하는 공유 상태. 메모리에만 둔다
