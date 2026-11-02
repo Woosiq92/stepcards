@@ -228,12 +228,10 @@ def base_video(name, layout, span, seg_len):
     ss, ln, sp = span
     trim = lambda i: f"[{i}:v]trim=start={ss}:duration={ln},setpts=(PTS-STARTPTS)/{sp}"
     if layout == "duo_coach":  # 왼쪽 휴대폰 화면, 오른쪽 안경 화면
-        # 왼쪽 위 = 카메라 자리에 흘린 시범 영상(크게: 손이 단계를 끝내는 것이 보여야 한다), 왼쪽 아래 = 안경, 오른쪽 = 휴대폰 화면
-        vs = ss - v_start  # 녹화 시각 → 시범 영상 시각
-        cam = f"[3:v]trim=start={max(0, vs)}:duration={ln},setpts=(PTS-STARTPTS)/{sp},scale=720:405"
-        fc = (f"{trim(1)},scale=1140:713[a];{trim(2)},scale=360:360[b];{cam}[c];"
-              f"[0][c]overlay=30:95[o1];[o1][b]overlay=210:520[o2];[o2][a]overlay=765:130,tpad=stop_mode=clone:stop_duration={seg_len}")
-        sh("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", bg, "-i", mp4("coach"), "-i", mp4("coach_glasses"), "-i", ROOT / "samples" / "napkin_butterfly.mp4", "-filter_complex", fc, *enc)
+        # 왼쪽 = 따라 하기 화면(카메라·판단 한 줄·목표 사진이 앱 안에 크게 있다), 오른쪽 = 안경
+        fc = (f"{trim(1)},scale=1260:788[a];{trim(2)},scale=540:540[b];"
+              f"[0][a]overlay=30:105[o1];[o1][b]overlay=1345:230,tpad=stop_mode=clone:stop_duration={seg_len}")
+        sh("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", bg, "-i", mp4("coach"), "-i", mp4("coach_glasses"), "-filter_complex", fc, *enc)
     else:  # trio_help: 왼쪽 학습자, 오른쪽 위 안경, 오른쪽 아래 교사 현황판
         fc = (f"{trim(1)},scale=1152:720[a];{trim(2)},scale=400:400[b];{trim(3)},scale=680:435[c];"
               f"[0][a]overlay=30:110[o1];[o1][b]overlay=1370:60[o2];[o2][c]overlay=1210:480,tpad=stop_mode=clone:stop_duration={seg_len}")
