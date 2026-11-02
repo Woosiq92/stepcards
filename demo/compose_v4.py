@@ -67,9 +67,11 @@ LAG = round(sorted(lags)[len(lags) // 2])
 first_turn = min(turns, key=lambda x: abs(x[2] - ends[x[1] - 1]))[0]  # 첫 장면은 단계 끝과 가장 가깝게 넘어간 순간
 v_start = at("coach", "video start")
 last_turn = max(t for t, _, _ in turns)
-FOLLOW_X = max(2.0, round((last_turn - v_start + 6) / 20 * 2) / 2)
+FOLLOW_X = max(2.0, round((last_turn - v_start + 6) / 22 * 2) / 2)  # 따라 하기 장면 약 22초(설명 길이에 맞춤)
 g = json.loads((ROOT / "runs" / "6d5279d1379e" / "progress.json").read_text())["events"]
 g_s = round(g[-1]["t"] - g[0]["t"])
+g_tries = len([e for e in g if e["stage"] == "split"])
+g_cards = len(json.loads((ROOT / "runs" / "6d5279d1379e" / "cards.json").read_text())["cards"])
 print(f"만들기 {make_s}s {make_cost}c {n_cards}장 재시도 {retried} / 자동 {auto_to}번까지 지연 중간 {LAG}s {[round(x, 1) for x in lags]} / Glimmer {g_s}s")
 
 # ---- 대본: 말하듯 짧게. 금지: 'X가 아니라 Y', 셋씩 늘어놓기, 설명문 말투, 콜론 나열 ----
@@ -83,26 +85,28 @@ if not KO:
         ("p_job", "gen:job", None, "Job training · generated scene", "Job coaches still make picture cards by hand, screenshot after screenshot, for every task."),
         ("p_sum", "statement", None, None, "Watching once isn't enough. Writing it all down takes hours."),
         ("reveal", "duo", (max(0, first_turn - 7), 12, 1), "Replay · demo video used as the camera · live decisions",
-         "StepCards turns one video into step cards. Then the camera watches your hands, and a few seconds after you finish a step, the next card shows up on your phone or your glasses."),
+         "That's what StepCards is for. Film the task once, and the video becomes step cards, one action per card. While someone follows along, the camera watches their hands and shows the next card when a step is done."),
         ("making", "single:making", None, "Real run · Muse Spark · SAM 3.1 · Voice Transcribe",
-         f"Here's a real run. Drop in a {video_min}-minute napkin video. Muse Spark breaks it into small steps and writes each one in plain Korean and English. "
-         f"Our code checks every card and sends anything that breaks a rule back to the model. {retry_en}"
-         f"{make_s} seconds later, {n_cards} cards, for about {make_cost} cents."),
+         f"Here's a real run with a {video_min}-minute napkin video. Muse Spark splits it into steps, one action each, with times and a short sentence in Korean and English. "
+         f"Our code checks every card for overlapping times, long sentences, or two actions in one card. {retry_en}"
+         f"SAM 3.1 picks a photo for each card. After {make_s} seconds there are {n_cards} cards, for about {make_cost} cents."),
         ("edit", "single:edit", None, "Review",
-         "You stay in control. Put two actions in one card and it turns red. Fix it and it passes. "
-         "Numbers nobody said out loud, and anything about left or right, get a yellow note so you double-check. "
-         "Each card can be a photo, a clip from the video, or a 3D fold."),
+         "Next, the person who knows the task checks the cards. Card 2 says, fold the right top corner down. Add pick up the napkin, and it has two actions, so it turns red and says why. Take it out and it passes. "
+         "Yellow notes flag numbers nobody said and left or right, which are easy to mirror. Each card can be a photo, a clip, or a 3D fold."),
         ("follow", "duo", (v_start, last_turn - v_start + 6, FOLLOW_X), f"Replay at {FOLLOW_X:g}x · demo video used as the camera",
-         f"Now the learner's side. Muse Spark matches the camera to the demo, one step at a time. In this replay the cards moved on by themselves up to card {auto_to}, about {LAG} seconds after each step."),
+         f"This is the learner's screen. The camera is on the left, the card on the right, and the glasses show the same card. "
+         "The line under the camera says what the model sees, like still before step 2, or step 2 matches, next card. "
+         f"In this replay the cards moved on by themselves up to card {auto_to}, about {LAG} seconds after each step."),
         ("help", "trio", (1.5, at("help", "learner sees help coming") + 3.5, 1), "Help when stuck · teacher's board on the right",
-         "Stuck? Help comes in small steps. First a picture, then the sentence read aloud, then a short clip. "
-         "Still stuck, one tap pings the teacher. They tap On my way, and the learner sees help is coming. No scores, and no video is kept."),
+         "Stuck? Help comes one step at a time. A picture, then the sentence read aloud, then a short clip. "
+         "If that's not enough, Ask for help puts the card number on the teacher's board. The teacher taps On my way, and the learner sees help is coming. No scores, and no video is kept."),
         ("breadth", "single:breadth", None, "Same app · CC BY demo videos",
-         "Same app, very different jobs. A cafe drink, a family stew, a cabinet, a dance. "
-         "And Korea's national jobs for people with severe disabilities, like helping someone into a car, where the camera stays off and a person says when it's done."),
+         "The same way, open videos became cards for a cafe drink, a family stew, a cabinet, and a dance. "
+         "And for jobs in Korea's national program for people with severe disabilities, where care work keeps the camera off and a person decides when each step is done."),
         ("glimmer", "single:glimmer", None, f"Recorded on this Mac · Muse Glimmer · {g_s} s · $0",
-         f"Schools that can't send video anywhere can run it on a Mac with the open Muse Glimmer model. This napkin video took {g_s} seconds and cost nothing. "
-         "What we haven't done yet is test it with real learners, and with someone else on a live camera."),
+         f"Schools that can't send student video out can run all of it on a Mac with the open Muse Glimmer model. "
+         f"In this run the checker sent the steps back {g_tries - 1} times, then they passed, and the napkin became {g_cards} cards in {g_s} seconds at no cost. "
+         "We haven't yet tested it with real learners, or with a different person on a live camera."),
         ("close", "close", None, None, "Show it once. Then they've got it. StepCards."),
     ]
     GLASS, CLOSE = "Ray-Ban Display view · simulated", ["Show it once.", "Then they've got it."]
@@ -118,24 +122,28 @@ else:
         ("p_job", "gen:job", None, "직업 훈련 · 생성한 장면", "직업 훈련 선생님은 아직도 그림 카드를 손으로 만들어요. 일마다 캡처하고 자르면서요."),
         ("p_sum", "statement", None, None, "한 번 봐서는 모자라고, 다 적자니 몇 시간이 걸려요."),
         ("reveal", "duo", (max(0, first_turn - 7), 12, 1), "다시 재생 · 시범 영상을 카메라 대신 · 실제 판단",
-         "StepCards는 영상 하나로 단계 카드를 만들어요. 따라 할 때는 카메라가 손을 보고, 한 단계를 마치면 몇 초 뒤 다음 카드를 휴대폰이나 안경에 띄워요."),
+         "그래서 StepCards를 만들었어요. 일을 한 번 찍으면 영상이 동작 하나에 한 장씩 단계 카드가 돼요. 따라 할 때는 카메라가 손을 보고, 한 단계가 끝나면 다음 카드를 띄워요."),
         ("making", "single:making", None, "실제 실행 · Muse Spark · SAM 3.1 · Voice Transcribe",
-         f"실제로 돌려 볼게요. {video_min}분짜리 냅킨 영상을 넣으면 Muse Spark가 작은 단계로 나누고, 쉬운 한국어와 영어로 문장을 써요. "
-         f"카드는 우리 코드가 하나하나 검사해서, 규칙에 어긋나면 다시 쓰게 해요. {retry_ko}{make_s}초 뒤 카드 {n_cards}장, 비용은 {make_cost}센트쯤이에요."),
+         f"냅킨 접는 {video_min}분짜리 영상으로 실제로 돌려 볼게요. Muse Spark가 동작 하나씩 단계로 나누고, 시간과 짧은 한국어·영어 문장을 붙여요. "
+         f"우리 코드는 카드마다 시간이 겹치는지, 문장이 긴지, 동작이 둘인지 검사해요. {retry_ko}"
+         f"SAM 3.1은 카드마다 사진을 골라요. {make_s}초 뒤 카드 {n_cards}장, 비용은 {make_cost}센트쯤이에요."),
         ("edit", "single:edit", None, "확인하고 고치기",
-         "고치는 건 일을 아는 사람 몫이에요. 카드 하나에 동작을 두 개 넣으면 빨갛게 바뀌고, 고치면 통과해요. "
-         "말한 적 없는 숫자나 왼쪽·오른쪽은 노란 메모로 한 번 더 보게 해요. 카드마다 사진, 영상 클립, 3D 접기 중에 골라요."),
+         "다음은 일을 아는 사람이 확인할 차례예요. 2번 카드는 오른쪽 윗모서리를 접으세요예요. 앞에 냅킨을 들고를 붙이면 동작이 둘이라 빨갛게 바뀌고 이유를 알려 줘요. 지우면 통과해요. "
+         "말한 적 없는 숫자와 뒤바뀌기 쉬운 왼쪽·오른쪽은 노란 메모로 표시해요. 카드는 사진, 클립, 3D 접기 중에 골라요."),
         ("follow", "duo", (v_start, last_turn - v_start + 6, FOLLOW_X), f"{FOLLOW_X:g}배속 다시 재생 · 시범 영상을 카메라 대신",
-         f"이제 따라 하는 쪽이에요. Muse Spark가 카메라 화면을 시범 장면과 한 단계씩 맞춰 봐요. 이 재생에서는 {auto_to}번 카드까지 저절로 넘어갔고, 단계를 마치고 {LAG}초쯤 뒤였어요."),
+         f"이건 따라 하는 사람의 화면이에요. 왼쪽이 카메라, 오른쪽이 카드이고, 안경에도 같은 카드가 떠요. "
+         "카메라 아래 한 줄이 지금 본 것을 알려 줘요. 아직 2번 하기 전이에요, 또는 2번이 같아요, 다음 카드처럼요. "
+         f"이 재생에서는 {auto_to}번 카드까지 저절로 넘어갔고, 단계를 마치고 {LAG}초쯤 뒤였어요."),
         ("help", "trio", (1.5, at("help", "learner sees help coming") + 3.5, 1), "막힐 때만 도움 · 오른쪽은 선생님 현황판",
-         "막히면 도움이 조금씩 늘어요. 그림, 문장 읽어 주기, 짧은 영상 순서예요. "
-         "그래도 안 되면 한 번 눌러 선생님께 알리고, 선생님이 갈게요를 누르면 학생 화면에 바로 떠요. 점수는 없고, 영상도 남기지 않아요."),
+         "막히면 도움이 한 칸씩 늘어요. 그림, 문장 읽어 주기, 짧은 영상 순서예요. "
+         "그래도 안 되면 도와줘요를 눌러 선생님 현황판에 카드 번호를 띄워요. 선생님이 갈게요를 누르면 학생 화면에 도와주러 온다고 나와요. 점수는 없고, 영상도 남기지 않아요."),
         ("breadth", "single:breadth", None, "같은 앱 · CC BY 시범 영상",
-         "같은 앱으로 전혀 다른 일도 만들었어요. 카페 음료, 집 찌개, 서랍장 조립, 춤까지요. "
-         "중증장애인 맞춤형 국가 일자리 직무도 있어요. 차에 타는 걸 돕는 일은 카메라를 끄고, 끝났는지는 사람이 정해요."),
+         "같은 방법으로 공개 영상에서 카페 음료, 집 찌개, 서랍장, 춤 카드도 만들었어요. "
+         "중증장애인 맞춤형 국가 일자리 직무도 있어요. 돌봄 일은 카메라를 끄고, 단계가 끝났는지는 사람이 정해요."),
         ("glimmer", "single:glimmer", None, f"이 맥에서 · Muse Glimmer · {g_s}초 · 0원",
-         f"영상을 밖으로 보낼 수 없는 학교는 공개 모델 Muse Glimmer로 맥에서 돌리면 돼요. 이 냅킨 영상은 {g_s}초 걸렸고 비용은 0원이었어요. "
-         "아직 못 한 것도 있어요. 실제 학생과의 시험, 그리고 다른 사람이 실제 카메라로 따라 하는 시험이에요."),
+         f"학생 영상을 밖으로 보낼 수 없는 학교는 공개 모델 Muse Glimmer로 맥에서 전부 돌릴 수 있어요. "
+         f"이 기록에서는 검사기가 {g_tries - 1}번 돌려보낸 뒤 통과해서, 냅킨 영상이 {g_s}초 만에 카드 {g_cards}장이 됐어요. 비용은 0원이에요. "
+         "실제 학생과의 시험, 다른 사람이 실제 카메라로 따라 하는 시험은 아직 못 했어요."),
         ("close", "close", None, None, "한 번 보여 주면, 따라 할 수 있게. StepCards."),
     ]
     GLASS, CLOSE = "레이밴 디스플레이 착용 시야 · 시뮬레이션", ["한 번 보여 주면,", "따라 할 수 있게."]
