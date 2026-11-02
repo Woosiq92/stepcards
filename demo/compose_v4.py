@@ -269,10 +269,11 @@ def sim_panel(gi, si, scene_t, trim, ln, sp, seg_len):
 
 
 CROP = {"edit": (0.11, 0.10, 0.70, 0.70), "making": (0.07, 0.07, 0.60, 0.60)}  # 고치기: 2번 카드 줄, 만들기: 진행 목록
-FOCUS = {"glimmer": (0.38, 0.48, 1.8)}  # Glimmer: 노란 재시도 상자로 다가간다
+FOCUS = {}  # 움직이는 확대는 정수 반올림으로 떨려서 쓰지 않는다
+CROP["glimmer"] = (0.06, 0.20, 0.62, 0.62)  # Glimmer: 노란 재시도 상자 둘레를 처음부터 확대
 
 
-def framed(src, w, h, x, y, seg_len, mi, si, out, push=0.03, crop=None, focus=None):
+def framed(src, w, h, x, y, seg_len, mi, si, out, push=0.0, crop=None, focus=None):
     """앱 화면을 둥근 창+그림자로, 천천히 다가가는 줌(push). mi/si = 가림·그림자 입력 번호
     crop = (x, y, 너비, 높이) 비율: 화면의 핵심 부분만 잘라 키운다. focus = (fx, fy, 최대 배율): 그 점으로 다가간다"""
     cut = f"crop=iw*{crop[2]}:ih*{crop[3]}:iw*{crop[0]}:ih*{crop[1]}," if crop else ""
@@ -304,10 +305,21 @@ def base_video(name, layout, span, seg_len):
     if layout.startswith("gen:") and not (ROOT / "demo" / "gen" / f"{layout[4:]}.mp4").exists():
         # 생성 영상이 없으면 생성 그림(Z-Image Turbo)에 카메라 움직임: 천천히 다가가며 옆으로 조금 흐른다
         # (11-02 Wan 2.2 1248x704 영상은 디코딩에서 스왑 37GB 로 강제 종료됐다)
-        src = ROOT / "demo" / "gen" / f"{layout[4:]}.png"
-        n = int(seg_len * FPS)
-        z = f"zoompan=z='1.05+0.14*on/{n}':x='(iw-iw/zoom)*(0.2+0.6*on/{n})':y='(ih-ih/zoom)*(0.45+0.1*on/{n})':d={n}:s={W}x{H}:fps={FPS}"
-        sh("ffmpeg", "-v", "error", "-y", "-i", src, "-vf", f"scale={W * 2}:{H * 2}:force_original_aspect_ratio=increase:flags=lanczos,crop={W * 2}:{H * 2},{z}", *enc)
+        # zoompan 은 프레임마다 위치를 정수 픽셀로 반올림해서 천천히 움직이면 덜덜 떨렸다 → 소수점 영역을 직접 잘라 키운다(부드러운 움직임)
+        src = Image.open(ROOT / "demo" / "gen" / f"{layout[4:]}.png").convert("RGB")
+        sw, sh_ = src.size
+        n = int(round(seg_len * FPS))
+        ff = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
+                               *map(str, enc)], stdin=subprocess.PIPE)
+        for k in range(n):
+            e = k / max(1, n - 1)
+            e = e * e * (3 - 2 * e)  # 처음과 끝을 부드럽게
+            z = 1.05 + 0.12 * e
+            cw, ch = sw / z, sh_ / z
+            x0 = (sw - cw) * (0.25 + 0.5 * e)
+            y0 = (sh_ - ch) * (0.45 + 0.1 * e)
+            ff.stdin.write(src.transform((W, H), Image.EXTENT, (x0, y0, x0 + cw, y0 + ch), Image.BICUBIC).tobytes())
+        ff.stdin.close(); ff.wait()
         return out
     if layout.startswith("gen:"):  # 문제 상황: 이 맥에서 생성한 2초 영상(Wan 2.2). 최대 2배까지 천천히 늘리고, 다가가는 줌, 모자라면 마지막 그림 유지
         src = ROOT / "demo" / "gen" / f"{layout[4:]}.mp4"
