@@ -76,7 +76,7 @@ print(f"만들기 {make_s}s {make_cost}c {n_cards}장 재시도 {retried} / 자�
 
 # ---- 대본: 말하듯 짧게. 금지: 'X가 아니라 Y', 셋씩 늘어놓기, 설명문 말투, 콜론 나열 ----
 if not KO:
-    retry_en = "One card broke a rule, so it went back and came out right. " if retried else ""
+    retry_en = "One card broke a rule, so it went back for a rewrite and then passed. " if retried else ""
     S = [
         ("hook", "gen:hook", None, "Generated scene", "Some things you only learn by watching."),
         ("p_cafe", "gen:cafe", None, "First week at a cafe · generated scene", "New at the cafe? You watch the barista once, and then it's your turn."),
@@ -91,21 +91,21 @@ if not KO:
          f"Our code checks every card for overlapping times, long sentences, or two actions in one card. {retry_en}"
          f"SAM 3.1 picks a photo for each card. After {make_s} seconds there are {n_cards} cards, for about {make_cost} cents."),
         ("edit", "single:edit", None, "Review",
-         "Next, the person who knows the task checks the cards. Card 2 says, fold the right top corner down. Add pick up the napkin, and it has two actions, so it turns red and says why. Take it out and it passes. "
-         "Yellow notes flag numbers nobody said and left or right, which are easy to mirror. Each card can be a photo, a clip, or a 3D fold."),
-        ("follow", "duo", (v_start, last_turn - v_start + 6, FOLLOW_X), f"Replay at {FOLLOW_X:g}x · demo video used as the camera",
+         "Next, the person who knows the task checks the cards. The rule check reads the Korean sentence. On card 2, I add \"pick up the napkin and\" to the front. Now it has two actions, so the card turns red and says why. Take it out and it passes. "
+         "Yellow notes flag numbers nobody actually said, and left and right, which are easy to flip. Each card can be a photo, a clip, or a 3D fold."),
+        ("follow", "duo", (v_start + 2, last_turn - v_start + 4, FOLLOW_X), f"Replay at {FOLLOW_X:g}x · demo video used as the camera",
          f"This is the learner's screen. The camera is on the left, the card on the right, and the glasses show the same card. "
-         "The line under the camera says what the model sees, like still before step 2, or step 2 matches, next card. "
+         "The line under the camera says what the model sees, like \"still looks like before step 2,\" or \"step 2 looks like the demonstration, card 3.\" "
          f"In this replay the cards moved on by themselves up to card {auto_to}, about {LAG} seconds after each step."),
-        ("help", "trio", (1.5, at("help", "learner sees help coming") + 3.5, 1), "Help when stuck · teacher's board on the right",
+        ("help", "trio", (3.0, at("help", "learner sees help coming") + 2.0, 1), "Help when stuck · teacher's board on the right",
          "Stuck? Help comes one step at a time. A picture, then the sentence read aloud, then a short clip. "
-         "If that's not enough, Ask for help puts the card number on the teacher's board. The teacher taps On my way, and the learner sees help is coming. No scores, and no video is kept."),
+         "If that's still not enough, tapping \"Ask for help\" puts the card number on the teacher's board. The teacher taps \"On my way,\" and the learner sees help is coming. There are no scores, and no video is kept."),
         ("breadth", "single:breadth", None, "Same app · CC BY demo videos",
          "The same way, open videos became cards for a cafe drink, a family stew, a cabinet, and a dance. "
          "And for jobs in Korea's national program for people with severe disabilities, where care work keeps the camera off and a person decides when each step is done."),
         ("glimmer", "single:glimmer", None, f"Recorded on this Mac · Muse Glimmer · {g_s} s · $0",
          f"Schools that can't send student video out can run all of it on a Mac with the open Muse Glimmer model. "
-         f"In this run the checker sent the steps back {g_tries - 1} times, then they passed, and the napkin became {g_cards} cards in {g_s} seconds at no cost. "
+         f"In this run, the checker sent the steps back {g_tries - 1} times before they passed. The napkin video became {g_cards} cards in {g_s} seconds, at no cost. "
          "We haven't yet tested it with real learners, or with a different person on a live camera."),
         ("close", "close", None, None, "Show it once. Then they've got it. StepCards."),
     ]
@@ -119,36 +119,36 @@ else:
         ("p_cafe", "gen:cafe", None, "카페 첫 출근 · 생성한 장면", "카페 첫 출근 날, 바리스타가 한 번 보여 주면 바로 내 차례예요."),
         ("p_reel", "gen:reel", None, "릴스로 춤 배우기 · 생성한 장면", "릴스로 춤을 배우면 멈추고, 되감고, 또 멈춰요."),
         ("p_family", "gen:family", None, "엄마 레시피 · 생성한 장면", "엄마 레시피는 어디에도 적혀 있지 않고요."),
-        ("p_job", "gen:job", None, "직업 훈련 · 생성한 장면", "직업 훈련 선생님은 아직도 그림 카드를 손으로 만들어요. 일마다 캡처하고 자르면서요."),
+        ("p_job", "gen:job", None, "직업 훈련 · 생성한 장면", "직업 훈련 선생님은 그림 카드를 아직 손으로 만들어요. 일마다 화면을 캡처해서 하나씩 잘라요."),
         ("p_sum", "statement", None, None, "한 번 봐서는 모자라고, 다 적자니 몇 시간이 걸려요."),
-        ("reveal", "duo", (max(0, first_turn - 7), 12, 1), "다시 재생 · 시범 영상을 카메라 대신 · 실제 판단",
-         "그래서 StepCards를 만들었어요. 일을 한 번 찍으면 영상이 동작 하나에 한 장씩 단계 카드가 돼요. 따라 할 때는 카메라가 손을 보고, 한 단계가 끝나면 다음 카드를 띄워요."),
+        ("reveal", "duo", (max(0, first_turn - 7), 12, 1), "다시 재생 · 카메라 대신 시범 영상 · 판단은 실제 모델",
+         "그래서 StepCards를 만들었어요. 일을 한 번 찍으면 그 영상이 단계 카드로 바뀌어요. 카드 한 장에 동작 하나예요. 따라 할 때는 카메라가 손을 보다가, 한 단계가 끝나면 다음 카드를 띄워요."),
         ("making", "single:making", None, "실제 실행 · Muse Spark · SAM 3.1 · Voice Transcribe",
-         f"냅킨 접는 {video_min}분짜리 영상으로 실제로 돌려 볼게요. Muse Spark가 동작 하나씩 단계로 나누고, 시간과 짧은 한국어·영어 문장을 붙여요. "
-         f"우리 코드는 카드마다 시간이 겹치는지, 문장이 긴지, 동작이 둘인지 검사해요. {retry_ko}"
-         f"SAM 3.1은 카드마다 사진을 골라요. {make_s}초 뒤 카드 {n_cards}장, 비용은 {make_cost}센트쯤이에요."),
+         f"냅킨 접는 {video_min}분짜리 영상으로 실제로 돌려 볼게요. Muse Spark가 영상을 동작 하나씩 끊어서, 시간과 짧은 한국어·영어 문장을 붙여요. "
+         f"저희 코드는 카드마다 시간이 겹치는지, 문장이 긴지, 동작이 둘인지 검사해요. {retry_ko}"
+         f"SAM 3.1은 카드마다 사진을 골라요. {make_s}초 만에 카드 {n_cards}장이 나왔고, 비용은 {make_cost}센트쯤 들었어요."),
         ("edit", "single:edit", None, "확인하고 고치기",
-         "다음은 일을 아는 사람이 확인할 차례예요. 2번 카드는 오른쪽 윗모서리를 접으세요예요. 앞에 냅킨을 들고를 붙이면 동작이 둘이라 빨갛게 바뀌고 이유를 알려 줘요. 지우면 통과해요. "
-         "말한 적 없는 숫자와 뒤바뀌기 쉬운 왼쪽·오른쪽은 노란 메모로 표시해요. 카드는 사진, 클립, 3D 접기 중에 골라요."),
-        ("follow", "duo", (v_start, last_turn - v_start + 6, FOLLOW_X), f"{FOLLOW_X:g}배속 다시 재생 · 시범 영상을 카메라 대신",
+         "이제 일을 아는 사람이 확인할 차례예요. 2번 카드에는 '오른쪽 윗모서리를 접으세요'라고 적혀 있어요. 앞에 '냅킨을 들고'를 붙이면 동작이 둘이 돼서, 카드가 빨갛게 바뀌고 이유를 알려 줘요. 지우면 통과해요. "
+         "말한 적 없는 숫자나 뒤바뀌기 쉬운 왼쪽·오른쪽은 노란 메모로 표시해요. 카드마다 사진, 클립, 3D 접기 중에 골라요."),
+        ("follow", "duo", (v_start + 2, last_turn - v_start + 4, FOLLOW_X), f"{FOLLOW_X:g}배속 다시 재생 · 카메라 대신 시범 영상",
          f"이건 따라 하는 사람의 화면이에요. 왼쪽이 카메라, 오른쪽이 카드이고, 안경에도 같은 카드가 떠요. "
-         "카메라 아래 한 줄이 지금 본 것을 알려 줘요. 아직 2번 하기 전이에요, 또는 2번이 같아요, 다음 카드처럼요. "
-         f"이 재생에서는 {auto_to}번 카드까지 저절로 넘어갔고, 단계를 마치고 {LAG}초쯤 뒤였어요."),
-        ("help", "trio", (1.5, at("help", "learner sees help coming") + 3.5, 1), "막힐 때만 도움 · 오른쪽은 선생님 현황판",
+         "카메라 아래 한 줄은 지금 본 것을 알려 줘요. '아직 2번 하기 전 모습이에요', '2번이 시범과 같아요, 3번 카드' 같은 식이에요. "
+         f"이번 재생에서는 카드가 {auto_to}번까지 저절로 넘어갔어요. 단계를 마치고 {LAG}초쯤 지나서요."),
+        ("help", "trio", (3.0, at("help", "learner sees help coming") + 2.0, 1), "막힐 때만 도움 · 오른쪽은 선생님 현황판",
          "막히면 도움이 한 칸씩 늘어요. 그림, 문장 읽어 주기, 짧은 영상 순서예요. "
-         "그래도 안 되면 도와줘요를 눌러 선생님 현황판에 카드 번호를 띄워요. 선생님이 갈게요를 누르면 학생 화면에 도와주러 온다고 나와요. 점수는 없고, 영상도 남기지 않아요."),
+         "그래도 안 되면 '도와줘요'를 눌러요. 그러면 선생님 현황판에 카드 번호가 떠요. 선생님이 '갈게요'를 누르면, 학생 화면에 도와주러 오고 있다고 나와요. 점수는 매기지 않고, 영상도 남기지 않아요."),
         ("breadth", "single:breadth", None, "같은 앱 · CC BY 시범 영상",
          "같은 방법으로 공개 영상에서 카페 음료, 집 찌개, 서랍장, 춤 카드도 만들었어요. "
-         "중증장애인 맞춤형 국가 일자리 직무도 있어요. 돌봄 일은 카메라를 끄고, 단계가 끝났는지는 사람이 정해요."),
-        ("glimmer", "single:glimmer", None, f"이 맥에서 · Muse Glimmer · {g_s}초 · 0원",
+         "중증장애인 맞춤형 국가 일자리의 직무 카드도 있어요. 돌봄 일에서는 카메라를 끄고, 단계를 마쳤는지는 사람이 정해요."),
+        ("glimmer", "single:glimmer", None, f"이 맥에서 실행 · Muse Glimmer · {g_s}초 · 0원",
          f"학생 영상을 밖으로 보낼 수 없는 학교는 공개 모델 Muse Glimmer로 맥에서 전부 돌릴 수 있어요. "
-         f"이 기록에서는 검사기가 {g_tries - 1}번 돌려보낸 뒤 통과해서, 냅킨 영상이 {g_s}초 만에 카드 {g_cards}장이 됐어요. 비용은 0원이에요. "
-         "실제 학생과의 시험, 다른 사람이 실제 카메라로 따라 하는 시험은 아직 못 했어요."),
-        ("close", "close", None, None, "한 번 보여 주면, 따라 할 수 있게. StepCards."),
+         f"이번 기록에서는 검사기가 {g_tries - 1}번 돌려보낸 뒤에 통과했어요. 냅킨 영상이 {g_s}초 만에 카드 {g_cards}장이 됐고, 비용은 0원이에요. "
+         "실제 학생과 해 보는 시험은 아직 못 했어요. 다른 사람이 실제 카메라로 따라 하는 시험도 아직이에요."),
+        ("close", "close", None, None, "한 번 보여 주면, 따라 할 수 있어요. StepCards."),
     ]
-    GLASS, CLOSE = "레이밴 디스플레이 착용 시야 · 시뮬레이션", ["한 번 보여 주면,", "따라 할 수 있게."]
+    GLASS, CLOSE = "레이밴 디스플레이 착용 시야 · 시뮬레이션", ["한 번 보여 주면,", "따라 할 수 있어요."]
     CLOSE_SUB = ["Meta 모델로 만듦 · Muse Spark · SAM 3.1 · Voice Transcribe · Muse Image · Muse Glimmer",
-                 "Meta 제품 아님 · 로직크래프트 제작", "앞 장면은 이 맥에서 생성한 그림(Z-Image Turbo) · 시범 영상 CC BY · 합성 음성"]
+                 "Meta 제품 아님 · 로직크래프트 제작", "앞 장면 그림은 이 맥에서 생성(Z-Image Turbo) · 시범 영상 CC BY · 합성 음성"]
 
 
 # ---- 그림 재료 ----
@@ -227,18 +227,26 @@ def wrap(text, f, width):
     return rows + [row]
 
 
+BREAK = {"and", "with", "so", "but", "then", "or", "while", "when", "after", "for", "to", "in", "on", "by", "like", "where", "which", "because"}
+
+
 def chunks(text):
-    """자막은 짧게: 문장 → 쉼표 → 길이(영어 8낱말, 한국어 22자) 순으로 끊는다"""
+    """자막은 짧게, 끊는 곳은 자연스럽게: 문장 → 쉼표 → 너무 길면(영어 9낱말, 한국어 24자) 가운데에 가까운
+    접속사·전치사 앞(한국어는 띄어쓰기)에서 둘로. 'a 2-minute napkin / video' 처럼 명사구가 갈리지 않게"""
+    def long(ws):
+        return len(" ".join(ws)) > 24 if KO else len(ws) > 9
+
+    def split(ws):
+        if not long(ws):
+            return [" ".join(ws)]
+        mid = len(ws) / 2
+        cand = [i for i in range(2, len(ws) - 1) if KO or ws[i].lower().strip(",.") in BREAK]
+        i = min(cand, key=lambda k: abs(k - mid)) if cand else round(mid)
+        return split(ws[:i]) + split(ws[i:])
     out = []
     for sent in re.findall(r".+?[.!?](?=\s|$)", text) or [text]:
         for part in re.split(r"(?<=,)\s+", sent.strip()):
-            words, cur = part.split(), []
-            for w in words:
-                cur.append(w)
-                if (not KO and len(cur) >= 8) or (KO and len(" ".join(cur)) >= 22):
-                    out.append(" ".join(cur)); cur = []
-            if cur:
-                out.append(" ".join(cur))
+            out += split(part.split())
     return out
 
 
@@ -260,10 +268,21 @@ def sim_panel(gi, si, scene_t, trim, ln, sp, seg_len):
             f"[sc][hud]blend=all_mode=screen:shortest=1,format=yuv420p[mix];[mix][{si + 1}:v]overlay=0:0[panel]")
 
 
-def framed(src, w, h, x, y, seg_len, mi, si, out, push=0.03):
-    """앱 화면을 둥근 창+그림자로, 천천히 다가가는 줌(push). mi/si = 가림·그림자 입력 번호"""
-    z = f"zoompan=z='1+{push}*on/({seg_len}*{FPS})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={w}x{h}:fps={FPS}"
-    return (f"{src},scale={w * 2}:{h * 2}:flags=lanczos,{z},format=yuva420p[a{out}];[{mi}:v]format=gray,scale={w}:{h}[m{out}];[a{out}][m{out}]alphamerge[am{out}];"
+CROP = {"edit": (0.11, 0.10, 0.70, 0.70), "making": (0.07, 0.07, 0.60, 0.60)}  # 고치기: 2번 카드 줄, 만들기: 진행 목록
+FOCUS = {"glimmer": (0.38, 0.48, 1.8)}  # Glimmer: 노란 재시도 상자로 다가간다
+
+
+def framed(src, w, h, x, y, seg_len, mi, si, out, push=0.03, crop=None, focus=None):
+    """앱 화면을 둥근 창+그림자로, 천천히 다가가는 줌(push). mi/si = 가림·그림자 입력 번호
+    crop = (x, y, 너비, 높이) 비율: 화면의 핵심 부분만 잘라 키운다. focus = (fx, fy, 최대 배율): 그 점으로 다가간다"""
+    cut = f"crop=iw*{crop[2]}:ih*{crop[3]}:iw*{crop[0]}:ih*{crop[1]}," if crop else ""
+    if focus:
+        fx, fy, zm = focus
+        zz = f"1+{zm - 1}*min(1,on/({seg_len}*{FPS}*0.55))"
+        z = f"zoompan=z='{zz}':x='max(0,min(iw-iw/zoom,iw*{fx}-iw/zoom/2))':y='max(0,min(ih-ih/zoom,ih*{fy}-ih/zoom/2))':d=1:s={w}x{h}:fps={FPS}"
+    else:
+        z = f"zoompan=z='1+{push}*on/({seg_len}*{FPS})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={w}x{h}:fps={FPS}"
+    return (f"{src},{cut}scale={w * 2}:{h * 2}:flags=lanczos,{z},format=yuva420p[a{out}];[{mi}:v]format=gray,scale={w}:{h}[m{out}];[a{out}][m{out}]alphamerge[am{out}];"
             f"[BG{out}][{si}:v]overlay={x - 70}:{y - 70}[bs{out}];[bs{out}][am{out}]overlay={x}:{y}")
 
 
@@ -272,7 +291,8 @@ def base_video(name, layout, span, seg_len):
     bg = ["-loop", 1, "-t", seg_len, "-i", bg_png()]
     enc = ["-t", seg_len, *ENC, out]
     if layout == "statement":
-        txt = text_png(wrap(next(t for n, _, _, _, t in S if n == name), font(84, True), W - 300), name, 84)
+        sents = re.findall(r".+?[.!?](?=\s|$)", next(t for n, _, _, _, t in S if n == name))
+        txt = text_png([r for x in sents for r in wrap(x.strip(), font(84, True), W - 300)], name, 84)  # 문장 중간에서 줄이 바뀌지 않게
         sh("ffmpeg", "-v", "error", "-y", *bg, "-loop", 1, "-t", seg_len, "-i", txt, "-filter_complex",
            "[1:v]format=rgba,fade=in:st=0.15:d=0.5:alpha=1[t];[0:v][t]overlay=0:0", *enc)
         return out
@@ -286,7 +306,7 @@ def base_video(name, layout, span, seg_len):
         # (11-02 Wan 2.2 1248x704 영상은 디코딩에서 스왑 37GB 로 강제 종료됐다)
         src = ROOT / "demo" / "gen" / f"{layout[4:]}.png"
         n = int(seg_len * FPS)
-        z = f"zoompan=z='1.04+0.08*on/{n}':x='(iw-iw/zoom)*(0.35+0.3*on/{n})':y='(ih-ih/zoom)/2':d={n}:s={W}x{H}:fps={FPS}"
+        z = f"zoompan=z='1.05+0.14*on/{n}':x='(iw-iw/zoom)*(0.2+0.6*on/{n})':y='(ih-ih/zoom)*(0.45+0.1*on/{n})':d={n}:s={W}x{H}:fps={FPS}"
         sh("ffmpeg", "-v", "error", "-y", "-i", src, "-vf", f"scale={W * 2}:{H * 2}:force_original_aspect_ratio=increase:flags=lanczos,crop={W * 2}:{H * 2},{z}", *enc)
         return out
     if layout.startswith("gen:"):  # 문제 상황: 이 맥에서 생성한 2초 영상(Wan 2.2). 최대 2배까지 천천히 늘리고, 다가가는 줌, 모자라면 마지막 그림 유지
@@ -307,7 +327,9 @@ def base_video(name, layout, span, seg_len):
         src = mp4(layout.split(":")[1])
         speed = max(1.0, duration(src) / seg_len)
         w, h, x, y = 1408, 880, 256, 70
-        fc = framed(f"[1:v]setpts=PTS/{speed},tpad=stop_mode=clone:stop_duration={seg_len},fps={FPS}", w, h, x, y, seg_len, 2, 3, 0).replace("[BG0]", "[0:v]")
+        rec = layout.split(":")[1]
+        fc = framed(f"[1:v]setpts=PTS/{speed},tpad=stop_mode=clone:stop_duration={seg_len},fps={FPS}", w, h, x, y, seg_len, 2, 3, 0,
+                    crop=CROP.get(rec), focus=FOCUS.get(rec)).replace("[BG0]", "[0:v]")
         sh("ffmpeg", "-v", "error", "-y", *bg, "-i", src, "-loop", 1, "-t", seg_len, "-i", mask_png(w, h), "-loop", 1, "-t", seg_len, "-i", shadow_png(w, h),
            "-filter_complex", fc, *enc)
         return out
@@ -323,10 +345,10 @@ def base_video(name, layout, span, seg_len):
            "-loop", 1, "-t", seg_len, "-i", mask_png(w, h), "-loop", 1, "-t", seg_len, "-i", shadow_png(w, h), "-i", pill_png(GLASS, "glass"), "-filter_complex", fc, *enc)
     else:  # trio: 왼쪽 학습자(둥근 창), 오른쪽 위 안경 착용 시야(배경 = 7번 단계의 시범 장면), 오른쪽 아래 선생님 현황판(둥근 창)
         w, h, x, y = 1120, 700, 56, 150
-        tw, th, tx, ty = 640, 410, 1236, 530
+        tw, th, tx, ty = 640, 202, 1236, 540  # 현황판 위쪽(지금 따라 하는 중 · 도와줘요 · 갈게요)만 잘라 크게
         fc = (f"{sim_panel(2, 4, 73, trim, ln, sp, seg_len)};[panel]scale=464:352[pb];"
               + framed(trim(1), w, h, x, y, seg_len, 6, 7, 0).replace("[BG0]", "[0:v]") + "[o1];"
-              + framed(trim(3), tw, th, tx, ty, seg_len, 8, 9, 1, push=0.0).replace("[BG1]", "[o1]") + "[o2];"
+              + framed(trim(3), tw, th, tx, ty, seg_len, 8, 9, 1, push=0.0, crop=(0, 0, 1, 0.5)).replace("[BG1]", "[o1]") + "[o2];"
               f"[o2][pb]overlay=1324:118[o3];[o3][10:v]overlay=1324:62")
         sh("ffmpeg", "-v", "error", "-y", *bg, "-i", mp4("help"), "-i", mp4("help_glasses"), "-i", mp4("help_teacher"), "-i", napkin, "-loop", 1, "-t", seg_len, "-i", gframe,
            "-loop", 1, "-t", seg_len, "-i", mask_png(w, h), "-loop", 1, "-t", seg_len, "-i", shadow_png(w, h),

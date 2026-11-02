@@ -82,7 +82,7 @@ const mark = what => { marks.push({ t: +((Date.now() - t0) / 1000).toFixed(1), w
 
 if (scene === "coach") {
   // 냅킨 시범 영상을 카메라 대신 흘리고(앱의 '영상 파일로 시험하기'), 실제 Muse Spark 판단으로 카드가 넘어가는 것을 1~6번 카드까지
-  const p = await open(`/?ui=${L}#run=${RUN}&view=coach`, 1440, 900);
+  const p = await open(`/?ui=${L}#run=${RUN}&view=coach`, 1152, 720);  // 작은 창: 카메라·판단 줄이 영상에서 크게 보이게
   await wait(1200);
   const pair = await p.evaluate(() => C.pair);
   const g = await open(`/glasses?run=${RUN}&lang=${L}&m=${L}&s=${pair}`, 600, 600);
@@ -107,14 +107,14 @@ if (scene === "help") {
   // 7번 카드(안 보이는 겹을 펴는 어려운 단계): 도움 단추로 글 → 그림 → 소리 → 움직임, 다 쓰면 '도와줘요' → 교사 현황판 '갈게요' → 학습자·안경에 '오고 있어요'
   const RUN = "d3h" + Date.now().toString(36);  // 매번 새 복사본: 현황판에 앞선 시험의 줄이 남지 않게
   cpSync(new URL(`../runs/${KO ? "d3d3d3d3d3k1" : "d3d3d3d3d301"}`, import.meta.url).pathname, new URL(`../runs/${RUN}`, import.meta.url).pathname, { recursive: true });
-  const p = await open(`/?ui=${L}#run=${RUN}&view=coach`, 1440, 900);
+  const p = await open(`/?ui=${L}#run=${RUN}&view=coach`, 1152, 720);
   await wait(1200);
   await p.addStyleTag({ content: ".coachv .cam{visibility:hidden}" });  // 이 장면은 카메라를 켜지 않는다(빈 검은 창 숨김, 'Camera off' 표시는 그대로)
   const pair = await p.evaluate(() => C.pair);
   await fetch(`${BASE}/api/runs/${RUN}/call`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ s: pair, ack: true }) }).catch(() => {});
   await p.evaluate(() => { $("#cstart").hidden = true; C.started = true; setHelp(true); S.idx = 6; C.lv = 1; C.since = Date.now(); coachCard(true); glassesSync(true); });
   const g = await open(`/glasses?run=${RUN}&lang=${L}&m=${L}&s=${pair}`, 600, 600);
-  const tch = await open(`/?ui=${L}#run=${RUN}&view=use`, 1000, 640);
+  const tch = await open(`/?ui=${L}#run=${RUN}&view=use`, 760, 480);  // 좁은 창: 현황판 줄(도와줘요·갈게요)이 영상에서 크게
   await wait(1500);
   const recs = await Promise.all([rec(p, "help"), shots(g, "help_glasses"), shots(tch, "help_teacher")]);
   mark("rec"); await wait(2500);
@@ -138,7 +138,10 @@ if (scene === "making") {
   mark("making " + await p.evaluate(() => location.hash));
   await p.waitForFunction(() => /Your cards are ready|Stopped with an error|카드가 다 만들어졌어요|만들다가 멈췄어요/.test(document.body.innerText), { timeout: 900000, polling: 2000 });
   mark("done"); await wait(2500);
-  await clickText(p, "button", tx("Check the cards", "카드 확인하러 가기")); await wait(3500);
+  await clickText(p, "button", tx("Check the cards", "카드 확인하러 가기")); await wait(1500);
+  const ti = await p.$("input.titlein");  // 새로 만든 묶음은 제목이 비어 '과제 이름(예: …)'이 그대로 보였다
+  if (ti) { await ti.click(); await ti.type(tx("Napkin butterfly fold", "냅킨 나비 접기"), { delay: 40 }); await p.keyboard.press("Tab"); }
+  await wait(2500);
   await recr.stop();
 }
 
@@ -199,7 +202,7 @@ if (scene === "jobs") {
 
 if (scene === "breadth") {
   // 같은 과정으로 만든 다른 일들: 견본 카드 묶음을 태블릿 화면으로 차례로(라떼·찌개·서랍장·춤·돌봄·수어)
-  const sets = ["9ba0bf565609", "06d0c8e9935c", "fa37916f40e3", "d8e60e3947bd", "07bd2594965b", "f3d1c1514436"];
+  const sets = ["9ba0bf565609", "06d0c8e9935c", "fa37916f40e3", "d8e60e3947bd", "07bd2594965b"];  // 내레이션 순서(카페 음료·찌개·서랍장·춤 → 돌봄)
   const p = await open(`/?ui=${L}#run=${sets[0]}&view=tablet`, 1440, 900);
   const recr = await rec(p, "breadth");
   mark("rec");
