@@ -270,6 +270,9 @@
   textarea.say::placeholder { color:#a9b5c0; }
   .meta { color:var(--muted); font-size:13px; padding:4px 10px; }
   .row .issue { margin:8px 10px 0; }
+  .row .rnote { margin:8px 10px 0; padding:8px 12px; border-radius:var(--r-s); background:#FBEFD3; color:#8A5A00; font-size:14px; line-height:1.4; }  /* 막지 않는 '확인 필요' */
+  .unreviewed { display:inline-block; background:#FBEFD3; color:#8A5A00; border-radius:999px; padding:4px 12px; font-size:14px; font-weight:700; }
+  .tab .unreviewed { position:absolute; top:16px; left:50%; transform:translateX(-50%); z-index:5; }
   .actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; padding:0 10px; }
   /* 시안 4(고치기): 흰 카드 줄, ⋯ 는 줄 오른쪽 위, 보기 전환은 그림 위, 영상 시간은 알약, 빼기는 빨강 */
   .row { border-radius:16px; } .row .actions { position:absolute; top:14px; right:14px; margin:0; padding:0; }
@@ -652,9 +655,13 @@ async function verifyNow(glassesReq) {
   document.body.append(box);
   const v = box.querySelector("video"), useCoach = S.view === "coach" && C.stream;
   try {  // 따라 하기 중이면 켜져 있는 카메라를, 아니면 이 기기 카메라를 잠깐 켠다
-    v.srcObject = useCoach ? C.stream : (box.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 1280 }, audio: false }));
+    v.srcObject = useCoach ? C.stream : (box.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: S.data?.pov === "facing" ? "user" : "environment", width: 1280 }, audio: false }));
     await v.play();
-  } catch { box.querySelector(".vmsg").textContent = T("카메라를 켤 수 없어요.", "Camera unavailable."); return fail(["휴대폰 카메라를 켤 수 없어요", "The phone camera is unavailable"]); }
+  } catch {
+    box.querySelector(".vmsg").textContent = T("카메라를 켤 수 없어요.", "Camera unavailable.");
+    if (glassesReq) setTimeout(() => { if ($("#vbox") === box) closeVerify(); }, 4000);  // 안경 사용자는 닫을 수 없다: 남아 있으면 자동 넘김·도움이 모두 멈췄다(11-02 검토)
+    return fail(["휴대폰 카메라를 켤 수 없어요", "The phone camera is unavailable"]);
+  }
   for (const n of [3, 2, 1]) { if (!$("#vbox")) return; box.querySelector(".vcount").textContent = n; await new Promise(r => setTimeout(r, 800)); }
   const photo = await grabPhoto(v);
   box.querySelector(".vcount").textContent = ""; box.querySelector(".vmsg").textContent = T("확인하는 중…", "Checking…");
@@ -946,7 +953,7 @@ function edit() {
         <button class="btn" onclick="illustrateAll()" title="Muse Image">${icon("draw")} ${T("모든 카드 그림으로", "Make drawings for all")}</button>
         ${S.undo ? `<button class="btn" onclick="undoLast()">↶ ${T("되돌리기", "Undo")}</button>` : ""}</div></details>
       <button class="btn" id="f3go" onclick="makeFold()" title="Muse Spark · three.js">${icon("draw")} ${S.data.fold ? T("3D 접기 다시 만들기", "Remake 3D folds") : T("3D 접기 만들기", "Make 3D folds")}</button>
-      <button class="btn primary" onclick="go({run:S.run,view:'use'})">${T("다 됐어요 → 따라 하며 확인", "Done → Follow & check")}</button>
+      <button class="btn primary" onclick="markReviewed()">${T("다 됐어요 → 따라 하며 확인", "Done → Follow & check")}</button>
     </div>
     <div id="stuck">${stuckHtml()}</div>
     <form class="ask" onsubmit="askAgent(event)">
@@ -985,7 +992,7 @@ function rowHtml(c, i, iss = []) {
         `<textarea class="say ${ui === "en" ? "sub" : ""}" rows="1" lang="ko" placeholder="${T("동작 하나를 짧게 써 주세요 (예: 우유를 부으세요.)", "Korean sentence, one action (e.g. 우유를 부으세요.)")}" oninput="typed(${i},'ko',this)">${esc(c.ko)}</textarea>`,
         `<textarea class="say ${ui === "en" ? "" : "sub"}" rows="1" lang="en" placeholder="${T("영어 문장", "English sentence, one action (e.g. Pour the milk.)")}" oninput="typed(${i},'en',this)">${esc(c.en)}</textarea>`])}
       <div class="meta">${T("영상", "Video")} ${fmt(c.start)} ~ ${fmt(c.end)}</div>
-      <div id="iss${i}">${iss.map(x => `<div class="issue">${esc(x)}</div>`).join("")}</div>
+      <div id="iss${i}">${iss.map(x => `<div class="issue">${esc(x)}</div>`).join("")}</div><div id="rn${i}">${notesHtml(c)}</div>
       <div class="actions"><details class="kebab"><summary class="btn" aria-label="${T("카드 동작", "Card actions")}">⋯</summary><div class="kmenu">
         <button class="btn" onclick="move(${i},-1)" ${i ? "" : "disabled"}>${T("↑ 앞으로", "↑ Up")}</button>
         <button class="btn" onclick="move(${i},1)" ${i < S.data.cards.length - 1 ? "" : "disabled"}>${T("↓ 뒤로", "↓ Down")}</button>
@@ -1043,17 +1050,27 @@ async function toggle(which, n) {
 /* 고친 내용은 저절로 저장하고, 저장할 때마다 서버가 규칙 검사를 다시 한다 */
 function setSave(s) { S.saveState = s; const el = $("#saved"); if (el) el.textContent = saveText(); }
 function scheduleSave(ms = 700) { clearTimeout(S.saveTimer); setSave("dirty"); S.saveTimer = setTimeout(saveNow, ms); }
+/* 막지는 않지만 교사가 꼭 볼 곳(11-02 검토: 검사기는 형식만 보고 내용은 못 잡는다). 숫자가 영상 말소리에 없음 / 왼쪽·오른쪽(거울처럼 뒤바뀌기 쉬움) */
+function notesHtml(c) {
+  const t = `${c.ko || ""} ${c.en || ""}`, heard = new Set(S.data.heard_nums || []), out = [];
+  if ((t.match(/\d+(?:[.,]\d+)?/g) || []).some(x => !heard.has(x))) out.push(T("숫자(양·시간)가 영상 말소리에 없어요. 맞는지 봐 주세요.", "This number isn't in what was said in the video. Please check it."));
+  if (/왼|오른|\b(left|right)\b/i.test(t)) out.push(T("왼쪽·오른쪽이 영상과 같은지 봐 주세요. 거울처럼 바뀌기 쉬워요.", "Check left and right against the video. They are easy to mirror."));
+  return out.map(x => `<div class="rnote">${esc(x)}</div>`).join("");
+}
+// '다 됐어요': 교사가 지금 카드를 확인했다고 남기고 따라 하기로. 그 뒤 카드를 고치면 다시 '확인 전'
+async function markReviewed() { S.reviewNext = true; await saveNow(); go({ run: S.run, view: "use" }); }
 function saveNow() {
   clearTimeout(S.saveTimer);
   const cards = JSON.parse(JSON.stringify(S.data.cards)), title = S.data.title ?? "";
   S.saving = S.saving.then(async () => {
     setSave("saving");
-    const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards, title, ...(S.foldDrop ? { fold: null } : {}) }) });
+    const reviewed = !!S.reviewNext; S.reviewNext = false;
+    const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards, title, ...(S.foldDrop ? { fold: null } : {}), ...(reviewed ? { reviewed: true } : {}) }) });
     if (r.status === 401) return setSave("readonly");
     if (r.status === 403) return setSave("others");  // 다른 교사의 카드 묶음
     if (!r.ok) throw new Error(r.status);
     const d = await r.json();
-    Object.assign(S.data, { problems: d.problems, warnings: d.warnings, status: d.status, extra: d.extra, next_n: d.next_n }); S.foldDrop = false;  // 문장이 바뀌면 서버가 번역 확인을 푼다
+    Object.assign(S.data, { problems: d.problems, warnings: d.warnings, status: d.status, extra: d.extra, next_n: d.next_n, edited_at: d.edited_at, reviewed: !!d.reviewed_at && d.reviewed_at === d.edited_at }); S.foldDrop = false;  // 문장이 바뀌면 서버가 번역 확인을 푼다
     setSave("saved");
     if (S.view === "edit") updateIssues();
   }).catch(() => setSave("error"));
@@ -1126,6 +1143,7 @@ function updateIssues() {
     const iss = per[i] || [];
     $("#row" + i)?.classList.toggle("has-bad", iss.length > 0);
     const box = $("#iss" + i); if (box) box.innerHTML = iss.map(x => `<div class="issue">${esc(x)}</div>`).join("");
+    const rn = $("#rn" + i); if (rn) rn.innerHTML = notesHtml(c);
     const bar = $("#gap" + i); if (bar) bar.outerHTML = between(i, gaps);
   });
   header();
@@ -1536,6 +1554,7 @@ function tablet() {
   const c = cs[S.idx], last = S.idx === cs.length - 1;
   $("#main").innerHTML = `<div class="tab">
     <button class="exit" onclick="go({run:S.run,view:'use'})">${icon("x")}${T("나가기", "Exit")}</button>
+    ${S.data.reviewed === false ? `<div class="unreviewed">${T("선생님 확인 전", "Not checked by the teacher yet")}</div>` : ""}
     <div class="imgwrap">${media(c)}<div class="zone l" onclick="flip(-1)" role="button" aria-label="${T("이전 카드", "Previous card")}"></div><div class="zone r" onclick="flip(1)" role="button" aria-label="${T("다음 카드", "Next card")}"></div></div>
     <div class="txt" onclick="sayCard(S.data.cards[S.idx])" title="${T("눌러서 듣기", "Tap to hear")}">${text(c)} <span class="hear">${icon("sound")}</span></div>
     <div class="vrow">${S.data.stage === "archived" || noDone() ? "" : `<button class="verifybtn" onclick="verifyNow()">${icon("camera")} ${T("확인하기", "Check")}</button>`}${alone() ? `<button class="callbtn" id="tmark" onclick="markStuck(this)" ${S.marked?.has(c.n) ? "disabled" : ""}>${S.marked?.has(c.n) ? T("알렸어요", "Sent") : T("여기서 막혔어요", "Stuck here")}</button>` : ""}</div>
@@ -1575,6 +1594,7 @@ function coach() {
     <div class="cstart" id="cstart">
       <div class="glyph">${icon("glasses")}</div>
       <div class="t">${T("따라 하기", "Coach mode")}</div>
+      ${S.data.reviewed === false ? `<div class="unreviewed">${T("선생님이 아직 확인하지 않은 카드예요", "The teacher hasn't checked these cards yet")}</div>` : ""}
       <div class="d">${noDone() ? T("사람을 돕는 일이라 카메라를 켜지 않아요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "This work helps a person, so the camera stays off. Turn cards with Back and Next; help grows when you're stuck.")
         : T("카메라가 손과 물건을 보고, 지금 할 카드를 띄워 줘요.<br>언제든 이전·다음 단추로 직접 넘길 수 있어요. 카메라 사진은 저장하지 않아요.",
         "The camera watches hands and objects and shows the card for the current step.<br>Back and Next always work by hand. Camera frames are never stored.")}</div>
@@ -1594,7 +1614,7 @@ function coach() {
       <label class="linkbtn" style="cursor:pointer">${T("영상 파일로 시험하기", "Try with a video file")}<input type="file" accept="video/*" hidden onchange="coachFile(this.files[0])"></label>
     </div>
   </div>`;
-  C.started = false; C.shown = -1; C.max = {}; C.manual = false; C.againSaid = -1; setVoice(C.voice); setHelp(C.help);
+  C.started = false; C.shown = -1; C.max = {}; C.manual = false; C.syncN = 0; C.againSaid = -1; setVoice(C.voice); setHelp(C.help);
   C.hold = true; coachCard();  // 지난 위치를 읽기 전에 1번 카드로 덮어쓰지 않게 안경 알림을 잠시 멈춘다
   fetch(`/api/runs/${S.run}/now?s=${C.pair}`).then(r => r.json()).then(d => {  // 지난번에 중간에 멈췄으면 그 카드부터 이어 하기
     const n = S.data.cards.length;
@@ -1604,6 +1624,10 @@ function coach() {
   clearInterval(C.sync);
   C.sync = setInterval(async () => {
     if (S.view !== "coach") return clearInterval(C.sync);
+    if (C.started && (C.manual || !C.running) && ++C.syncN % 10 === 0) {  // 판단 요청을 안 보내는 동안은 고친 카드를 직접 확인
+      const r = await fetch(`/api/runs/${S.run}/cards`).catch(() => null), x = r?.ok ? await r.json() : null;
+      if (x && x.edited_at && x.edited_at !== S.data.edited_at) await reloadCards(x);
+    }
     const d = await fetch(`/api/runs/${S.run}/now?s=${C.pair}`).then(r => r.json()).catch(() => null);
     if (d && d.ack && d.ack !== C.ackSeen) { C.ackSeen = d.ack; if (C.called === S.idx || d.ack > Date.now() / 1000 - 5) { callBtn(true); pill(T("도와주러 오고 있어요", "Help is on the way")); speak(true, false, T("도와주러 오고 있어요.", "Help is on the way.")); } }
     if (d && d.call && C.called !== S.idx && d.why === "glasses") { C.called = S.idx; callBtn(); }  // 안경에서 부름
@@ -1793,7 +1817,7 @@ function sendStuck() {  // 끝 화면 → 고치기: 이 기기에서 소리·�
 }
 function coachCard(quiet) {
   const cs = S.data.cards, c = cs[S.idx];
-  if (C.shown !== S.idx) { stopVoice(); C.called = -1; C.vdiff = 0; callBtn(); C.shown = S.idx; C.lv = 1; C.since = Date.now(); C.cardAt = Date.now(); C.lastMove = Date.now(); C.diffN = 0; C.diffFor = -1; $("#clive")?.setAttribute("hidden", ""); }
+  if (C.shown !== S.idx) { stopVoice(); C.called = -1; C.vdiff = 0; callBtn(); C.shown = S.idx; C.lv = 1; C.since = Date.now(); C.cardAt = Date.now(); if (C.manual) { const j = $("#cjudge"); if (j) { j.className = "judge"; j.textContent = T("이전·다음으로 넘겨요", "Use Back and Next"); } } else if (C.running) judge(null); C.lastMove = Date.now(); C.diffN = 0; C.diffFor = -1; $("#clive")?.setAttribute("hidden", ""); }
   if (C.started && C.help) C.max[S.idx] = Math.max(C.max[S.idx] || 0, C.lv);
   glassesSync(false);
   if (!quiet && (!C.help || C.lv >= 3)) speak();
@@ -1957,6 +1981,20 @@ async function odLoop() {
     await new Promise(r => setTimeout(r, 150));
   }
 }
+/* 선생님이 고친 카드를 받는다(보던 카드 번호에서 이어 감). 판단 응답(reload)으로도, 판단을 안 보내는 상태(손으로 넘김·판단 끔·카메라 없음)에서는
+   10초마다 고친 시각을 직접 확인해서도 부른다(11-02 검토: 그 상태의 학습자에게는 고친 카드가 영영 안 갔다) */
+async function reloadCards(data) {
+  const n = S.data.cards[S.idx]?.n, wasNoDone = noDone();
+  if (!data) { const r2 = await fetch(`/api/runs/${S.run}/cards`).catch(() => null); if (!r2?.ok) return; data = await r2.json(); }
+  if (S.view !== "coach") return;
+  S.data = data; const k = S.data.cards.findIndex(c => c.n === n); S.idx = k >= 0 ? k : Math.min(S.idx, S.data.cards.length - 1);
+  C.buf = []; C.prev = 0; C.pm = -1; coachCard(true); pill(T("선생님이 고친 카드로 바꿨어요", "Updated to the teacher's latest cards"));
+  if (noDone() && !wasNoDone) {  // '사람이 정하기'로 바뀜: 카메라를 끄고 손으로 넘긴다(그대로 두면 409 를 받으며 판단을 계속 보냈다)
+    C.manual = true; C.stream?.getTracks().forEach(t => t.stop()); C.stream = null;
+    $(".coachv")?.classList.remove("follow"); $(".coachv")?.classList.add("nodone"); $(".verifybtn")?.remove();
+    pill(T("직접 넘겨요 · '다 했다'는 사람이 정해요", "Turn cards by hand · a person decides when it's done"));
+  }
+}
 async function coachLoop() {
   if (C.where === "device") return odLoop();
   while (C.running && S.view === "coach") {
@@ -1972,10 +2010,10 @@ async function coachLoop() {
       if (!C.running || S.idx + 1 !== cur) continue;  // 그 사이 사람이 직접 넘겼으면 결과는 버린다
       if (!d) { pill(T("판단하지 못했어요 · 다시 보는 중", "No answer · watching again")); }
       else if (d.decision === "reload") {  // 선생님이 카드를 고쳤다: 새 카드를 받고, 보던 카드(번호 n)에서 이어 간다
-        const n = cs[S.idx]?.n, r2 = await fetch(`/api/runs/${S.run}/cards`).catch(() => null);
-        if (r2?.ok) { S.data = await r2.json(); const k = S.data.cards.findIndex(c => c.n === n); S.idx = k >= 0 ? k : Math.min(S.idx, S.data.cards.length - 1); C.buf = []; C.prev = 0; C.pm = -1; coachCard(true); pill(T("선생님이 고친 카드로 바꿨어요", "Updated to the teacher's latest cards")); }
+        await reloadCards();
       }
       else {
+        if (d.in_view === true) C.lastMove = Date.now();  // 손과 물건이 보이면 하고 있는 중: 오래 걸리는 단계에서 5분 멈춤에 걸리지 않게
         C.prev = d.seen; C.pm = d.done_step ?? -1; judge(d, cur);  // 앞뒤가 비슷한 단계는 두 번 연속 '끝'일 때만 넘긴다(서버가 판단)
         viewSeen(d);
         liveCheck(d);

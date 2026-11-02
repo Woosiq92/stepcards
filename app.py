@@ -94,6 +94,11 @@ def eq(a, b):
     return bool(b) and hmac.compare_digest(a.encode(), b.encode())
 
 
+def kst_day():
+    """하루 한도의 날짜: 한국 시각(서버는 UTC 라 한국 오전 9시에 초기화됐다)"""
+    return time.strftime("%Y-%m-%d", time.gmtime(time.time() + 9 * 3600))
+
+
 def who(request):
     """요청한 사람: admin(APP_KEY) / teacher:이름(TEACHER_KEYS) / judge / ''(키 없음). 키를 설정하지 않은 로컬은 admin"""
     if not APP_KEY:
@@ -140,7 +145,7 @@ async def need_key(request: Request, call_next):
     m = RUN_PATH.match(path)
     kind = next((k for k in PUBLIC_LIMITS if path.endswith("/" + k)), None) if m else None
     if not role and kind:  # 학습자 기기(키 없음): 따라 하기 판단·확인하기·기록만, 카드 묶음마다 하루 한도(크레딧 보호)
-        today = time.strftime("%Y-%m-%d")
+        today = kst_day()
         if PUBLIC_USE["day"] != today:
             PUBLIC_USE.update(day=today, n={})
         if not (RUNS / m.group(1)).is_dir():  # 없는 카드 묶음 id 로는 세지도 않는다(상태 파일이 끝없이 커지지 않게)
@@ -165,7 +170,7 @@ async def need_key(request: Request, call_next):
     if role == "judge":
         kind = next((k for k in JUDGE_LIMITS if path.rstrip("/").endswith(k)), None)
         if kind:  # 크레딧이 드는 요청만 센다. 날이 바뀌면 처음부터
-            today = time.strftime("%Y-%m-%d")
+            today = kst_day()
             if JUDGE_USE["day"] != today:
                 JUDGE_USE.update(day=today, n={})
             if JUDGE_USE["n"].get(kind, 0) >= JUDGE_LIMITS[kind]:
@@ -302,7 +307,7 @@ def video_seconds(path):
 
 
 @app.post("/api/upload")
-async def upload(request: Request, file: UploadFile, local: bool = Form(False)):
+def upload(request: Request, file: UploadFile, local: bool = Form(False)):  # async 가 아니다: 읽기·해시·ffprobe 동안 다른 요청(/now 등)이 멈췄다(11-02 검토)
     UPLOADS.mkdir(parents=True, exist_ok=True)
     tmp, h = UPLOADS / f".{uuid.uuid4().hex}.part", hashlib.sha256()
     try:  # 이름이 같은 다른 영상이 옛 영상을 덮지 않게 내용 해시를 이름 앞에 붙인다
@@ -332,7 +337,10 @@ async def upload(request: Request, file: UploadFile, local: bool = Form(False)):
             if fresh:
                 dest.unlink(missing_ok=True)  # 한도를 넘어 거절한 영상은 남기지 않는다
             raise HTTPException(403, f"저장 한도({storage.TEACHER_MAX_SETS}묶음·{storage.TEACHER_QUOTA_MB}MB)를 넘었습니다")
-    run = pipeline.Run(dest)
+    rid = h.hexdigest()[:12]
+    if role != "admin" and (owner_of(rid) not in ("", role) or rid in SEED_INDEX):  # 다른 교사(또는 견본)와 같은 영상: 그 묶음으로 보내면 고칠 수 없었다 → 올린 사람마다 따로
+        rid = hashlib.sha256(f"{rid}|{role}".encode()).hexdigest()[:12]
+    run = pipeline.Run(dest, rid)
     if not (run.dir / "owner.txt").exists():  # 처음 올린 사람이 주인(교사 키는 자기 것만 고친다)
         (run.dir / "owner.txt").write_text(getattr(request.state, "who", "admin"))
     if not local and not pipeline.API_KEY:
@@ -353,7 +361,7 @@ def start(run_id, video, local=False):
 
     def go():
         try:
-            pipeline.main(video, local=local)
+            pipeline.main(video, local=local, run_id=run_id)
         finally:
             with RUNNING_LOCK:
                 RUNNING.discard(run_id)
@@ -464,7 +472,11 @@ def cards(run_id: str):
     storage.touch_used(d)
     vk = voice.kinds(d, data["cards"])
     data = {**data, "cards": [{**c, "voice": vk.get(c["n"])} for c in data["cards"]]}
+    heard = " ".join(x.get("text", "") for x in (read(d, "speech.json") or []) if isinstance(x, dict))  # 카드 문장의 숫자가 말소리에 있었는지 화면이 본다
+    # 교사 확인: 마지막으로 고친 뒤 '다 됐어요'를 눌렀는가(견본은 확인된 것으로)
+    reviewed = run_id in SEED_INDEX or bool(data.get("reviewed_at") and data.get("reviewed_at") == data.get("edited_at"))
     return {**data, "caught": caught, "tries": len(splits), "title_en": SEED_INDEX.get(run_id, {}).get("title_en", ""),
+            "heard_nums": sorted(set(re.findall(r"\d+(?:[.,]\d+)?", heard))), "reviewed": reviewed,
             "stage": storage.stage(d), "delete_on": storage.delete_on(d) if run_id not in SEED_INDEX else None}
 
 
@@ -505,7 +517,9 @@ def clean_cards(cards):
 
 def _save(d, body):
     data = read(d, "cards.json")
+    was_reviewed = bool(data.get("reviewed_at")) and data.get("reviewed_at") == data.get("edited_at")
     body["cards"] = clean_cards(body.get("cards"))
+    same_cards = body["cards"] == data.get("cards")
     for c in body["cards"]:  # 사진·그림 경로는 실행 폴더의 cards/ 안 파일만
         for k in ("image", "ill"):
             if c.get(k) is not None and not (isinstance(c[k], str) and CARD_PATH.fullmatch(c[k])):
@@ -531,6 +545,8 @@ def _save(d, body):
     data["problems"], data["warnings"] = check(data["cards"], data.get("duration", len(list((d / "frames").glob("*.jpg")))))
     data["status"] = "ok" if not data["problems"] else "needs_review"
     data["edited_at"] = time.time()
+    if body.get("reviewed") is True or (was_reviewed and same_cards):  # 교사가 '다 됐어요'를 누름(그 뒤 카드를 고치면 다시 확인 전). 설정만 바꾼 저장은 그대로
+        data["reviewed_at"] = data["edited_at"]
     save_cards(d, data)
     return data
 

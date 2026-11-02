@@ -1,7 +1,7 @@
 # 확인하기: 학생이 버튼을 누르면 찍은 사진 한 장을 그 카드의 '완료 기준'(시범 영상에서 그 단계가 끝난 순간 사진 + 교사가 쓴 기준 문장)과 비교한다.
 # 동작의 질(자세)은 보지 않고 결과 상태만 본다. 결과: done(됐어요) / not_yet(아직) / different(달라요) / unclear(잘 안 보여요).
 # 판단은 모델이, 마지막 정리는 코드가 한다(확신이 낮으면 unclear, 안내가 길거나 비면 기본 문장). 사진은 저장하지 않는다.
-import json, re
+import json, os, re, threading
 from pathlib import Path
 import pipeline
 from coach import local_client
@@ -78,7 +78,7 @@ def ask(card, before, after, photo, local=False):
     content = [x for label, url in imgs for x in ({"type": "input_text", "text": label}, {"type": "input_image", "image_url": url})]
     content.append({"type": "input_text", "text": text})
     r = pipeline.client.responses.create(model=pipeline.STEP_MODEL, input=[{"role": "user", "content": content}], store=False,
-                                         reasoning={"effort": "minimal"})
+                                         reasoning={"effort": "minimal"}, timeout=30)  # 확인은 보통 몇 초: 멈춘 요청이 오래 붙잡지 않게
     u = r.usage
     return parse(r.output_text), u.input_tokens * pipeline.PRICE_IN + u.output_tokens * pipeline.PRICE_OUT
 
@@ -110,15 +110,18 @@ def reference(d, card, which):
     """카드의 시작(before)·완료 기준(after) 장면 사진. 영상에서 한 번 뽑아 두고, 영상이 없으면(보관됨) 카드 사진으로 대신한다"""
     t = after_t(d, card) if which == "after" else max(0, card["start"] - 1)
     out = d / "cards" / f"{card['n']:02d}_{which}_{t}.jpg"
-    if not out.exists():
+    if not (out.exists() and out.stat().st_size):  # 0바이트(쓰다 멈춘 것)는 없는 것으로
         v = Path(json.loads((d / "progress.json").read_text()).get("video_path") or "")
+        tmp = out.with_name(f".{os.getpid()}_{threading.get_ident()}_{out.name}")  # 두 학습자가 동시에 처음 열어도 반쯤 쓴 사진을 남기지 않게 바꿔 끼운다(11-02 검토)
         for tt in (t, max(0, t - 1), card["start"]):  # 영상 끝과 같은 시각이면 사진이 안 나온다 → 1초 앞
             if v.is_file():
                 try:
-                    pipeline.grab(v, tt, out)
+                    pipeline.grab(v, tt, tmp)
                 except Exception:
                     continue
-                if out.exists() and out.stat().st_size:
+                if tmp.exists() and tmp.stat().st_size:
+                    os.replace(tmp, out)
                     return out
+        tmp.unlink(missing_ok=True)
         return d / card["image"]
     return out

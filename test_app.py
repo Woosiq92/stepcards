@@ -256,7 +256,7 @@ def test_upload_local(monkeypatch):
     monkeypatch.setattr(coach, "local_ready", lambda: True)
     assert client.post("/api/upload", files={"file": ("a.mp4", uuid.uuid4().bytes)}, data={"local": "true"}).status_code == 200
     gate.set()
-    assert calls == [{"local": True}]
+    assert [c["local"] for c in calls] == [True] and len(calls[0]["run_id"]) == 12  # 실행 id 를 끝까지 넘긴다(교사별 id 가 다시 만들기에서도 유지되게)
 
 
 # 심사위원 키: 다 해 볼 수 있지만 크레딧이 드는 요청은 하루 한도까지
@@ -511,3 +511,31 @@ def test_learner_limit_counts_only_handled_requests(monkeypatch):
     assert A.PUBLIC_USE["n"].get(rid, {}).get("coach", 0) == 0
     assert client.post("/api/runs/nosuchrun123/coach", json={}).status_code == 404  # 없는 묶음은 세지도 않는다
     assert "nosuchrun123" not in A.PUBLIC_USE["n"]
+
+
+def test_same_video_other_teacher_gets_own_set(monkeypatch):
+    monkeypatch.setattr(pipeline, "main", lambda v, **k: None)
+    monkeypatch.setattr(A, "APP_KEY", "secret")
+    monkeypatch.setattr(A, "TEACHERS", {"kim": "k1", "lee": "k2"})
+    body = uuid.uuid4().bytes
+    def up(key):
+        c = TestClient(A.app, raise_server_exceptions=False)
+        c.cookies.set("sc_teacher", key)
+        return c.post("/api/upload", files={"file": ("same.mp4", body)}).json()["id"]
+    a1, a2, b1 = up("k1"), up("k1"), up("k2")
+    assert a1 == a2 and a1 != b1  # 같은 교사는 같은 묶음, 다른 교사는 자기 묶음
+    assert A.owner_of(a1) == "teacher:kim" and A.owner_of(b1) == "teacher:lee"
+
+
+def test_teacher_review_mark(monkeypatch):
+    rid, d = make_run()
+    get = lambda: client.get(f"/api/runs/{rid}/cards").json()
+    cards = get()["cards"]
+    assert get()["reviewed"] is False
+    assert client.put(f"/api/runs/{rid}/cards", json={"cards": cards, "reviewed": True}).status_code == 200
+    assert get()["reviewed"] is True
+    assert client.put(f"/api/runs/{rid}/cards", json={"cards": cards, "mode": "alone"}).status_code == 200  # 설정만 바꿈: 그대로
+    assert get()["reviewed"] is True
+    cards[0]["ko"] = "컵을 드세요."
+    assert client.put(f"/api/runs/{rid}/cards", json={"cards": cards}).status_code == 200  # 카드를 고침: 다시 확인 전
+    assert get()["reviewed"] is False

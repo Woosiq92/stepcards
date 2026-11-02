@@ -1,6 +1,6 @@
 # 따라 하기(Coach): 카메라 사진 몇 장을 보고 지금 카드를 넘길지 정한다
 # AI는 카드를 넘기거나 다시 보여 주기만 한다. 칭찬·점수·기록 없음, 사진은 저장하지 않음
-import json, os, re, time
+import json, os, re, threading, time
 from openai import OpenAI
 import pipeline
 
@@ -79,7 +79,7 @@ def ask(cards, cur, frames, ref=None):
     content.append({"type": "input_text", "text": PROMPT.format(steps=steps, cur=cur) + (REF_PROMPT.format(cur=cur) if ref else "")})
     # 생각 양 최소: 응답 7.8초 → 4.2초, 답은 같았음(coach_bench2.py)
     r = pipeline.client.responses.create(model=pipeline.STEP_MODEL, input=[{"role": "user", "content": content}], store=False,
-                                         reasoning={"effort": "minimal"})
+                                         reasoning={"effort": "minimal"}, timeout=30)  # 판단은 보통 2~3초: 멈춘 요청이 서버 일꾼을 최대 15분 붙잡지 않게
     u = r.usage
     cost = u.input_tokens * pipeline.PRICE_IN + u.output_tokens * pipeline.PRICE_OUT
     try:
@@ -122,7 +122,7 @@ def ask_states(cards, cur, frames, refs, live=False):
                                live_keys=', "state": "", "hint_ko": "", "hint_en": ""' if live else "")
     content.append({"type": "input_text", "text": text + (STATE_LIVE.format(cur=cur) if live else "")})
     r = pipeline.client.responses.create(model=pipeline.STEP_MODEL, input=[{"role": "user", "content": content}], store=False,
-                                         reasoning={"effort": "minimal"})
+                                         reasoning={"effort": "minimal"}, timeout=30)  # 판단은 보통 2~3초: 멈춘 요청이 서버 일꾼을 최대 15분 붙잡지 않게
     u = r.usage
     cost = u.input_tokens * pipeline.PRICE_IN + u.output_tokens * pipeline.PRICE_OUT
     m = re.search(r"\{.*\}", r.output_text or "", re.S)
@@ -202,10 +202,12 @@ def small(path, w=480):
     """판단에 넣는 시범 사진은 카메라 사진과 같은 480px 로(원본 1280px 네 장이 느린 판단 8~17초의 원인 후보). 한 번 만들어 둔다"""
     from PIL import Image
     out = path.with_name(f"{path.stem}_w{w}.jpg")
-    if not out.exists():
+    if not (out.exists() and out.stat().st_size):
         im = Image.open(path).convert("RGB")
         im.thumbnail((w, w * 2))
-        im.save(out, quality=75)
+        tmp = out.with_name(f".{os.getpid()}_{threading.get_ident()}_{out.name}")  # 반쯤 쓴 사진이 남지 않게 바꿔 끼운다
+        im.save(tmp, "JPEG", quality=75)
+        os.replace(tmp, out)
     return out
 
 

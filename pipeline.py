@@ -48,11 +48,20 @@ Rules:
 Return only JSON: {{"steps":[{{"start":0,"end":0,"rep":0,"ko":"","en":"","object":"","look":""}}]}}"""
 
 
+def digest(video):
+    """영상 내용 해시(실행 id). 최대 500MB 를 통째로 메모리에 올리지 않고 1MB 씩 읽는다"""
+    h = hashlib.sha256()
+    with Path(video).open("rb") as f:
+        for b in iter(lambda: f.read(1 << 20), b""):
+            h.update(b)
+    return h.hexdigest()[:12]
+
+
 class Run:
-    def __init__(self, video):
+    def __init__(self, video, run_id=None):
         self.video = Path(video).resolve()
-        digest = hashlib.sha256(self.video.read_bytes()).hexdigest()[:12]
-        self.dir = Path(os.environ.get("DATA_DIR") or Path(__file__).parent) / "runs" / digest  # 배포 때는 영구 저장소(DATA_DIR)
+        rid = run_id or digest(self.video)  # 다른 교사가 같은 영상을 올리면 app 이 따로 정한 id 를 넘긴다
+        self.dir = Path(os.environ.get("DATA_DIR") or Path(__file__).parent) / "runs" / rid  # 배포 때는 영구 저장소(DATA_DIR)
         self.dir.mkdir(parents=True, exist_ok=True)
         self.progress = self.dir / "progress.json"
         self.events = json.loads(self.progress.read_text())["events"] if self.progress.exists() else []
@@ -341,8 +350,8 @@ def alert(text):
         threading.Thread(target=send, daemon=True).start()
 
 
-def main(video, fresh=False, look=False, local=False):
-    run = Run(video)
+def main(video, fresh=False, look=False, local=False, run_id=None):
+    run = Run(video, run_id)
     run.events = []  # 진행판은 이번 실행만 보여 준다
     run.log("start", f"{run.video.name} → {run.dir.name}" + (" (이 맥에서, Muse Glimmer)" if local else ""), local=local)
     try:

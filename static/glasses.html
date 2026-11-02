@@ -28,10 +28,13 @@
   .msg { margin:auto; font-size:32px; line-height:40px; font-weight:700; color:#fff; text-align:center; }
   .ask { position:fixed; inset:0; background:#000; display:flex; flex-direction:column; justify-content:center; gap:24px; padding:24px; }
   [hidden] { display:none !important; }
+  /* 연결 상태(11-02 검토: 짝 코드가 없거나 연결이 끊기면 아무 표시 없이 옛 카드에 머물렀다). 작은 글씨 금지(24px 이상) */
+  .net { position:fixed; left:50%; bottom:6px; transform:translateX(-50%); background:#30333A; color:#fff; font-size:24px; font-weight:700; padding:4px 16px; border-radius:99px; white-space:nowrap; z-index:9; }
 </style>
 </head>
 <body>
 <main id="m"><div class="msg" id="msg">…</div></main>
+<div class="net" id="net" hidden></div>
 <script>
 // 안경 화면: 따라 하기 화면이 고른 카드를 그대로 보여 준다. 초점 이동(상하좌우)+선택(Enter)만으로 조작
 const run = new URLSearchParams(location.search).get("run");
@@ -133,9 +136,13 @@ async function flip(d) {
   const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i, by: "glasses", lv: cur.lv ? 1 : 0, s: pair }) });
   if (r.ok) { cur = await r.json(); draw(false); }
 }
+let fails = 0;
+function net(text) { const e = document.getElementById("net"); e.textContent = text || ""; e.hidden = !text; }
 async function poll() {
   try {
-    const d = await (await fetch(`/api/runs/${run}/now?s=${pair}`)).json();
+    const r = await fetch(`/api/runs/${run}/now?s=${pair}`); if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    fails = 0; net(pair ? "" : (K ? "Not paired · open from the phone's QR" : "연결 코드 없음 · 휴대폰 QR로 열어요"));
     if (shownRes === undefined) shownRes = d.vres ? d.vres.id : null;  // 열 때 남아 있던 옛 결과는 띄우지 않는다
     if (pending && Date.now() - pending > 9000) {  // 휴대폰이 답하지 않으면(따라 하기 화면이 안 열려 있음)
       pending = 0;
@@ -155,7 +162,7 @@ async function poll() {
         try { draw(d.again); } catch (e) { cur = was; throw e; }
       }
     }
-  } catch {}
+  } catch { if (++fails >= 5) net(K ? "Connection lost · retrying" : "연결 끊김 · 다시 잇는 중"); }  // 약 3.5초 연속 실패부터
   setTimeout(poll, 700);
 }
 (async () => {
