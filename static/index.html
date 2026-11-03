@@ -151,7 +151,9 @@
   .fh-steps { margin:0 0 20px; padding-left:20px; color:#cfd9e3; line-height:1.8; } .fh-btns { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
   .fh-btns .btn { background:rgba(255,255,255,.12); color:#fff; border-color:transparent; } .fh-btns .btn:hover { background:rgba(255,255,255,.2); }
   .pill.big { font-size:17px; padding:14px 24px; border:none; } .pill .ico { width:20px; height:20px; } .fh-note { color:#8d9bab !important; font-size:13px; margin:14px 0 0; }
-  .fh-side { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px; }
+  .followset { background:var(--paper); border-radius:var(--r); box-shadow:var(--sh-1); padding:4px 18px; margin:0 0 14px; } .followset summary { cursor:pointer; min-height:44px; display:flex; align-items:center; gap:6px; font-weight:600; } .followset .ico { width:18px; height:18px; color:var(--accent); }
+  .fq { display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:10px 0; border-top:1px solid var(--line); } .fq .muted { font-size:13px; }
+  .ofold[open] { flex-basis:100%; } .ofold summary { list-style:none; display:inline-flex; } .ofold summary::-webkit-details-marker { display:none; } .ofold .fh-box { margin-top:8px; max-width:520px; }
   .fh-box { background:var(--paper); border-radius:var(--r); padding:16px 18px; box-shadow:var(--sh-1); display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
   .fh-box strong { display:inline-flex; align-items:center; gap:6px; } .fh-box .ico { width:18px; height:18px; color:var(--accent); } .fh-box .muted { font-size:13px; }
   .fh-qr { display:flex; align-items:center; gap:12px; } .fh-qr img { border-radius:8px; } .fh-rec { display:flex; align-items:center; gap:6px; font-weight:600; } .fh-rec input { width:18px; height:18px; accent-color:var(--accent); }
@@ -164,7 +166,7 @@
   .xw { color:#d4572a; font-size:12px; margin-top:3px; } .xbtns { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
   @media (max-width:640px) { .xtab th:nth-child(2), .xtab td:nth-child(2) { display:none; } }
   .others .langrow { margin-left:auto; display:inline-flex; align-items:center; gap:8px; }
-  @media (max-width:860px) { .followhero, .fh-side { grid-template-columns:1fr; } .followhero { padding:16px; border-radius:22px; } }
+  @media (max-width:860px) { .followhero { grid-template-columns:1fr; } .followhero { padding:16px; border-radius:22px; } }
   .vrow { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; padding:2px 0 4px; }
   .verifybtn { display:inline-flex; align-items:center; gap:8px; border:2px solid rgba(255,255,255,.35); background:transparent; color:#fff; border-radius:999px; padding:10px 22px; font-size:18px; font-weight:700; min-height:48px; }
   .verifybtn:hover { background:rgba(255,255,255,.1); }
@@ -1212,6 +1214,7 @@ function edit() {
     <div id="askres"></div>
     <nav class="jump" id="jump" aria-label="${T("카드로 바로 가기", "Jump to card")}">${jumpHtml(per)}</nav>
     <p class="hint">${T("문장을 누르면 바로 고쳐져요. 사진이 마음에 안 들면 '다른 장면 고르기'를 누르세요.", "Click a sentence to edit it. If a photo is not right, use 'Choose another frame'.")}</p>
+    ${followSetHtml()}
     ${S.data.stage === "archived" ? `<div class="issue">${T("오래 쓰지 않아 보관된 카드 묶음이에요. 카드·그림·인쇄·따라 하기는 그대로 되지만, 영상이 정리되어 장면 바꾸기와 움직임 카드는 쓸 수 없어요.", "This card set was archived after long disuse. Cards, drawings, printing and Coach mode still work; the video was removed, so frame changes and motion cards are off.")}</div>` : ""}
     ${S.data.delete_on && S.data.delete_on * 1000 - Date.now() < 7 * 864e5 ? `<div class="issue">${T(`이 카드 묶음은 ${new Date(S.data.delete_on * 1000).toLocaleDateString("ko-KR")}에 지워져요. 열거나 고치면 기간이 늘어나요. 필요하면 카드 쓰기 화면에서 백업(.zip)을 받아 두세요.`, `This card set will be deleted on ${new Date(S.data.delete_on * 1000).toLocaleDateString("en-US")}. Opening or editing it extends that; download a backup (.zip) from the Use page if you need it.`)}</div>` : ""}
     ${S.data.caught?.length ? `<details class="caught"><summary>${icon("check")} ${T(`검사기가 첫 답에서 ${S.data.caught.length}곳을 잡아 다시 만들게 했어요 → ${S.data.tries}번째에 통과`, `The code checker caught ${S.data.caught.length} problem(s) in the first answer and sent them back → passed on try ${S.data.tries}`)}</summary>
@@ -1632,7 +1635,7 @@ function use() {
       <div id="liveboard"></div>
       <section class="followhero">
         <div class="fh-media"><img src="${imgSrc(first)}" alt="">
-          <span class="fh-pov">${icon("glasses")} ${T("눈높이 시점", "Eye-level view")}</span>
+          <span class="fh-pov">${icon("glasses")} ${S.data.pov === "facing" ? T("마주 보는 시점", "Facing view") : T("눈높이 시점", "Eye-level view")}</span>
 
           <span class="fh-card">${esc(main(first))}</span></div>
         <div class="fh-copy">
@@ -1645,33 +1648,24 @@ function use() {
             <li>${T("카드는 사람이 넘겨요. 사람을 돕는 일이라 기계가 '됐어요'라고 하지 않아요", "A person turns the cards. This work helps a person, so the app never says 'done'")}</li>
           </ol>` : `<h2>${T("안경을 쓰고 따라 하면, 잘 하고 있는지 바로 알려 줘요", "Follow along with glasses on, and know right away you're doing it right")}</h2>
           <ol class="fh-steps">
-            <li>${T("눈높이 카메라가 손과 물건을 봐요", "An eye-level camera watches the hands and objects")}</li>
+            <li>${S.data.pov === "facing" ? T("앞 카메라가 몸 전체를 봐요", "The front camera watches the whole body") : T("눈높이 카메라가 손과 물건을 봐요", "An eye-level camera watches the hands and objects")}</li>
             <li>${T("지금 단계를 알아보고 카드를 넘겨요", "It follows the step and turns the card")}</li>
             <li>${T("단계마다 시범과 맞춰 보고, 다르면 고칠 점을 한 줄로", "Each step is matched to the demonstration; if it's off, one line says what to fix")}</li>
           </ol>`}
           <div class="fh-btns"><button class="pill big" onclick="go({run:S.run,view:'coach'})">${icon("camera")} ${noDone() ? T("따라 하기 시작", "Start following") : T("따라 하며 확인 시작", "Start following & checking")}</button>
             <a class="btn" href="/glasses?run=${S.run}&lang=${lang}&m=${ui}&s=${pairCode}" target="_blank">${icon("glasses")} ${T("안경 화면", "Glasses view")}</a></div>
-          <p class="muted fh-note">${T("셀카 카메라가 아니라, 하는 사람의 눈높이(안경, 또는 이마 앞 휴대폰 뒤 카메라)에서 손이 보이게 찍어요.", "Not the selfie camera: film from the doer's eye level (glasses, or a phone's back camera held at the forehead) with the hands in view.")}</p>
+          <p class="muted fh-note">${S.data.pov === "facing" ? T("앞 카메라 앞에 서서 몸 전체가 화면에 들어오게 해요. 방이 좁으면 휴대폰을 세로로 세워 두세요.", "Stand in front of the front camera with your whole body in view. In a small room, stand a phone upright.") : T("셀카 카메라가 아니라, 하는 사람의 눈높이(안경, 또는 이마 앞 휴대폰 뒤 카메라)에서 손이 보이게 찍어요.", "Not the selfie camera: film from the doer's eye level (glasses, or a phone's back camera held at the forehead) with the hands in view.")}</p>
         </div>
       </section>
-      <div class="fh-side">
-        <div class="fh-box"><strong>${icon("glasses")} ${T("Ray-Ban Display에 띄우기", "Show on Ray-Ban Display")}</strong>
-          <span class="muted">${noDone() ? T("Meta AI 앱 → 웹앱 추가에 아래 주소를 넣거나 QR을 찍어요. 따라 하기의 카드가 렌즈에 떠요.", "Add this address as a Web App in the Meta AI app, or scan the QR. Coach cards appear on the lens.") : T("Meta AI 앱 → 웹앱 추가에 아래 주소를 넣거나 QR을 찍어요. 따라 하기의 카드와 확인 결과가 렌즈에 떠요.", "Add this address as a Web App in the Meta AI app, or scan the QR. Coach cards and check results appear on the lens.")}</span>
-          <div class="fh-qr"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&m=${ui}&s=${pairCode}" alt="QR" width="112" height="112"><button class="btn" onclick="shareLink('glasses')">${icon("share")} ${T("링크 보내기", "Send link")}</button></div></div>
-        <div class="fh-box"><strong>${icon("glasses")} ${T("어떻게 따라 하나요", "How it's followed")}</strong>
-          <span class="seg">${[["together", T("같이 하기", "Together")], ["alone", T("혼자 하기", "Alone")]].map(([v, l]) => `<button class="${(S.data.mode || "together") === v ? "on" : ""}" aria-pressed="${!!((S.data.mode || "together") === v)}" onclick="setFollow({mode:'${v}'})">${l}</button>`).join("")}</span>
-          <span class="muted">${alone() ? T("곁에 아무도 없어요(릴스 시청자, 집). '여기서 막혔어요'를 누르면 카드 번호만 만든 사람에게 모여요.", "Nobody nearby (Reels viewers, at home). 'Stuck here' sends only the card number to the maker.")
-            : T("곁에 도와줄 사람이 있어요. '도와줘요'를 누르면 아래 현황판에 떠요.", "Someone who can help is nearby. 'Ask for help' shows on the live board.")}</span>
-          <label class="fh-rec"><input type="checkbox" ${S.data.pov === "facing" ? "checked" : ""} onchange="setFollow({pov:this.checked ? 'facing' : 'first'})"> ${T("시범을 마주 보고 찍었어요 (수어·춤처럼)", "The demonstration faces the camera (signing, dance)")}</label>
-          <label class="fh-rec"><input type="checkbox" ${noDone() ? "checked" : ""} onchange="setFollow({no_done:this.checked})"> ${T("기계가 '됐어요'라고 판단하지 않기", "Don't let the app decide a step is done")}</label>
-          <span class="muted">${T("사람을 돕거나 다칠 수 있는 일(예: 차에 타는 것 돕기). 카메라 판단·확인하기가 꺼지고 카드는 사람이 넘겨요.", "For helping a person or anything risky (e.g. helping someone into a car). Camera decisions and Check are off; a person turns the cards.")}</span></div>
-        <div class="fh-box"><strong>${icon("check")} ${T("확인 결과 기록", "Check records")}</strong>
-          <label class="fh-rec"><input type="checkbox" ${S.rec ? "checked" : ""} onchange="setRec(this.checked)"> ${T("이 기기에서 기록 남기기", "Keep records on this device")}</label>
-          <span class="muted">${T("이름 없이 날짜·카드·확인 결과·도움 단계만. 사진은 남지 않아요.", "No names: date, card, check result and help level. No photos.")}</span>
-          <button class="btn" onclick="showRecords()">${T("기록 보기", "View records")}</button><div id="records"></div></div>
-      </div>
       <div class="others">
         <span class="muted">${T("다른 방법", "Other ways")}</span>
+        <details class="ofold"><summary class="btn">${icon("glasses")} ${T("Ray-Ban Display에 띄우기", "Show on Ray-Ban Display")}</summary><div class="fh-box">
+          <span class="muted">${T("Meta AI 앱 → 웹앱 추가에 이 주소를 넣거나 QR을 찍으면, 따라 하는 카드가 렌즈에 떠요.", "In the Meta AI app, add this address as a Web App or scan the QR; the coach cards appear on the lens.")}</span>
+          <div class="fh-qr"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&m=${ui}&s=${pairCode}" alt="QR" width="112" height="112"><button class="btn" onclick="shareLink('glasses')">${icon("share")} ${T("링크 보내기", "Send link")}</button></div></div></details>
+        <details class="ofold"><summary class="btn">${icon("check")} ${T("확인 결과 기록", "Check records")}</summary><div class="fh-box">
+          <label class="fh-rec"><input type="checkbox" ${S.rec ? "checked" : ""} onchange="setRec(this.checked)"> ${T("이 기기에서 기록 남기기", "Keep records on this device")}</label>
+          <span class="muted">${T("이름 없이 날짜·카드·확인 결과·도움 단계만. 사진은 남지 않아요.", "No names: date, card, check result and help level. No photos.")}</span>
+          <button class="btn" onclick="showRecords()">${T("기록 보기", "View records")}</button><div id="records"></div></div></details>
         <button class="btn" onclick="printWhat('cards')">${icon("print")} ${T(`카드 인쇄 (${pages}쪽)`, `Print cards (${pages} p)`)}</button>
         <button class="btn" onclick="printWhat('record')">${icon("print")} ${T("기록지 인쇄", "Print record sheet")}</button>
         <button class="btn" onclick="go({run:S.run,view:'tablet'})">${icon("tablet")} ${T("태블릿으로 보기", "Tablet view")}</button>
@@ -2047,11 +2041,26 @@ function callMaker(why) {
 }
 /* 같이 하기(곁에 사람: 도와줘요) / 혼자 하기(릴스 시청자·집: 여기서 막혔어요). '됐어요' 판단 끄기는 사람을 돕거나 다칠 수 있는 일 */
 const alone = () => S.data?.mode === "alone", noDone = () => !!S.data?.no_done;
+// 따라 하는 방식: 카드 묶음마다 만든 사람이 한 번 정한다(2번 화면). 세 가지를 질문 꼴 두 갈래 단추로(11-03, 3번 화면에서 옮김)
+function followSetHtml() {
+  const facing = S.data.pov === "facing", q = (label, opts, note) => `<div class="fq"><b>${label}</b><span class="seg">${opts.map(([on, l, v]) =>
+    `<button class="${on ? "on" : ""}" aria-pressed="${on}" onclick='setFollow(${JSON.stringify(v)})'>${l}</button>`).join("")}</span><span class="muted">${note}</span></div>`;
+  const sum = [alone() ? T("혼자", "Alone") : T("곁에 사람 있음", "Helper nearby"), facing ? T("마주 보는 동작", "Facing the camera") : T("눈높이에서 손", "Hands at eye level"), noDone() ? T("사람이 넘김", "A person turns cards") : T("카메라가 넘김", "Camera turns cards")].join(" · ");
+  return `<details class="followset"><summary>${icon("glasses")} ${T("따라 하는 방식", "How it's followed")}: ${sum}</summary>
+    ${q(T("곁에 도와줄 사람이 있나요?", "Is someone nearby to help?"), [[!alone(), T("있어요", "Yes"), { mode: "together" }], [alone(), T("없어요", "No"), { mode: "alone" }]],
+      alone() ? T("'여기서 막혔어요'를 누르면 카드 번호만 만든 사람에게 모여요.", "'Stuck here' sends only the card number to the maker.") : T("'도와줘요'를 누르면 현황판에 떠서 곁의 사람이 와요.", "'Ask for help' shows on the live board for the helper."))}
+    ${q(T("시범을 어떻게 찍었나요?", "How was the demonstration filmed?"), [[!facing, T("눈높이에서 손을", "Hands, from eye level"), { pov: "first" }], [facing, T("마주 보고 몸 전체를 (춤·수어)", "Facing, whole body (dance, signing)"), { pov: "facing" }]],
+      facing ? T("따라 할 때 앞 카메라로 몸 전체를 봐요. 얼굴은 가리지 않아요.", "Coach uses the front camera on the whole body. Faces are not blurred.") : T("따라 할 때 손과 물건을 봐요. 얼굴은 가려서 보내요.", "Coach watches hands and objects. Faces are blurred before sending."))}
+    ${q(T("다음 카드로는 누가 넘기나요?", "Who moves to the next card?"), [[!noDone(), T("카메라가 보고", "The camera"), { no_done: false }], [noDone(), T("사람이 직접", "A person"), { no_done: true }]],
+      noDone() ? T("사람을 돕거나 다칠 수 있는 일이라 카메라 판단과 확인하기가 꺼져요.", "For helping a person or anything risky: camera decisions and Check are off.") : T("사람을 돕거나 다칠 수 있는 일(예: 차에 타는 것 돕기)이면 '사람이 직접'으로 바꾸세요.", "If this helps a person or is risky (e.g. helping someone into a car), choose 'A person'."))}
+  </details>`;
+}
 async function setFollow(v) {  // 만든 사람만(키). 카드 묶음마다 한 번 정한다
   const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards: S.data.cards, title: S.data.title ?? "", ...v }) }).catch(() => null);
-  if (!r) { toast(T("저장하지 못했어요. 다시 해 주세요.", "Could not save. Please try again.")); return use(); }
-  if (!r.ok) { toast(r.status === 403 ? T("다른 사람이 만든 카드 묶음이에요.", "Someone else made this card set.") : T("바꾸려면 접속 키가 필요해요.", "An access key is needed to change this.")); return use(); }
-  const d = await r.json(); Object.assign(S.data, { mode: d.mode, no_done: d.no_done, pov: d.pov }); use();
+  const redraw = () => S.view === "edit" ? (edit(), $(".followset") && ($(".followset").open = true)) : use();
+  if (!r) { toast(T("저장하지 못했어요. 다시 해 주세요.", "Could not save. Please try again.")); return redraw(); }
+  if (!r.ok) { toast(r.status === 403 ? T("다른 사람이 만든 카드 묶음이에요.", "Someone else made this card set.") : T("바꾸려면 접속 키가 필요해요.", "An access key is needed to change this.")); return redraw(); }
+  const d = await r.json(); Object.assign(S.data, { mode: d.mode, no_done: d.no_done, pov: d.pov }); redraw();
 }
 async function markStuck(btn) {  // 키 없이, 카드 번호만. 같은 카드는 이 화면에서 한 번
   const c = S.data.cards[S.idx]; S.marked = S.marked || new Set();
