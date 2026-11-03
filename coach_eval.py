@@ -1,7 +1,7 @@
 # 따라 하기 자동 넘김 측정기: 영상을 카메라처럼 흘려(브라우저와 같은 480px·0.5초 간격, 판단 사이 0.4초) 실제 coach.check 를 부르고
 # 카드마다 넘어간 시각을 시범의 단계 끝과 비교한다. 판단에 걸린 실제 시간만큼 영상 시계를 진행시킨다(실시간과 같은 조건)
 # 사용: .venv/bin/python coach_eval.py <실행 id> <영상> [--speed 1.0] [--variant none|zoom|dim] [--live] [--out 결과.json]
-import argparse, base64, json, subprocess, tempfile, time
+import argparse, base64, json, os, subprocess, tempfile, time
 from pathlib import Path
 import coach
 
@@ -20,6 +20,7 @@ a = ap.parse_args()
 ROOT = Path(__file__).parent
 d = ROOT / "runs" / a.run
 cards = json.loads((d / "cards.json").read_text())["cards"]
+FACING = json.loads((d / "cards.json").read_text()).get("pov") == "facing" and os.environ.get("COACH_NOFACING") != "1"  # 측정용 스위치
 FPS = 4
 tmp = Path(tempfile.mkdtemp())
 vf = {"none": "", "zoom": "crop=iw*0.8:ih*0.8,", "dim": "eq=brightness=-0.12:contrast=0.8,gblur=sigma=1.2,"}[a.variant]
@@ -76,7 +77,7 @@ if a.settle:  # 앞의 순차 흉내는 버리고 사건 순서대로 다시: 0.
         frames = [shot(t - 1.5), shot(t - 1.0), shot(t - 0.5), shot(t)]  # 화면과 같이 최근 4장(판단은 보통 뒤 2장만 쓴다)
         on = (t - since) if since else t
         refs = coach.state_refs(d, cards, cur, a.wide and (ahead or coach.stuck(cards, cur, on))) if a.states else None
-        r = coach.check(cards, cur, frames, prev, False, None, refs, pm, bool(refs) and coach.change(d, cards, cur) < coach.SIMILAR, (t - since) if since else t)
+        r = coach.check(cards, cur, frames, prev, False, None, refs, pm, bool(refs) and coach.change(d, cards, cur) < coach.SIMILAR, (t - since) if since else t, FACING)
         cost += r["cost"]
         pending.append((t + r["latency"], cur, r, main))
         log.append({"vt": round(t * a.speed, 1), "cur": cur, "main": main, "nref": len(refs or []), **{k: r.get(k) for k in ("decision", "match", "done_step", "ahead")}, "lat": r["latency"]})

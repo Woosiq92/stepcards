@@ -120,9 +120,12 @@ STATE_LIVE = """
 
 ACTION_PROMPT = """
 - "action_seen": true only if the camera frames (oldest first) show the learner actually doing step {cur} ("{act}") — for example the work being lifted and turned over — not just holding it. Step {cur} leaves the shape almost the same, so watch the movement."""
+ACTION_FACING = """
+- "action_seen": true only if the camera frames (oldest first) show the learner doing the movement of step {cur} ("{act}"): the hands or body start and move
+  the way the step says and the demonstration shows. A still pose, or a different movement, is false."""
 
 
-def ask_states(cards, cur, frames, refs, live=False, action=False):
+def ask_states(cards, cur, frames, refs, live=False, action=False, facing=False):
     """단계 끝 사진들과 맞추기. refs = [(설명, 사진 url)], 0 = 지금 단계 시작 모습, 1 = 지금 단계 끝, 2 = 다음 단계 끝 ...
     돌려줌: (match, seen, cost, live 답, view)"""
     steps = "\n".join(f"{i}. {c['en']}" for i, c in enumerate(cards, 1))
@@ -133,7 +136,7 @@ def ask_states(cards, cur, frames, refs, live=False, action=False):
         content += [{"type": "input_text", "text": f"REFERENCE {k}: {label}"}, {"type": "input_image", "image_url": url}]
     text = STATE_PROMPT.format(steps=steps, cur=cur, refs="\n".join(f"{k}. {label}" for k, (label, _) in enumerate(refs)),
                                live_keys=(', "state": "", "hint_ko": "", "hint_en": ""' if live else "") + (', "action_seen": false' if action else ""))
-    content.append({"type": "input_text", "text": text + (STATE_LIVE.format(cur=cur) if live else "") + (ACTION_PROMPT.format(cur=cur, act=cards[cur - 1]["en"]) if action else "")})
+    content.append({"type": "input_text", "text": text + (STATE_LIVE.format(cur=cur) if live else "") + ((ACTION_FACING if facing else ACTION_PROMPT).format(cur=cur, act=cards[cur - 1]["en"]) if action else "")})
     r = pipeline.client.responses.create(model=pipeline.STEP_MODEL, input=[{"role": "user", "content": content}], store=False,
                                          reasoning={"effort": "minimal"}, timeout=30)  # 판단은 보통 2~3초: 멈춘 요청이 서버 일꾼을 최대 15분 붙잡지 않게
     u = r.usage
@@ -164,14 +167,14 @@ def in_hand(frame, card):
     return bool(box and touch)
 
 
-def check(cards, cur, frames, prev_seen=0, local=False, ref=None, refs=None, prev_match=-1, similar=False, on_card=None):
+def check(cards, cur, frames, prev_seen=0, local=False, ref=None, refs=None, prev_match=-1, similar=False, on_card=None, facing=False):
     """cur는 1부터. decision: next(다음 카드), finished(마지막 카드를 마침 → 화면에서 두 번 연속일 때 끝 화면), again(뒤 단계가 처음 보임 → 지금 카드 다시 보여 주기),
     jump(뒤 단계가 두 번 연속 보임 → 그 카드로 따라감, target), wait(기다림).
     prev_seen은 바로 앞 판단의 seen(사람이 직접 넘기면 0으로).
     local이면 Glimmer만 쓴다. SAM은 Meta API라 사진이 밖으로 나가므로 확인 없이 Glimmer 판단대로 넘긴다."""
     t0 = time.time()
     if refs and not local:
-        return check_states(cards, cur, frames, refs, live=ref is not None, t0=t0, prev_match=prev_match, similar=similar, on_card=on_card)
+        return check_states(cards, cur, frames, refs, live=ref is not None, t0=t0, prev_match=prev_match, similar=similar, on_card=on_card, facing=facing)
     res = (ask_local if local else ask)(cards, cur, frames, ref) if ref else (ask_local if local else ask)(cards, cur, frames)
     seen, done, cost = res[:3]
     seen_view = res[4] if len(res) > 4 else view({})  # 이 카드를 판단할 것이 화면 안에 다 보이는가(안 보이면 화면이 무엇을 보이게 할지 알려 준다)
@@ -283,13 +286,13 @@ def change(d, cards, cur):
     return _change[key]
 
 
-def check_states(cards, cur, frames, refs, live, t0, prev_match=-1, similar=False, on_card=None):
+def check_states(cards, cur, frames, refs, live, t0, prev_match=-1, similar=False, on_card=None, facing=False):
     """시범의 단계 끝 사진과 맞춰서 넘긴다(11-02: 문장만 보고 단계를 가리게 하면 7번 단계부터 50초 넘게 못 넘겼다).
     지금 단계 끝(1) 이후 사진과 같으면 next, 마지막 카드면 finished. 0 이면 wait.
     SAM 확인은 뺐다: 넘기는 판단마다 3~9초를 더했고, 기록된 13번 중 한 번도 넘김을 막지 않았다"""
     c = cards[cur - 1]
-    action = similar and os.environ.get("COACH_NOACTION") != "1" and len(frames) >= 4  # 측정용 스위치
-    match, seen, cost, lv, seen_view = ask_states(cards, cur, frames, refs, live, action)
+    action = (similar or facing) and os.environ.get("COACH_NOACTION") != "1" and len(frames) >= 4  # 측정용 스위치. 수어·춤은 끝 자세보다 움직임이 뜻(11-03)
+    match, seen, cost, lv, seen_view = ask_states(cards, cur, frames, refs, live, action, facing)
     if not 0 <= seen <= len(cards):
         seen = 0
     # 판단은 '몇 번 단계까지 끝난 모습인가'(절대 번호)로 주고받는다: 카드가 넘어가도 앞 판단이 그대로 뜻이 있다
@@ -299,6 +302,8 @@ def check_states(cards, cur, frames, refs, live, t0, prev_match=-1, similar=Fals
     confirm = (similar and not seen_view.get("action_seen")) or CONFIRM_ALL  # 뒤집는 동작을 봤으면 한 번으로
     soon = on_card is not None and on_card < MIN_DWELL * max(0, (c.get("end") or 0) - (c.get("start") or 0))  # 시범 시간의 절반도 안 지났다
     done = done_step > cur or (done_step == cur and not soon and (not confirm or prev_match >= cur))  # 앞뒤가 비슷한 단계는 바로 앞 판단도 '끝'이었을 때만
+    if facing and not done and not soon and seen_view.get("action_seen") and match >= 0:  # 수어·춤: 끝 자세가 안 맞아도 그 움직임을 했으면
+        done = True
     # 몇 단계 앞선 모습이 두 번 연속이면 그 카드로 바로(한 번만으로 건너뛰면 수건에서 3번 중 2번 너무 앞섰다). 한 번이면 한 장만
     target = min(len(cards), min(done_step, prev_match) + 1) if done_step > cur and prev_match > cur else None
     decision = "finished" if done and cur == len(cards) else "jump" if target and target > cur + 1 else "next" if done else "wait"

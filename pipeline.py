@@ -45,6 +45,10 @@ Rules:
 - rep is a second in the middle of the action where the hand is on the object (not after the action has finished).
 - "object" is the main thing in the hand, in short English words (e.g. "small glass pitcher").
 - "look" describes only how that object looks, without its name: shape, color, material (e.g. "thin silver rod with a round tip").
+- If the person faces the camera doing signs, dance or exercise moves instead of handling an object, each step is one sign or move.
+  When on-screen text names the sign or move, begin "ko" and "en" with that name and a colon (e.g. "죄송하다: 이마에 댄 손을 앞으로 내리세요." /
+  "Sorry: hand from forehead down and forward."). Say exactly where the hands start (forehead, eyes, cheek, mouth, chin, chest, shoulder)
+  and which way they move; check every frame of the step, not only one. "object" and "look" may be empty for these.
 Return only JSON: {{"steps":[{{"start":0,"end":0,"rep":0,"ko":"","en":"","object":"","look":""}}]}}"""
 
 

@@ -703,7 +703,7 @@ def coach_check(run_id: str, body: dict):
     except (TypeError, ValueError):
         prev_seen = 0
     return coach.check(data["cards"], cur, frames, prev_seen, local, ref, refs,
-                       prev_match, bool(refs) and coach.change(d, data["cards"], cur) < coach.SIMILAR, on_card)
+                       prev_match, bool(refs) and coach.change(d, data["cards"], cur) < coach.SIMILAR, on_card, data.get("pov") == "facing")
 
 
 # 안경 화면(Ray-Ban Display 웹앱)과 따라 하기 화면이 같은 카드를 보게 하는 공유 상태. 메모리에만 둔다
