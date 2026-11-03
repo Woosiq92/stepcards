@@ -279,6 +279,7 @@
   .htabs .ico { width:18px; height:18px; }
   .lib { max-width:1180px; margin:0 auto; padding:8px 20px 24px; }
   .libtop { display:flex; align-items:center; gap:16px; flex-wrap:wrap; justify-content:space-between; } .libtop h2 { margin:0; }
+  .libnote { margin:8px 0 14px; max-width:65ch; } .minenote { margin:20px auto 0; max-width:56ch; }  /* 두 탭이 무엇이 다른지 한 줄씩(11-03 지적: 화면에서 안 드러남) */
   .libtop .lq { flex:0 1 320px; padding:10px 14px; border:1px solid var(--field); border-radius:12px; font:inherit; }
   .libchips b { font-weight:600; color:var(--muted); margin-left:2px; } .libchips button.on b { color:#cfd6ff; }
   .libh { margin:22px 0 10px; } .lib .jobsrc { margin:-4px 0 12px; }
@@ -823,6 +824,7 @@ async function home() {
 
     </div>
     <div class="htab" id="hmine">
+    <p class="center muted minenote">${T("내가 만든 카드와 라이브러리에서 복사해 온 카드가 여기 모여요. 고치고, 지우고, 폴더로 정리할 수 있어요.", "Cards you made, and copies from the library, live here. Edit them, delete them, or sort them into folders.")}</p>
     <section class="mstart" id="start">
       <h2 class="center">${T("찍어 둔 영상 하나면 돼요", "All it takes is one video")}</h2>
       <p class="center sub">${T("손이 잘 보이는 1~10분짜리면 충분해요. 동작마다 카드 한 장, 문장은 짧고 쉽게 나와요.", "One to ten minutes, hands in view. One card per action, in short, plain words.")}</p>
@@ -875,7 +877,7 @@ function libCard(r) {
       <span class="muted">${T(`카드 ${r.count}장`, `${r.count} cards`)}</span>
       <span class="ltags">${tags.map(t => `<span>${t}</span>`).join("")}</span>
       <span class="lacts"><a class="btn primary" href="#run=${r.id}&view=coach">${T("따라 하기", "Follow")}</a><a class="btn" href="#run=${r.id}&view=use">${T("카드 보기", "View cards")}</a>
-        <button class="btn" onclick="copyRun('${r.id}')">${T("복사해서 고치기", "Copy and edit")}</button></span></div>
+        <button class="btn" onclick="copyRun('${r.id}')" title="${T("원본은 그대로 두고 내 카드에 사본을 만들어요", "Makes a copy in My cards; the original stays as it is")}">${T("복사해서 고치기", "Copy and edit")}</button></span></div>
   </article>`;
 }
 function libBodyHtml() {  // 분류·검색어로 보일 카드(검색 칸은 그대로 두고 이것만 다시 그린다: 한글 조합이 끊기지 않게)
@@ -894,6 +896,7 @@ function libList() {
   const all = S.lib || [];
   box.innerHTML = `<div class="libtop"><h2>${T("카드 라이브러리", "Card library")}</h2>
       <input type="search" class="lq" placeholder="${T("제목·직무로 찾기", "Search titles and jobs")}" value="${esc(LV.q)}" oninput="LV.q=this.value;document.getElementById('libbody').innerHTML=libBodyHtml()"></div>
+    <p class="muted libnote">${T("미리 만들어 둔 카드예요. 누구나 바로 따라 할 수 있어요. 고쳐 쓰려면 '복사해서 고치기'를 누르세요. 내 카드에 사본이 생기고, 원본은 그대로 남아요.", "Ready-made cards anyone can follow right away. To change one, press \"Copy and edit\": a copy goes to My cards, and the original stays as it is.")}</p>
     <div class="pchips libchips">${[["all", T("전체", "All"), all.length], ...LIBCAT.map(([k, l]) => [k, l, all.filter(r => (r.cats || []).includes(k)).length]).filter(x => x[2])]
       .map(([k, l, n]) => `<button class="${LV.cat === k ? "on" : ""}" onclick="LV.cat='${k}';libList()">${l} <b>${n}</b></button>`).join("")}</div>
     <div id="libbody">${libBodyHtml()}</div>`;
@@ -941,7 +944,7 @@ function pastList() {
   const fbtn = (f, label, n) => `<button class="fold ${PV.folder === f || (f === null && (PV.folder === null || PV.folder === undefined)) ? "on" : ""}" onclick="PV.folder=${esc(JSON.stringify(f))};pastSave();pastList()">${esc(label)}<span>${n}</span></button>`;
   const chips = [["all", T("전체", "All")], ["unreviewed", T("확인 전", "Not checked")], ["reviewed", T("확인 끝", "Checked")], ["making", T("만드는 중", "Making")], ["archived", T("보관됨", "Archived")]];
   const picking = !!S.picking;
-  box.innerHTML = `<h3>${T("지난 카드 묶음", "Previous card sets")}</h3>
+  box.innerHTML = `<h3>${T("내 카드 묶음", "My card sets")}</h3>
     <div class="pastwrap ${folders.length ? "" : "nofold"}">
       <nav class="folders" aria-label="${T("폴더", "Folders")}" ${folders.length ? "" : "hidden"}>
         ${fbtn(null, T("전체", "All"), all.length)}
