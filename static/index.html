@@ -882,7 +882,7 @@ async function home() {
       </label>
       <div class="trust center">${[T("영상은 Meta AI가 분석하고, 카드 만들기용으로 이 서버에 보관돼요", "The video is analysed by Meta AI and kept on this server to make the cards"), T("지우면 영상·카드가 함께 지워져요", "Deleting a set deletes its video and cards"), T("마지막은 사람이 정해요", "A person decides")].map(t => `<span>${icon("check")}${t}</span>`).join("")}</div>
     </section>
-    ${mine.length ? `<section class="pastbox" id="pastbox"></section>` : `<p class="center muted">${T("아직 만든 카드 묶음이 없어요. 위에 영상을 넣거나, 라이브러리에서 '고치기'로 시작해요.", "No card sets yet. Add a video above, or start from 'Copy and edit' in the library.")}</p>`}
+    ${mine.length ? `<section class="pastbox" id="pastbox"></section>` : `<p class="center muted">${T("아직 만든 카드 묶음이 없어요. 위에 영상을 넣거나, 라이브러리에서 '고치기'로 시작해요.", "No card sets yet. Add a video above, or start from 'Edit' in the library.")}</p>`}
     ${mine.length && S.role === "admin" ? `<p class="muted adminlink"><a href="#view=admin">${T("저장 공간 관리(관리자)", "Storage (admin)")}</a></p>` : ""}
     </div>`;
     })()}`;
