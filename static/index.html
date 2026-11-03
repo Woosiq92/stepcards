@@ -153,19 +153,21 @@
   .pill.big { font-size:17px; padding:14px 24px; border:none; } .pill .ico { width:20px; height:20px; } .fh-note { color:#8d9bab !important; font-size:13px; margin:14px 0 0; }
   .followset { background:var(--paper); border-radius:var(--r); box-shadow:var(--sh-1); padding:4px 18px; margin:0 0 14px; } .followset summary { cursor:pointer; min-height:44px; display:flex; align-items:center; gap:6px; font-weight:600; } .followset .ico { width:18px; height:18px; color:var(--accent); }
   .fq { display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:10px 0; border-top:1px solid var(--line); } .fq .muted { font-size:13px; }
-  .ofold[open] { flex-basis:100%; } .ofold summary { list-style:none; display:inline-flex; } .ofold summary::-webkit-details-marker { display:none; } .ofold .fh-box { margin-top:8px; max-width:520px; }
+  .ofold summary { list-style:none; display:inline-flex; } .ofold summary::-webkit-details-marker { display:none; } .ofold .fh-box { margin-top:8px; max-width:520px; }
   .fh-box { background:var(--paper); border-radius:var(--r); padding:16px 18px; box-shadow:var(--sh-1); display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
   .fh-box strong { display:inline-flex; align-items:center; gap:6px; } .fh-box .ico { width:18px; height:18px; color:var(--accent); } .fh-box .muted { font-size:13px; }
-  .fh-qr { display:flex; align-items:center; gap:12px; } .fh-qr img { border-radius:8px; } .fh-rec { display:flex; align-items:center; gap:6px; font-weight:600; } .fh-rec input { width:18px; height:18px; accent-color:var(--accent); }
+  .fh-qr { display:flex; align-items:center; gap:12px; } .fh-qr .btn { white-space:nowrap; } .fh-qr img { border-radius:8px; } .fh-rec { display:flex; align-items:center; gap:6px; font-weight:600; } .fh-rec input { width:18px; height:18px; accent-color:var(--accent); }
   #records { width:100%; }
-  .others { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:14px 0; border-top:1px solid var(--line); } .others .btn { padding:6px 12px; font-size:13px; }
+  .others { padding:18px 0; border-top:1px solid var(--line); } .others h3 { font-size:15px; margin:0 0 10px; color:var(--muted, #6b7785); font-weight:600; }
+  .ogrid { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; } .ogroup { display:flex; flex-direction:column; align-items:stretch; gap:6px; background:var(--paper); border-radius:var(--r); padding:14px; box-shadow:var(--sh-1); }
+  .ogroup > b { font-size:14px; margin-bottom:2px; } .ogroup .btn, .ogroup summary.btn { justify-content:flex-start; font-size:14px; padding:8px 12px; min-height:44px; } .ogroup .langrow { margin:0; } .ogroup summary.btn { display:flex; width:100%; }
+  @media (max-width:1000px) { .ogrid { grid-template-columns:1fr 1fr; } } @media (max-width:560px) { .ogrid { grid-template-columns:1fr; } }
   .xbox { border:1px solid var(--line); border-radius:14px; padding:14px; margin:6px 0 14px; } .xbox p { margin:10px 0; }
   .xask { display:flex; flex-wrap:wrap; gap:8px; align-items:center; } .xask input { padding:7px 10px; border-radius:8px; border:1px solid var(--field); min-width:200px; font:inherit; }
   .xtab { width:100%; border-collapse:collapse; font-size:14px; } .xtab td, .xtab th { padding:6px; border-top:1px solid var(--line); text-align:left; vertical-align:top; word-break:keep-all; }
   .xtab input { width:100%; padding:5px 8px; border-radius:6px; border:1px solid var(--field); font:inherit; } .xtab tr.warn td:first-child { color:#d4572a; font-weight:700; }
   .xw { color:#d4572a; font-size:12px; margin-top:3px; } .xbtns { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
   @media (max-width:640px) { .xtab th:nth-child(2), .xtab td:nth-child(2) { display:none; } }
-  .others .langrow { margin-left:auto; display:inline-flex; align-items:center; gap:8px; }
   @media (max-width:860px) { .followhero { grid-template-columns:1fr; } .followhero { padding:16px; border-radius:22px; } }
   .vrow { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; padding:2px 0 4px; }
   .verifybtn { display:inline-flex; align-items:center; gap:8px; border:2px solid rgba(255,255,255,.35); background:transparent; color:#fff; border-radius:999px; padding:10px 22px; font-size:18px; font-weight:700; min-height:48px; }
@@ -1652,28 +1654,34 @@ function use() {
             <li>${T("지금 단계를 알아보고 카드를 넘겨요", "It follows the step and turns the card")}</li>
             <li>${T("단계마다 시범과 맞춰 보고, 다르면 고칠 점을 한 줄로", "Each step is matched to the demonstration; if it's off, one line says what to fix")}</li>
           </ol>`}
-          <div class="fh-btns"><button class="pill big" onclick="go({run:S.run,view:'coach'})">${icon("camera")} ${noDone() ? T("따라 하기 시작", "Start following") : T("따라 하며 확인 시작", "Start following & checking")}</button>
-            <a class="btn" href="/glasses?run=${S.run}&lang=${lang}&m=${ui}&s=${pairCode}" target="_blank">${icon("glasses")} ${T("안경 화면", "Glasses view")}</a></div>
+          <div class="fh-btns"><button class="pill big" onclick="go({run:S.run,view:'coach'})">${icon("camera")} ${noDone() ? T("따라 하기 시작", "Start following") : T("따라 하며 확인 시작", "Start following & checking")}</button></div>
           <p class="muted fh-note">${S.data.pov === "facing" ? T("앞 카메라 앞에 서서 몸 전체가 화면에 들어오게 해요. 방이 좁으면 휴대폰을 세로로 세워 두세요.", "Stand in front of the front camera with your whole body in view. In a small room, stand a phone upright.") : T("셀카 카메라가 아니라, 하는 사람의 눈높이(안경, 또는 이마 앞 휴대폰 뒤 카메라)에서 손이 보이게 찍어요.", "Not the selfie camera: film from the doer's eye level (glasses, or a phone's back camera held at the forehead) with the hands in view.")}</p>
         </div>
       </section>
       <div class="others">
-        <span class="muted">${T("다른 방법", "Other ways")}</span>
-        <details class="ofold"><summary class="btn">${icon("glasses")} ${T("Ray-Ban Display에 띄우기", "Show on Ray-Ban Display")}</summary><div class="fh-box">
-          <span class="muted">${T("Meta AI 앱 → 웹앱 추가에 이 주소를 넣거나 QR을 찍으면, 따라 하는 카드가 렌즈에 떠요.", "In the Meta AI app, add this address as a Web App or scan the QR; the coach cards appear on the lens.")}</span>
-          <div class="fh-qr"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&m=${ui}&s=${pairCode}" alt="QR" width="112" height="112"><button class="btn" onclick="shareLink('glasses')">${icon("share")} ${T("링크 보내기", "Send link")}</button></div></div></details>
-        <details class="ofold"><summary class="btn">${icon("check")} ${T("확인 결과 기록", "Check records")}</summary><div class="fh-box">
-          <label class="fh-rec"><input type="checkbox" ${S.rec ? "checked" : ""} onchange="setRec(this.checked)"> ${T("이 기기에서 기록 남기기", "Keep records on this device")}</label>
-          <span class="muted">${T("이름 없이 날짜·카드·확인 결과·도움 단계만. 사진은 남지 않아요.", "No names: date, card, check result and help level. No photos.")}</span>
-          <button class="btn" onclick="showRecords()">${T("기록 보기", "View records")}</button><div id="records"></div></div></details>
-        <button class="btn" onclick="printWhat('cards')">${icon("print")} ${T(`카드 인쇄 (${pages}쪽)`, `Print cards (${pages} p)`)}</button>
-        <button class="btn" onclick="printWhat('record')">${icon("print")} ${T("기록지 인쇄", "Print record sheet")}</button>
-        <button class="btn" onclick="go({run:S.run,view:'tablet'})">${icon("tablet")} ${T("태블릿으로 보기", "Tablet view")}</button>
-        <button class="btn" onclick="shareLink('tablet')">${icon("share")} ${T("배우는 사람 기기로 링크", "Link for a learner device")}</button>
-        <button class="btn" onclick="shareCards(this)">${icon("share")} ${navigator.canShare ? T("이미지로 보내기", "Send as images") : T("이미지로 저장", "Save as image")}</button>
-        <a class="btn" href="/api/runs/${S.run}/export.zip" download>${icon("share")} ${T("백업(.zip)", "Backup (.zip)")}</a>
-        <button class="btn" onclick="openX()">${icon("plus")} ${T("다른 언어 추가", "Add a language")}</button>
-        <span class="langrow"><span class="muted">${T("카드 글자", "Card language")}</span> ${segHtml()}</span>
+        <h3>${T("다른 방법으로 쓰기", "Other ways to use the cards")}</h3>
+        <div class="ogrid">
+          <div class="ogroup"><b>${T("다른 화면에 띄우기", "On another screen")}</b>
+            <button class="btn" onclick="go({run:S.run,view:'tablet'})">${icon("tablet")} ${T("태블릿으로 보기", "Tablet view")}</button>
+            <button class="btn" onclick="shareLink('tablet')">${icon("share")} ${T("배우는 사람 기기로 링크", "Link for a learner device")}</button>
+            <details class="ofold"><summary class="btn">${icon("glasses")} ${T("Ray-Ban Display에 띄우기", "Show on Ray-Ban Display")}</summary><div class="fh-box">
+              <span class="muted">${T("Meta AI 앱 → 웹앱 추가에 이 주소를 넣거나 QR을 찍으면, 따라 하는 카드가 렌즈에 떠요.", "In the Meta AI app, add this address as a Web App or scan the QR; the coach cards appear on the lens.")}</span>
+              <div class="fh-qr"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&m=${ui}&s=${pairCode}" alt="QR" width="112" height="112"><button class="btn" onclick="shareLink('glasses')">${icon("share")} ${T("링크 보내기", "Send link")}</button></div>
+              <a class="btn" href="/glasses?run=${S.run}&lang=${lang}&m=${ui}&s=${pairCode}" target="_blank">${T("렌즈 화면 미리 보기", "Preview the lens view")}</a></div></details></div>
+          <div class="ogroup"><b>${T("종이로 쓰기", "On paper")}</b>
+            <button class="btn" onclick="printWhat('cards')">${icon("print")} ${T(`카드 인쇄 (${pages}쪽)`, `Print cards (${pages} p)`)}</button>
+            <button class="btn" onclick="printWhat('record')">${icon("print")} ${T("기록지 인쇄", "Print record sheet")}</button></div>
+          <div class="ogroup"><b>${T("보내기·보관", "Share and keep")}</b>
+            <button class="btn" onclick="shareCards(this)">${icon("share")} ${navigator.canShare ? T("이미지로 보내기", "Send as images") : T("이미지로 저장", "Save as image")}</button>
+            <a class="btn" href="/api/runs/${S.run}/export.zip" download>${icon("share")} ${T("백업(.zip)", "Backup (.zip)")}</a>
+            <details class="ofold"><summary class="btn">${icon("check")} ${T("확인 결과 기록", "Check records")}</summary><div class="fh-box">
+              <label class="fh-rec"><input type="checkbox" ${S.rec ? "checked" : ""} onchange="setRec(this.checked)"> ${T("이 기기에서 기록 남기기", "Keep records on this device")}</label>
+              <span class="muted">${T("이름 없이 날짜·카드·확인 결과·도움 단계만. 사진은 남지 않아요.", "No names: date, card, check result and help level. No photos.")}</span>
+              <button class="btn" onclick="showRecords()">${T("기록 보기", "View records")}</button><div id="records"></div></div></details></div>
+          <div class="ogroup"><b>${T("카드 글자", "Card language")}</b>
+            <span class="langrow">${segHtml()}</span>
+            <button class="btn" onclick="openX()">${icon("plus")} ${T("다른 언어 추가", "Add a language")}</button></div>
+        </div>
       </div>
       <div id="xbox">${S.data.extra ? xboxHtml() : ""}</div>
     </div>
