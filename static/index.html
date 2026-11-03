@@ -577,8 +577,7 @@ const fmt = t => `${Math.floor(t / 60)}:${String(Math.round(t) % 60).padStart(2,
 const pad = (n, w = 2) => String(n).padStart(w, "0");
 const S = { run: null, view: "home", data: null, idx: 0, poll: null, busy: new Map(), open: new Set(), strip: new Set(),
             saveTimer: null, saving: Promise.resolve(), saveState: "saved" };
-let lang = (() => { try { return localStorage.getItem("lang"); } catch { return null; } })();  // 카드 글자(고른 적 없으면 화면 언어)
-const langChosen = !!lang;
+let lang = (() => { try { return localStorage.getItem("lang") === "x" ? "x" : null; } catch { return null; } })();  // 카드 글자는 위쪽 화면 언어를 따른다. 따로 고르는 건 더한 언어("x")뿐(11-03: 같은 한국어/English 단추가 두 곳이라 헷갈림)
 let ui = (() => {  // 화면 글자: 주소의 ?ui= → 저장된 값 → 영어
   const q = new URLSearchParams(location.search).get("ui");
   if (q === "ko" || q === "en") return q;
@@ -587,7 +586,7 @@ let ui = (() => {  // 화면 글자: 주소의 ?ui= → 저장된 값 → 영어
 const T = (ko, en) => ui === "en" ? en : ko;
 lang ??= ui === "en" ? "en" : "ko";
 const runTitle = r => (ui === "en" && r.title_en) || r.title || r.video;  // 견본은 영어 제목도 있다
-function setUi(v) { ui = v; if (!langChosen) lang = v; try { localStorage.setItem("ui", v); } catch {} document.documentElement.lang = v;
+function setUi(v) { ui = v; if (lang !== "x") lang = v; try { localStorage.setItem("ui", v); } catch {} document.documentElement.lang = v;
   if (S.view === "coach" && C.started) return coachCard(true);  // 따라 하는 중엔 화면을 새로 그리지 않는다(카메라가 꺼짐). 나머지 글은 나갈 때 바뀐다
   route(); }
 
@@ -661,7 +660,6 @@ const main = c => (lang === "en" || (lang === "x" && ui === "en")) ? c.en : c.ko
 function text(c) {
   if (lang === "x") return `${esc(main(c))}${xOn() && c.x ? `<span class="en">${esc(c.x)}</span>` : ""}`;
   if (lang === "en") return esc(c.en);
-  if (lang === "both") return `${esc(c.ko)}<span class="en">${esc(c.en)}</span>`;
   return esc(c.ko);
 }
 function setLang(v) { lang = v; try { localStorage.setItem("lang", v); } catch {} ({ use, tablet })[S.view]?.(); }
@@ -825,7 +823,6 @@ async function home() {
   $("#main").innerHTML = `
     ${(() => {  // 첫 화면은 이야기 순서로: 큰 영상 한 장면 → 도움 → 확인 → 시작하기 → 쓰임새 → 판단 위치
       const has = id => runs.some(r => r.id === id && r.done), L = "807dcf4d2be2", N = "8e1456e529ca";
-      const ex = ["staff", "special", "creator", "assembly", "family"].map(u => runs.find(r => r.use === u && r.done)).filter(Boolean);
       const name = r => esc(runTitle(r).replace(/ \((견본|sample)\)$/, ""));
       return `
     <section class="mhero full">
@@ -835,7 +832,7 @@ async function home() {
         <span class="mpov">${icon("glasses")} <span class="long">${T("하는 사람의 눈높이에서 찍은 시범 (Ray-Ban Meta 시점)", "Demonstration filmed at the doer's eye level (Ray-Ban Meta view)")}</span><span class="short">${T("눈높이에서 찍은 시범", "Filmed at eye level")}</span></span>
         <h2>${T("한 번 보여 주면, 다음부턴 혼자서", "Show it once. Then they've got it.")}</h2>
         <p>${T("시범 영상 하나가 따라 하기 카드가 되고, 막히는 순간에만 손을 내밀어요.", "One demonstration turns into follow-along cards that step in only when someone gets stuck.")}</p>
-        <div class="mbtns"><a class="pill" href="#" onclick="event.preventDefault();homeTab('mine');document.getElementById('start').scrollIntoView({behavior:'smooth'})">${T("영상 넣기", "Add a video")}</a>${ex[0] ? `<a class="pill ghost" href="#run=${ex[0].id}&view=use">${T("예시 보기", "See an example")}</a>` : ""}</div>
+        <div class="mbtns"><a class="pill" href="#" onclick="event.preventDefault();homeTab('mine');document.getElementById('start').scrollIntoView({behavior:'smooth'})">${T("영상 넣기", "Add a video")}</a></div>
       </div>
       <div class="mstrip"><span class="mlabel">${T("도움은 필요할 때만 늘어나요", "Help grows only when needed")}</span>
         <span class="msteps">${[1, 2, 3, 4].map(l => `<span><i>${helpIcon(l)}</i>${lvName(l)}</span>`).join('<b class="mline"></b>')}</span>
@@ -853,14 +850,12 @@ async function home() {
       <p>${T("처음엔 글만 보여요. 손이 멈추면 그림, 그다음엔 소리, 그래도 어려우면 움직이는 장면까지.", "Words first. If the hands stop, a picture. Then a voice. Then the move itself.")}</p>
       <div class="mframe"><video src="/api/runs/${N}/clip/3.mp4" autoplay muted loop playsinline></video>
         <div class="ladder">${[T("글", "Text"), T("그림", "Picture"), T("소리", "Sound"), T("움직임", "Motion")].map((t, i) => `<span style="--i:${i}">${t}</span>`).join("")}</div></div>
-      <a class="pill" href="#run=${N}&view=coach">${T("따라 해 보기", "Try it")}</a>
     </section>
     <section class="mstory full">
       <h2>${T("됐는지는 카메라가 봐 줘요", "The camera tells you it's done")}</h2>
       <p>${T("다 했다 싶을 때 한 번 찍으면 시범의 마지막 장면과 맞춰 봐요. 다르면 무엇을 고치면 되는지 한 줄로 알려 줘요.", "Snap one photo when it feels done. It's matched against the end of the demonstration, and if something's off, one line says what to fix.")}</p>
       <div class="mpair"><figure><img src="/api/runs/${N}/cards/1/after.jpg" alt=""><figcaption>${T("이렇게 되면 돼요", "Should look like")}</figcaption></figure>
         <figure><img src="/runs/${N}/cards/01.jpg" alt=""><figcaption>${T("지금", "Now")}</figcaption><b class="okbadge">${icon("check")} ${T("됐어요", "Done")}</b></figure></div>
-      <a class="pill" href="#run=${N}&view=tablet">${icon("camera")} ${T("확인해 보기", "Try a check")}</a>
     </section>` : ""}
 
     </div>
@@ -1614,7 +1609,8 @@ async function addCard(i) {
 /* ③ 인쇄·태블릿 */
 function segHtml() {
   const x = S.data?.extra?.ok ? [["x", `${ui === "en" ? "English" : "한국어"} + ${S.data.extra.name}`]] : [];
-  return `<span class="seg">${[["ko", "한국어"], ["en", "English"], ["both", T("둘 다", "Both")], ...x].map(([v, l]) =>
+  if (!x.length) return "";
+  return `<span class="seg">${[[ui, ui === "en" ? "English" : "한국어"], ...x].map(([v, l]) =>
     `<button class="${lang === v || (lang === "x" && !x.length && v === ui) ? "on" : ""}" aria-pressed="${!!(lang === v || (lang === "x" && !x.length && v === ui))}" onclick="setLang('${v}')">${l}</button>`).join("")}</span>`;
 }
 function use() {
@@ -1678,7 +1674,7 @@ function use() {
               <label class="fh-rec"><input type="checkbox" ${S.rec ? "checked" : ""} onchange="setRec(this.checked)"> ${T("이 기기에서 기록 남기기", "Keep records on this device")}</label>
               <span class="muted">${T("이름 없이 날짜·카드·확인 결과·도움 단계만. 사진은 남지 않아요.", "No names: date, card, check result and help level. No photos.")}</span>
               <button class="btn" onclick="showRecords()">${T("기록 보기", "View records")}</button><div id="records"></div></div></details></div>
-          <div class="ogroup"><b>${T("카드 글자", "Card language")}</b>
+          <div class="ogroup"><b>${T("다른 언어로", "In another language")}</b>
             <span class="langrow">${segHtml()}</span>
             <button class="btn" onclick="openX()">${icon("plus")} ${T("다른 언어 추가", "Add a language")}</button></div>
         </div>
@@ -1758,7 +1754,7 @@ function beep() {
 function cardCanvas(c, n, img) {
   const W = 1080, IH = 608, cv = document.createElement("canvas"), g = cv.getContext("2d");
   const font = "-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif";
-  const lines = [[main(c), 64, 700, "#11183a"], ...(lang === "both" ? [[c.en, 40, 400, "#5f6888"]] : xOn() && c.x ? [[c.x, 40, 400, "#5f6888"]] : [])];
+  const lines = [[main(c), 64, 700, "#11183a"], ...(xOn() && c.x ? [[c.x, 40, 400, "#5f6888"]] : [])];
   const wrap = (t, size, weight) => {  // 띄어쓰기 단위로 줄바꿈(한국어 낱말이 끊기지 않게)
     g.font = `${weight} ${size}px ${font}`; const out = [];
     for (const w of String(t || "").split(" ")) { const l = out.at(-1); if (l !== undefined && g.measureText(l + " " + w).width < W - 120) out[out.length - 1] = l + " " + w; else out.push(w); }
