@@ -116,7 +116,7 @@ if not KO:
          "Openly licensed videos also became cards for a cafe drink, a family stew, a cabinet, and a dance. "
          "We also made cards for jobs in Korea's national job program for people with severe disabilities. For care work, the camera stays off, and a person decides when each step is done."),
         ("glimmer", "single:glimmer", None, f"Recorded on this Mac · Muse Glimmer · {g_s} s · $0",
-         f"Schools that can't send student video out can run all of it on a Mac with the open-weight Muse Glimmer model. "
+         f"Schools that can't send learners' video out can make the cards on one Mac with the open-weight Muse Glimmer model. "
          f"In this run, the checker sent the steps back {({1: 'once', 2: 'twice'}).get(g_tries - 1, f'{g_tries - 1} times')} before they passed. The napkin video became {g_cards} cards in {g_s} seconds, at no cost. "
          "We haven't yet tested it with real learners, or with a different person in front of a live camera."),
         ("close", "close", None, None, "Show it once. Then they've got it. StepCards."),
