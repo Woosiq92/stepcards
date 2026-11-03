@@ -410,13 +410,13 @@
 
   .coachv .cam { position:absolute; top:16px; left:16px; width:240px; border-radius:var(--r); overflow:hidden; background:#000; box-shadow:0 0 0 1px rgba(255,255,255,.12), 0 10px 30px rgba(0,0,0,.5); z-index:3; }
   .coachv .cam video { width:100%; display:block; min-height:135px; }
+  .coachv .cam video.mirror { transform:scaleX(-1); }
   .coachv .cam .guide, .coachv .cam .aimtxt { display:none; }
   .coachv.aim .cam { width:min(34vw, 380px); top:72px; left:16px; z-index:6; box-shadow:0 0 0 3px var(--accent), 0 20px 60px rgba(0,0,0,.6); transition:width .25s; cursor:pointer; }
   .coachv.aim .imgwrap { padding-left:calc(min(34vw, 380px) + 40px); }  /* 카드는 미리보기 옆으로 비켜서 계속 보인다 */
   @media (max-width:640px) { .coachv.aim .cam { width:calc(100vw - 32px); top:64px; } .coachv.aim .cam video { max-height:30vh; object-fit:cover; } .coachv.aim .imgwrap { padding-left:24px; padding-top:calc(30vh + 84px); } }
   .coachv.aim .cam .guide { display:block; position:absolute; inset:14% 12%; border:3px dashed rgba(255,255,255,.9); border-radius:18px; pointer-events:none; }
-  .coachv.aim .cam .aimqr:not([hidden]) { display:flex; position:absolute; top:10px; right:10px; flex-direction:column; align-items:center; gap:4px; background:#fff; color:#11183a; border-radius:12px; padding:8px; font-size:12px; font-weight:700; }
-  .coachv .cam .aimqr { display:none; }
+  .hrow .aimqr:not([hidden]) { display:flex; align-items:center; gap:8px; background:#fff; color:#11183a; border-radius:10px; padding:4px 10px 4px 4px; font-size:13px; font-weight:700; } .hrow .aimqr[hidden] { display:none; }  /* 노트북 앞 카메라일 때만: 휴대폰으로 같은 화면을 열어 눈높이에 두게 */
   /* 따라 하는 동안(카메라 켬): 카메라와 카드 그림을 한 줄(.cstage, 만들기 진행판의 .stage 와 다른 이름)에 같은 크기로 나란히. 글만 단계는 그림 칸이 비어 있으니 카메라가 가운데를 쓴다.
      카드 그림(도움 2단계부터)이 곧 이 단계의 목표 모습이라, 학습자는 내 손과 목표를 나란히 본다. 판단 한 줄은 카메라 아래 */
   .coachv .cstage { display:contents; }
@@ -441,7 +441,7 @@
     .tab.coachv.follow .imgwrap { flex:1 1 0; min-height:0; max-width:none; align-items:center; }
     .coachv.follow .cam .judge { font-size:15px; padding:8px 12px; }
   }
-  @media (max-width:640px) { .coachv.aim .cam .aimqr:not([hidden]) { display:none; } }  /* 좁은 화면은 안내 글이 먼저 */
+  @media (max-width:640px) { .hrow .aimqr:not([hidden]) { display:none; } }  /* 좁은 화면(휴대폰)은 이미 휴대폰 */
   .coachv.aim .cam .aimtxt { display:block; position:absolute; left:8px; right:8px; bottom:3%; background:rgba(0,0,0,.62); border-radius:10px; padding:6px 10px !important; text-align:center; color:#fff; font-weight:700; font-size:17px; text-shadow:0 1px 4px #000; padding:0 12px; word-break:keep-all; }
   .coachv .pill { position:absolute; left:8px; top:8px; display:flex; align-items:center; gap:6px; background:rgba(11,16,21,.7); backdrop-filter:blur(8px); font-size:12px; font-weight:600; padding:3px 10px 3px 8px; border-radius:99px; }
   .coachv .pill::before { content:""; width:7px; height:7px; border-radius:50%; background:#ff4d5e; }
@@ -702,11 +702,13 @@ async function showRecords() {
     `<tr><td>${new Date(x.t * 1000).toLocaleTimeString()}</td><td>${S.data.cards.findIndex(c => c.n === x.n) + 1}</td><td>${x.kind === "verify" ? name[x.result] || x.result : "–"}</td><td>${x.lv ? lvName(x.lv) : "–"}</td></tr>`; }).join("")}</tbody></table>`
     : `<p class="muted">${T("아직 기록이 없어요.", "No records yet.")}</p>`;
 }
-// 앞 카메라(맞은편에서 하는 사람을 봄)는 180도 돌리면 하는 사람 눈 방향(먼 쪽이 위, 왼손이 왼쪽)에 가까워진다. 화면 미리보기는 그대로
+// 앞 카메라(맞은편에서 하는 사람을 봄)는 거울처럼 좌우를 뒤집어 하는 사람의 왼쪽이 화면 왼쪽에 오게 한다. 미리보기(.mirror)와 판단에 보내는 사진이 같은 모습이 되게
+// (11-03 실사용: 180도 돌린 사진만 보내고 미리보기는 그대로였더니 화면의 좌우가 시범 그림과 반대였고, 카메라 앞에 들고 하면 위아래도 뒤집혔다)
+const mirrored = video => S.data?.pov !== "facing" && isFront(video.srcObject?.getVideoTracks?.()[0]);
 const isFront = track => { const st = track?.getSettings?.() || {}; return !!track && (st.facingMode ? st.facingMode === "user" : !/Android|iPhone|iPad/i.test(navigator.userAgent)); };  // 맥 FaceTime 은 facingMode 를 안 알려 준다
 function drawFrame(cv, video) {
   const g = cv.getContext("2d");
-  if (S.data?.pov !== "facing" && isFront(video.srcObject?.getVideoTracks?.()[0])) { g.save(); g.translate(cv.width, cv.height); g.rotate(Math.PI); g.drawImage(video, 0, 0, cv.width, cv.height); g.restore(); }
+  if (mirrored(video)) { g.save(); g.translate(cv.width, 0); g.scale(-1, 1); g.drawImage(video, 0, 0, cv.width, cv.height); g.restore(); }
   else g.drawImage(video, 0, 0, cv.width, cv.height);
 }
 async function grabPhoto(video) {
@@ -725,6 +727,7 @@ async function verifyNow(glassesReq) {
   const v = box.querySelector("video"), useCoach = S.view === "coach" && C.stream;
   try {  // 따라 하기 중이면 켜져 있는 카메라를, 아니면 이 기기 카메라를 잠깐 켠다
     v.srcObject = useCoach ? C.stream : (box.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: S.data?.pov === "facing" ? "user" : "environment", width: 1280 }, audio: false }));
+    v.style.transform = mirrored(v) ? "scaleX(-1)" : "";  // 확인 사진(drawFrame)과 같은 좌우로 보이게
     await v.play();
   } catch {
     box.querySelector(".vmsg").textContent = T("카메라를 켤 수 없어요.", "Camera unavailable.");
@@ -1794,13 +1797,14 @@ function coach() {
     <button class="exit voice" id="cvoice" onclick="setVoice(!C.voice)"></button>
     <div class="ttop"><div class="tprog" id="cmid"></div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
     <div class="cstage">
-    <div class="cam" data-label="${T("카메라", "Camera")}" onclick="aim(false)" title="${T("누르면 맞추기 안내 닫기", "Tap to close the framing guide")}"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimqr" id="caimqr" hidden><img src="/api/runs/${S.run}/qr.svg?to=coach&lang=${ui}&log=${new URLSearchParams(location.search).get("log") === "1" ? 1 : ""}" alt="QR" width="104" height="104"><span>${T("또는 휴대폰을 눈높이로", "Or a phone at eye level")}</span></div><div class="aimtxt" id="caimtxt">${T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box")}</div>
+    <div class="cam" data-label="${T("카메라", "Camera")}" onclick="aim(false)" title="${T("누르면 맞추기 안내 닫기", "Tap to close the framing guide")}"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimtxt" id="caimtxt">${T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box")}</div>
       <div class="judge" id="cjudge" aria-live="polite"></div></div>
     <div class="livehint" id="clive" hidden></div>
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
     <div class="imgwrap" id="cwrap" data-label="${T("시범", "Demonstration")}"></div></div>
     <div class="txt" id="ctxt" onclick="speak(true)" title="${T("다시 듣기", "Hear again")}"></div>
     <div class="hrow"><span class="hlabel" id="chlabel">${T("도움", "Help")}</span><span class="hsteps" id="clv"></span>
+      <div class="aimqr" id="caimqr" hidden><img src="/api/runs/${S.run}/qr.svg?to=coach&lang=${ui}&log=${new URLSearchParams(location.search).get("log") === "1" ? 1 : ""}" alt="QR" width="64" height="64"><span>${T("또는 휴대폰을 눈높이로", "Or a phone at eye level")}</span></div>
       ${S.data.stage === "archived" || noDone() ? "" : `<button class="verifybtn" onclick="verifyNow()">${icon("camera")} ${T("확인하기", "Check")}</button>`}</div>
     <div class="bar">
       <button class="navb" id="cprev" onclick="coachFlip(-1)">${T("이전", "Back")}</button>
@@ -2113,6 +2117,7 @@ async function coachCamera() {
     $("#cvid").srcObject = C.stream; await $("#cvid").play();
     // 노트북 앞 카메라는 맞은편에서 비춘다: 화면을 젖히라고 안내하고, 보내는 사진은 180도 돌린다
     C.front = isFront(C.stream.getVideoTracks()[0]);
+    $("#cvid").classList.toggle("mirror", mirrored($("#cvid")));
     coachStart();
   } catch {  // 카메라를 못 켜면(거부·없음) 시작 덮개에 갇히지 않게 손으로 넘기는 따라 하기로 시작한다(11-02 검토)
     C.manual = true; coachStart(); aim(false); $(".coachv")?.classList.remove("follow"); $(".coachv")?.classList.add("nocam");
@@ -2121,14 +2126,14 @@ async function coachCamera() {
 }
 // 작동 보기: 카메라 없이(심사위원·처음 온 사람) 견본의 시범 영상을 카메라 대신 흘려 실제 판단으로 카드가 넘어가는 것을 본다
 function coachWatch() {
-  const v = $("#cvid"); v.srcObject = null; v.src = `/api/runs/${S.run}/demo.mp4`; v.muted = true;
+  const v = $("#cvid"); v.srcObject = null; v.src = `/api/runs/${S.run}/demo.mp4`; v.muted = true; v.classList.remove("mirror");
   $(".coachv .cam")?.setAttribute("data-label", T("시범 영상 재생 · 카메라 대신", "Demo replay · in place of the camera"));
   v.play().catch(() => {}); coachStart(); aim(false);
   v.onended = () => { C.running = false; pill(T("영상이 끝났어요", "Video ended")); };
 }
 function coachFile(f) {
   if (!f) return;
-  const v = $("#cvid"); v.src = URL.createObjectURL(f); v.play(); coachStart();
+  const v = $("#cvid"); v.classList.remove("mirror"); v.src = URL.createObjectURL(f); v.play(); coachStart();
   v.onended = () => { C.running = false; pill(T("영상이 끝났어요", "Video ended")); };
 }
 function coachStart() {
