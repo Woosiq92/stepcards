@@ -13,3 +13,4 @@ state.json
 spend.json
 *.tmp
 runs_trash/
+backups/
