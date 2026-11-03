@@ -97,7 +97,7 @@ if not KO:
          f"Our code checks every card for overlapping times, long sentences, or two actions in one card. {retry_en}"
          f"SAM 3.1 picks a photo for each card. After {make_s} seconds there are {n_cards} cards, for about {make_cost} cents."),
         ("edit", "single:edit", None, "Review",
-         "Next, the person who knows the task checks the cards. The rule check reads the Korean sentence. On card 2, I add \"pick up the napkin and\" to the front. Now it has two actions, so the card turns red and says why. Take it out and it passes. "
+         "Next, the person who knows the task checks the cards. The rule checker reads each sentence. On card 2, I add \"pick up the napkin and\" at the start. Now it has two actions, so the card turns red and says why. Take it out and it passes. "
          "Yellow notes flag numbers nobody actually said, and left and right, which are easy to flip. Each card can be a photo, a clip, or a 3D fold."),
         ("follow", "duo", (v_start + 2, last_turn - v_start + 4, FOLLOW_X), f"Replay at {FOLLOW_X:g}x · demo video used as the camera",
          f"This is the learner's screen. The camera is on the left, the card on the right, and the glasses show the same card. "

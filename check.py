@@ -5,6 +5,8 @@ KEYS = ("start", "end", "rep", "ko", "en", "object", "look")
 KO_MAX, EN_MAX = 25, 60
 GAP_WARN = 15
 TWO_ACTIONS = re.compile(r"[가-힣]+(고|며|면서)\s(?!(계|있))")  # "꽂고 저어주세요"처럼 동작이 이어지는 문장. "누르고 계세요"(한 동작을 이어 함)는 제외
+# 영어: ", then" 이나 "and/then + 동사 + 목적어·방향어"("and fold it", "then press down"). "milk and sugar", "the cash and card"(물건 나열)는 뒤에 목적어가 없어 통과
+EN_TWO_ACTIONS = re.compile(r",\s*then\b|\b(?:and|then)\s+(?!(?:the|a|an|your)\b)[a-z]+\s+(?:the|a|an|it|them|your|this|that|up|down|out|off|back|away)\b", re.I)
 # ㅅ 불규칙 동사는 '으' 앞에서 ㅅ이 빠진다(붓다→부으세요). 씻다·벗다는 규칙 동사라 받침 모양으로는 못 가려서 동사를 적어 둔다
 S_IRREGULAR = {"붓": "부", "젓": "저", "긋": "그", "잇": "이", "짓": "지", "낫": "나"}
 S_IRREGULAR_RE = re.compile("(" + "|".join(S_IRREGULAR) + ")으")
@@ -53,6 +55,8 @@ def check(steps, duration):
             problems.append(f"{i}단계: 한 문장에 동작이 둘 이상입니다. 두 단계로 나누세요: {ko}")
         if len(str(s["en"])) > EN_MAX:
             problems.append(f"{i}단계: 영어 문장이 깁니다({EN_MAX}자 이하): {s['en']}")
+        elif EN_TWO_ACTIONS.search(str(s["en"])):
+            problems.append(f"{i}단계: 영어 문장에 동작이 둘 이상입니다. 두 단계로 나누세요: {s['en']}")
     # 겹침·빈 구간은 시간순으로 본다. 사람이 카드 순서를 바꿔도 영상 속 시간은 그대로이기 때문
     timed.sort(key=lambda x: x[1]["start"])
     for (a, p), (b, s) in zip(timed, timed[1:]):

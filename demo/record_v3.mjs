@@ -153,10 +153,11 @@ if (scene === "edit") {
   mark("rec"); await wait(2500);
   const row = "#row1";
   await p.evaluate(r => document.querySelector(r).scrollIntoView({ block: "center", behavior: "smooth" }), row); await wait(1800);
-  const ta = await p.$(`${row} textarea.say[lang=ko]`);  // 규칙 검사는 한국어 문장에 걸린다
+  const ta = await p.$(`${row} textarea.say[lang=${L === "en" ? "en" : "ko"}]`);  // 화면 언어의 문장을 고친다(두 동작 규칙은 두 언어 다 있다)
   const original = await p.evaluate(el => el.value, ta);
   await ta.click({ clickCount: 3 }); await wait(300);
-  await ta.type("냅킨을 들고 " + original, { delay: 70 }); mark("typed two actions");
+  const two = L === "en" ? "Pick up the napkin and " + original[0].toLowerCase() + original.slice(1) : "냅킨을 들고 " + original;
+  await ta.type(two, { delay: 70 }); mark("typed two actions");
   await p.waitForFunction(r => document.querySelector(r).classList.contains("has-bad"), { timeout: 20000 }, row);
   mark("red"); await wait(3500);
   await ta.click({ clickCount: 3 }); await wait(300);

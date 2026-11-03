@@ -26,6 +26,16 @@ def test_two_actions_and_length():
     assert any("동작이 둘" in x for x in p) and any("깁니다" in x for x in p)
 
 
+def test_two_actions_english():
+    bad = ["Pick up the napkin and fold it.", "Fold it, then press.", "Fold the edge then press down."]
+    ok = ["Mix water and soap in bucket.", "Take the cash and card.", "Fold the left and right corners.", "Dive both arms forward down then up."]
+    for e in bad:
+        p, _ = check([step(0, 5, en=e), step(6, 10)], 20)
+        assert any("영어 문장에 동작이 둘" in x for x in p), e
+    for e in ok:
+        assert check([step(0, 5, en=e), step(6, 10)], 20) == ([], []), e
+
+
 def test_sentence_must_end_with_seyo():
     p, _ = check([step(0, 5, ko="빨대를 꽂는다."), step(6, 10)], 20)
     assert any("세요" in x for x in p)
