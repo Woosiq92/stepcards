@@ -207,38 +207,8 @@ def state_refs(d, cards, cur, wide=False):
     refs = [(f"start of step {cur} (before it)", verify.reference(d, cards[0], "before")) if i == 0 else
             (f"after step {cur - 1} = start of step {cur}", verify.reference(d, cards[i - 1], "after"))]
     for k in range(i, len(cards) if wide else min(len(cards), i + 1 + AHEAD)):  # wide: 남은 단계 끝을 전부(앞서 간 학습자를 따라잡게, 11-03)
-        st = "" if os.environ.get("COACH_NOSTATE") == "1" else cards[k].get("state_en", "")  # 측정용 스위치
-        refs.append((f"after step {k + 1}" + (f": {st}" + (f" (differs from before by: {cards[k]['cue_en']})" if cards[k].get("cue_en") else "") if st else ""),
-                     verify.reference(d, cards[k], "after")))
+        refs.append((f"after step {k + 1}", verify.reference(d, cards[k], "after")))
     return [(label, pipeline.data_url(small(path, 320 if wide else 480))) for label, path in refs]
-
-
-DESCRIBE_PROMPT = """These are photos from a demonstration video, in order: before step 1, then the finished result after each step.
-The steps are:
-{steps}
-For each step, describe how the work looks right after it, so that someone could recognise the same state when a learner
-does it with a different object of the same kind (another colour, material, table, hands or camera angle).
-Use only shape and arrangement: outline shape, which edge or corner is folded to where, how many layers or points show, what is on top,
-which way it points. Never mention colour, material, texture, background or hands.
-Also give the one visible cue that tells this result apart from the result just before it, and say whether the result looks almost the same
-as the one before (true for flipping something symmetric over, or tiny tucks).
-Answer only JSON: {{"states": [{{"n": 1, "state": "", "cue": "", "same_as_before": false}}]}}"""
-
-
-def describe_states(d, cards):
-    """11-03 설계 2: 단계 끝 모양을 색·재질 없이 글로(만들 때 한 번). 판단 때 기준 사진의 이름표로 붙여 다른 물건에서도 같은 상태를 알아보게"""
-    import verify
-    content = [{"type": "input_text", "text": "before step 1"}, {"type": "input_image", "image_url": pipeline.data_url(small(verify.reference(d, cards[0], "before")))}]
-    for c in cards:
-        content += [{"type": "input_text", "text": f"after step {c['n']}: {c['en']}"}, {"type": "input_image", "image_url": pipeline.data_url(small(verify.reference(d, c, "after")))}]
-    steps = "\n".join(f"{i}. {c['en']}" for i, c in enumerate(cards, 1))
-    content.append({"type": "input_text", "text": DESCRIBE_PROMPT.format(steps=steps)})
-    r = pipeline.client.responses.create(model=pipeline.STEP_MODEL, input=[{"role": "user", "content": content}], store=False, timeout=180)
-    m = re.search(r"\{.*\}", r.output_text or "", re.S)
-    out = json.loads(m.group(0)).get("states", []) if m else []
-    by = {int(x.get("n", 0)): x for x in out if isinstance(x, dict)}
-    return [{"state_en": str(by.get(i, {}).get("state", ""))[:240], "cue_en": str(by.get(i, {}).get("cue", ""))[:160],
-             "same_as_before": bool(by.get(i, {}).get("same_as_before"))} for i in range(1, len(cards) + 1)]
 
 
 SETUP_PROMPT = """The first image is from a learner's camera. The next two are from a demonstration video of the task "{title}":
@@ -318,7 +288,6 @@ def check_states(cards, cur, frames, refs, live, t0, prev_match=-1, similar=Fals
     지금 단계 끝(1) 이후 사진과 같으면 next, 마지막 카드면 finished. 0 이면 wait.
     SAM 확인은 뺐다: 넘기는 판단마다 3~9초를 더했고, 기록된 13번 중 한 번도 넘김을 막지 않았다"""
     c = cards[cur - 1]
-    similar = similar or bool(c.get("same_as_before") and os.environ.get("COACH_NOSTATE") != "1")  # 만들 때 '앞과 거의 같음'으로 적힌 단계
     action = similar and os.environ.get("COACH_NOACTION") != "1" and len(frames) >= 4  # 측정용 스위치
     match, seen, cost, lv, seen_view = ask_states(cards, cur, frames, refs, live, action)
     if not 0 <= seen <= len(cards):

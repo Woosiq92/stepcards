@@ -464,6 +464,9 @@
   .tab .imgwrap .helpbtn { max-height:100%; overflow:hidden; }  /* 낮은 칸(가로 휴대폰)에서 위로 넘쳐 잘리지 않게 */
   @container (max-height:150px) { .helpbtn { flex-direction:row; padding:12px 20px; font-size:16px; } .helpbtn .ico { width:22px; height:22px; } }
   #csum { z-index:6; }
+  .sumimg { width:min(300px, 72vw); aspect-ratio:16/9; object-fit:contain; border-radius:12px; background:#000; }
+  .sumdetail { width:min(500px, 100%); } .sumdetail summary { cursor:pointer; color:#9db5ff; font-size:15px; min-height:44px; display:flex; align-items:center; justify-content:center; }
+  .sumdetail[open] .sumbody { display:grid; gap:10px; justify-items:center; }
   .runres { display:grid; grid-template-columns:repeat(2,minmax(0,240px)); gap:10px; } .runres div { background:var(--dark2); border-radius:var(--r); padding:12px 16px; display:flex; flex-direction:column; text-align:left; gap:2px; } .runres .wide { grid-column:1 / -1; } .runres span { color:#a9b8c6; font-size:14px; }
   .sumgrid { display:grid; grid-template-columns:repeat(2,minmax(0,220px)); gap:10px; }
   .sumgrid div { background:var(--dark2); border-radius:var(--r); padding:12px 16px; display:flex; flex-direction:column; text-align:left; }
@@ -2114,7 +2117,7 @@ function runResult() {
   if (!done) return `<div class="d">${T(`걸린 시간 ${dur}`, `Time ${dur}`)}</div>`;
   return `<div class="runres"><div><b>${T(`카드 ${n}장 중 ${done}장`, `${done} of ${n} cards`)}</b><span>${T(`걸린 시간 ${dur}`, `in ${dur}`)}</span></div>
     <div><b>${T(`카메라가 넘김 ${cnt(["auto"])}장`, `Camera moved on: ${cnt(["auto"])}`)}</b><span>${T(`확인하기로 ${cnt(["check"])}장 · 직접 ${hand.length}장`, `Check: ${cnt(["check"])} · by hand: ${hand.length}`)}</span></div>
-    ${hand.length ? `<div class="wide"><b>${T("직접 넘긴 카드", "Turned by hand")}</b><span>${T(`카드 ${hand.join(", ")} · 카메라가 끝난 걸 알아보지 못한 곳이에요`, `Card${hand.length > 1 ? "s" : ""} ${hand.join(", ")} · where the camera didn't see the step finish`)}</span></div>` : ""}</div>`;
+    ${hand.length && hand.length <= n / 2 ? `<div class="wide"><b>${T("직접 넘긴 카드", "Turned by hand")}</b><span>${T(`카드 ${hand.join(", ")}`, `Card${hand.length > 1 ? "s" : ""} ${hand.join(", ")}`)}${cnt(["auto"]) ? T(" · 카메라가 끝난 걸 알아보지 못한 곳이에요", " · where the camera didn't see the step finish") : ""}</span></div>` : ""}</div>`;
 }
 // 끝 화면: 칭찬·점수 없이 '다 했어요'만. 도움 모드였으면 카드마다 몇 단계까지 갔는지(저장 안 함)
 function coachEnd(finished, endBy) {
@@ -2129,15 +2132,18 @@ function coachEnd(finished, endBy) {
     fetch(`/api/runs/${S.run}/records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ s: C.pair, rows: Object.entries(C.max).map(([i, lv]) => ({ n: S.data.cards[+i].n, lv })) }) }).catch(() => {});
   if (finished) fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: S.idx, by: "coach", fin: true, s: C.pair }) }).catch(() => {});
   $(".coachv").insertAdjacentHTML("beforeend", `<div class="cstart" id="csum"><div class="glyph">${icon("check")}</div><div class="t">${finished ? T("다 했어요", "All steps done") : T("오늘 따라 하기", "Today's run")}</div>
-    ${C.help && rec.length ? `<div class="sumline">${(k => T(`카드 ${S.data.cards.length}장 중 ${k}장에서 그림·소리·움직임 도움`, `Picture, sound or motion help on ${k} of ${S.data.cards.length} cards`))(by[1].length + by[2].length + by[3].length)}</div>
-    <div class="sumgrid">${by.map((ns, j) => `<div><b>${j ? T(`${lvName(j + 1)}까지`, `Up to ${lvName(j + 1).toLowerCase()}`) : T("글만 보고", "Text only")}</b><span>${ns.length ? T(`카드 ${ns.join(", ")}`, `Card${ns.length > 1 ? "s" : ""} ${ns.join(", ")}`) : "–"}</span></div>`).join("")}</div>
-    <div class="d">${S.rec ? T("기록에 남겼어요. 3번 화면의 '기록 보기'에서 볼 수 있어요.", "Saved to records. See 'View records' on the Follow & check page.") : T("도와주는 분께: 이 요약은 저장되지 않아요. 필요하면 적어 두세요.", "For whoever is helping: this summary isn't saved. Note it down if you need it.")}</div>` : ""}
-    ${runResult()}
+    ${finished ? `<img class="sumimg" src="${imgSrc(S.data.cards[S.idx])}" alt="${esc(main(S.data.cards[S.idx]))}">` : ""}
     ${demo ? `<button class="navb next" onclick="S.idx=0;route();setTimeout(() => { if ($('#cstart')) coachCamera(); }, 300)">${icon("camera")} ${T("2단계 · 이제 직접 해 보기", "Step 2 · Now try it yourself")}</button>` : ""}
     <button class="navb" onclick="S.idx=0;route()">${T("처음부터 다시", "Start over")}</button>
     <button class="navb" onclick="shareRun()">${T("오늘 한 것 보내기", "Share today's run")}</button>
-    ${by[2].length + by[3].length ? `<button class="navb next" onclick="sendStuck()">${T("막힌 카드 고치러 가기", "Fix the cards that were hard")}</button>` : ""}
-    <button class="navb ${by[2].length + by[3].length || demo ? "" : "next"}" onclick="go({})">${T("처음 화면으로", "Home")}</button></div>`);  // 끝났으면 묶음 화면이 아니라 처음 화면으로(11-03 사용자). 막힌 카드가 있으면 그것을 주 단추로
+    ${by[2].length + by[3].length ? `<button class="navb ${demo ? "" : "next"}" onclick="sendStuck()">${T("막힌 카드 고치러 가기", "Fix the cards that were hard")}</button>` : ""}
+    <button class="navb ${by[2].length + by[3].length || demo ? "" : "next"}" onclick="go({})">${T("처음 화면으로", "Home")}</button>
+    <details class="sumdetail"><summary>${T("결과 자세히 · 도와주는 분께", "Details · for the helper")}</summary><div class="sumbody">
+    ${C.help && rec.length ? `<div class="sumline">${(k => T(`카드 ${S.data.cards.length}장 중 ${k}장에서 그림·소리·움직임 도움`, `Picture, sound or motion help on ${k} of ${S.data.cards.length} cards`))(by[1].length + by[2].length + by[3].length)}</div>
+    ${by[1].length + by[2].length + by[3].length ? `<div class="sumgrid">${by.map((ns, j) => !ns.length ? "" : `<div><b>${j ? T(`${lvName(j + 1)}까지`, `Up to ${lvName(j + 1).toLowerCase()}`) : T("글만 보고", "Text only")}</b><span>${ns.length ? T(`카드 ${ns.join(", ")}`, `Card${ns.length > 1 ? "s" : ""} ${ns.join(", ")}`) : "–"}</span></div>`).join("")}</div>` : ""}
+    <div class="d">${S.rec ? T("기록에 남겼어요. 3번 화면의 '기록 보기'에서 볼 수 있어요.", "Saved to records. See 'View records' on the Follow & check page.") : T("도와주는 분께: 이 요약은 저장되지 않아요. 필요하면 적어 두세요.", "For whoever is helping: this summary isn't saved. Note it down if you need it.")}</div>` : ""}
+    ${runResult()}
+    </div></details></div>`);  // 끝났으면 묶음 화면이 아니라 처음 화면으로(11-03 사용자). 막힌 카드가 있으면 그것을 주 단추로
   C.sum = { finished: !!finished, upto: S.idx + 1, by };
   if (finished) { const st = runStats(); markPracticed(S.run, { at: Date.now(), auto: st.auto, check: st.check, hand: st.hand }); }
   stopCoach(true);
