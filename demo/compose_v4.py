@@ -73,7 +73,7 @@ LAG = round(sorted(lags)[len(lags) // 2])
 first_turn = min(turns, key=lambda x: abs(x[2] - ends[x[1] - 1]))[0]  # 첫 장면은 단계 끝과 가장 가깝게 넘어간 순간
 v_start = at("coach", "video start")
 last_turn = max(t for t, _, _ in turns)
-FOLLOW_X = max(2.0, round((last_turn - v_start + 6) / 22 * 2) / 2)  # 따라 하기 장면 약 22초(설명 길이에 맞춤)
+FOLLOW_X = max(2.0, round((last_turn - v_start + 6) / (22 if KO else 16) * 2) / 2)  # 따라 하기 장면 길이(설명 길이에 맞춤). 영어판은 11-03 대본을 줄여 16초: 말 없이 흐르는 꼬리를 없앤다
 g = json.loads((ROOT / "runs" / "6d5279d1379e" / "progress.json").read_text())["events"]
 g_s = round(g[-1]["t"] - g[0]["t"])
 g_tries = len([e for e in g if e["stage"] == "split"])
@@ -106,7 +106,7 @@ if not KO:
         ("follow", "duo", (v_start + 2, last_turn - v_start + 4, FOLLOW_X), f"Replay at {FOLLOW_X:g}x · demo video used as the camera",
          "This is the learner's screen, and the glasses show the same card. The line under the camera says what the model sees. "
          f"In this replay, the cards moved on by themselves up to card {auto_to}, about {LAG} seconds after each step."),
-        ("help", "trio", (3.0, at("help", "learner sees help coming") + 2.0, 1), "Help when stuck · helper's board on the right",
+        ("help", "trio", (3.0, at("help", "learner sees help coming") + 2.0, 1.4), "Help when stuck · helper's board on the right",
          "Stuck? Help grows one step at a time: a picture, the sentence read aloud, then a short clip. "
          "\"Ask for help\" puts the card on the helper's board. No scores, and no video is kept."),
         ("breadth", "single:breadth", None, "Same app · CC BY demo videos",
@@ -361,7 +361,8 @@ def base_video(name, layout, span, seg_len):
            "-filter_complex", fc, *enc)
         return out
     ss, ln, sp = span
-    trim = lambda i: f"[{i}:v]trim=start={ss}:duration={ln},setpts=(PTS-STARTPTS)/{sp},tpad=stop_mode=clone:stop_duration={seg_len}"
+    # fps 를 다시 걸어야 배속이 산다: 뒤의 zoompan 은 시각을 보지 않고 프레임을 1/30초씩 늘어놓아, 빼먹으면 배속을 걸어도 1배속으로 나왔다(11-03 발견)
+    trim = lambda i: f"[{i}:v]trim=start={ss}:duration={ln},setpts=(PTS-STARTPTS)/{sp},fps={FPS},tpad=stop_mode=clone:stop_duration={seg_len}"
     napkin, gframe = ROOT / "samples" / "napkin_butterfly.mp4", ROOT / "demo" / "glasses_frame.png"
     if layout == "duo":  # 왼쪽 따라 하기 화면(둥근 창), 오른쪽 안경 착용 시야
         w, h, x, y = 1232, 770, 64, 150
