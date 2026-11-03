@@ -469,7 +469,7 @@
   .sumgrid div { background:var(--dark2); border-radius:var(--r); padding:12px 16px; display:flex; flex-direction:column; text-align:left; }
   .sumgrid span { color:#a9b8c6; }
   .coachv .voice { right:124px; } .coachv #ctxt { cursor:pointer; }
-  .coachv .cstart ~ .voice { z-index:5; }
+  .coachv .cstart ~ .voice { z-index:5; } .coachv.exiting .voice { visibility:hidden; }
   .cstart { position:absolute; inset:0; background:radial-gradient(120% 80% at 50% 0%, #16212c 0%, var(--dark) 60%); display:flex; flex-direction:column; align-items:center; justify-content:safe center; gap:12px; z-index:4; text-align:center; padding:24px; overflow-y:auto; }
   .pairwrap summary { cursor:pointer; color:#9db5ff; font-size:14px; min-height:44px; display:flex; align-items:center; justify-content:center; } .pairwrap summary b { letter-spacing:.1em; } .pairwrap[open] summary { margin-bottom:6px; }
   .cstart .glyph { width:72px; height:72px; border-radius:22px; background:var(--accent); display:grid; place-items:center; box-shadow:0 12px 32px rgba(47,99,244,.4); }
@@ -2082,7 +2082,8 @@ function coachExit() {
   if (C.started && !$("#csum") && !C.exitArm) {
     C.exitArm = true; const b = $(".tab .exit, .exit"); const old = b?.innerHTML;
     if (b) b.innerHTML = `${icon("x")}${T("한 번 더 누르면 나가요", "Tap again to exit")}`;
-    setTimeout(() => { C.exitArm = false; if (b && old) b.innerHTML = old; }, 3000); return;
+    $(".coachv")?.classList.add("exiting");  // 넓어진 나가기 단추가 옆 소리 단추를 덮지 않게 잠깐 숨긴다
+    setTimeout(() => { C.exitArm = false; $(".coachv")?.classList.remove("exiting"); if (b && old) b.innerHTML = old; }, 3000); return;
   }
   C.exitArm = false;
   if ($("#csum") || !(C.help && Object.keys(C.max || {}).length)) return go({ run: S.run, view: "use" });
