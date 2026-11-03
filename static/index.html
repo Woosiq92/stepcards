@@ -949,7 +949,7 @@ function libCard(r) {
       <span class="muted">${T(`카드 ${r.count}장`, `${r.count} cards`)}</span>
       <span class="ltags">${tags.map(t => `<span>${t}</span>`).join("")}</span>
       <span class="lacts"><a class="btn primary" href="#run=${r.id}&view=coach">${T("따라 하기", "Follow")}</a><a class="btn" href="#run=${r.id}&view=use">${T("카드 보기", "View cards")}</a>
-        <button class="btn" onclick="copyRun('${r.id}')" title="${T("원본은 그대로 두고 '내가 만든 카드'에 사본을 만들어요", "Makes a copy in "Made by me"; the original stays as it is")}">${T("고치기", "Edit")}</button></span></div>
+        <button class="btn" onclick="copyRun('${r.id}')" title="${T("원본은 그대로 두고 '내가 만든 카드'에 사본을 만들어요", "Makes a copy in 'Made by me'; the original stays as it is")}">${T("고치기", "Edit")}</button></span></div>
   </article>`;
 }
 function libBodyHtml() {  // 분류·검색어로 보일 카드(검색 칸은 그대로 두고 이것만 다시 그린다: 한글 조합이 끊기지 않게)
@@ -977,7 +977,7 @@ function libList() {
 async function copyRun(id) {
   const r = await fetch(`/api/runs/${id}/copy`, { method: "POST" }).catch(() => null);
   if (!r?.ok) return toast(r?.status === 401 ? T("복사하려면 접속 키가 필요해요.", "An access key is needed to copy.") : r?.status === 403 ? T("저장 한도를 넘었어요. 안 쓰는 카드 묶음을 지워 주세요.", "You've reached your storage limit.") : T("복사하지 못했어요.", "Could not copy."));
-  const d = await r.json(); toast(T("'내가 만든 카드'로 가져왔어요. 고쳐서 써요.", "Copied to "Made by me". Edit it to make it yours."));
+  const d = await r.json(); toast(T("'내가 만든 카드'로 가져왔어요. 고쳐서 써요.", "Copied to 'Made by me'. Edit it to make it yours."));
   try { localStorage.setItem("homeTab", "mine"); } catch {}
   go({ run: d.id, view: "edit" });
 }
