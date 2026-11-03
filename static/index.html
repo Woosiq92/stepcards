@@ -868,9 +868,9 @@ function libBodyHtml() {  // 분류·검색어로 보일 카드(검색 칸은 �
   const every = all.filter(r => r.use !== "job" && r.use !== "special"), jobs = all.filter(r => r.use === "job" || r.use === "special").sort((a, b) => (b.use === "special") - (a.use === "special") || b.custom - a.custom);
   const grid = list => `<div class="libgrid">${list.map(libCard).join("")}</div>`;
   return LV.cat === "all" && !q
-    ? `${every.length ? `<h3 class="libh">${T("가게에서도, 부엌에서도, 교실에서도", "In the cafe, the kitchen, the classroom")}</h3>${grid(every)}` : ""}
-       ${jobs.length ? `<h3 class="libh">${T("특수교육과 장애인 일자리", "Special education and disability jobs")}</h3>
-       <p class="muted jobsrc">${T("특수교육 직업훈련 견본과, 보건복지부 「2026년 장애인일자리 사업안내」의 직무에 맞는 공개(CC BY) 시범 영상으로 만든 카드예요. ★ = 심한장애인 맞춤형 직무(11개, p.70)", "A special-education job-training sample, and cards made from open (CC BY) demonstration videos matching jobs in Korea's 2026 disability jobs guide. ★ = one of the 11 jobs tailored for people with severe disabilities (p.70)")}</p>${grid(jobs)}` : ""}`
+    ? `${every.length ? `<h3 class="libh">${T("가게에서도, 부엌에서도, 교실에서도", "In the cafe, the kitchen, the classroom")} <span class="muted">${every.length}</span></h3>${grid(every)}` : ""}
+       ${jobs.length ? `<h3 class="libh">${T("특수교육과 장애인 일자리", "Special education and disability jobs")} <span class="muted">${jobs.length}</span></h3>
+       <p class="muted jobsrc">${T(`특수교육 직업훈련 견본과, 보건복지부 「2026년 장애인일자리 사업안내」의 직무에 맞는 공개(CC BY) 시범 영상으로 만든 카드예요. ★ = 심한장애인 맞춤형 직무(지침 p.70의 11개 중 ${jobs.filter(r => r.custom).length}개를 카드로 만들었어요)`, `A special-education job-training sample, and cards made from open (CC BY) demonstration videos matching jobs in Korea's 2026 disability jobs guide. ★ = a job tailored for people with severe disabilities (${jobs.filter(r => r.custom).length} of the 11 on p.70 have cards so far)`)}</p>${grid(jobs)}` : ""}`
     : (all.filter(hit).length ? grid(all.filter(hit)) : `<p class="muted">${T("맞는 카드가 없어요.", "No cards match.")}</p>`);
 }
 function libList() {
