@@ -1935,9 +1935,9 @@ function coach() {
         : T("카메라가 손과 물건을 보고, 지금 할 카드를 띄워 줘요. 이전·다음으로 직접 넘길 수도 있어요.",
         "The camera watches hands and objects and shows the card for the current step. Back and Next always work by hand.")}</div>
       ${S.data.sample && !noDone() ? `<ol class="csteps">
-        <li><span class="cnum">1</span><div><b>${T("먼저 보기", "Watch first")}</b><span>${T("시범 영상이 카메라 대신 들어가요. 카드가 저절로 넘어가는 걸 봐요. 카메라는 필요 없어요.", "The demonstration video plays as the camera, and the cards move on by themselves. No camera needed.")}</span>
+        <li><span class="cnum">1</span><div><b>${T("먼저 보기", "Watch first")}</b><span>${T("카메라 없이, 시범 영상으로 카드가 저절로 넘어가는 걸 봐요.", "No camera needed: watch the cards move on by themselves with the demo video.")}</span>
           <button class="navb next" onclick="coachWatch()">${icon("video")} ${T("시범 영상으로 보기", "Watch the demo")}</button></div></li>
-        <li><span class="cnum">2</span><div><b>${T("직접 해 보기", "Try it yourself")}</b><span>${T("카메라 앞에서 따라 하면, 지금 할 카드를 띄우고 다 됐는지 봐 줘요. 사진은 저장하지 않아요.", "Follow along in front of the camera. It shows the current card and checks each step. Frames are never stored.")}</span>
+        <li><span class="cnum">2</span><div><b>${T("직접 해 보기", "Try it yourself")}</b><span>${T("카메라 앞에서 따라 하면, 사진은 저장하지 않고 다 됐는지 봐 줘요.", "Follow along on camera; it checks each step without storing photos.")}</span>
           <button class="navb" onclick="coachCamera()">${icon("camera")} ${T("카메라 켜기", "Turn on camera")}</button></div></li></ol>`
         : `<button class="navb next" onclick="coachCamera()">${noDone() ? T("시작하기", "Start") : T("카메라 켜기", "Turn on camera")}</button>`}
       <details class="csettings"><summary>${T("설정 · 도움 방식, 안경 연결", "Settings · help, glasses")}</summary>
