@@ -95,12 +95,12 @@ if not KO:
         ("reveal", "duo", (max(0, first_turn - 7), 12, 1), "Replay · demo video used as the camera · live decisions",
          "That's what StepCards is for. Film the task once, and the video becomes step cards, one action per card. While someone follows along, the app watches their hands through the camera and shows the next card when a step is done."),
         ("making", "single:making", None, "Real run · Muse Spark · SAM 3.1 · Voice Transcribe",
-         f"Here's a real run with a {video_min}-minute video of folding a napkin. Muse Spark splits it into steps, one action each, with timestamps and a short sentence in Korean and English. "
+         f"Here's a real run: a {video_min}-minute napkin-folding video. Muse Spark splits it into steps, one action each, with timestamps and a short sentence in Korean and English. "
          f"Our code checks every card for overlapping timestamps, long sentences, or two actions in one card. {retry_en}"
          f"SAM 3.1 picks a photo for each card. {make_s} seconds later, we have {n_cards} cards, for about {make_cost} cents."),
         ("edit", "single:edit", None, "Review",
          "Next, the person who knows the task checks the cards. The rule checker reads each sentence. On card 2, I add \"pick up the napkin and\" at the start. Now it has two actions, so the card turns red and says why. Take it out and it passes. "
-         "Yellow notes flag numbers that never came up in the video, and any left or right, since those are easy to mix up. Each card can be a photo, a clip, or a 3D view of the fold."),
+         "Yellow notes flag numbers that never came up in the video, and any left or right, since those are easy to mix up."),
         ("agent", "single:agent", None, f"Agent · Muse Spark runs our checker as a tool · {ag_wait} s wait cut",
          "Or just ask: \"simpler words for a learner who reads little.\" "
          f"Muse Spark rewrites {ag_n} cards and runs our checker on its draft before answering. "
@@ -111,7 +111,7 @@ if not KO:
          f"In this replay the cards moved on by themselves up to card {auto_to}, about {LAG} seconds after each step."),
         ("help", "trio", (3.0, at("help", "learner sees help coming") + 2.0, 1), "Help when stuck · helper's board on the right",
          "Stuck? Help comes one step at a time. A picture, then the sentence read aloud, then a short clip. "
-         "If that's still not enough, tapping \"Ask for help\" puts the card number on the helper's board. They tap \"On my way,\" and the learner sees help is coming. There are no scores, and no video is kept."),
+         "Still stuck? Tapping \"Ask for help\" puts the card number on the helper's board. They tap \"On my way,\" and the learner sees help is coming. There are no scores, and no video is kept."),
         ("breadth", "single:breadth", None, "Same app · CC BY demo videos",
          "Openly licensed videos also became cards for a cafe drink, a family stew, a cabinet, and a dance. "
          "We also made cards for jobs in Korea's national job program for people with severe disabilities. For care work, the camera stays off, and a person decides when each step is done."),
