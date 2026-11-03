@@ -159,8 +159,8 @@
   .fh-qr { display:flex; align-items:center; gap:12px; } .fh-qr .btn { white-space:nowrap; } .fh-qr img { border-radius:8px; } .fh-rec { display:flex; align-items:center; gap:6px; font-weight:600; } .fh-rec input { width:18px; height:18px; accent-color:var(--accent); }
   #records { width:100%; }
   .others { padding:18px 0; border-top:1px solid var(--line); } .others h3 { font-size:15px; margin:0 0 10px; color:var(--muted, #6b7785); font-weight:600; }
-  .ogrid { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; } .ogroup { display:flex; flex-direction:column; align-items:stretch; gap:6px; background:var(--paper); border-radius:var(--r); padding:14px; box-shadow:var(--sh-1); }
-  .ogroup > b { font-size:14px; margin-bottom:2px; } .ogroup .btn, .ogroup summary.btn { justify-content:flex-start; font-size:14px; padding:8px 12px; min-height:44px; } .ogroup .langrow { margin:0; } .ogroup summary.btn { display:flex; width:100%; }
+  .ogrid { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; } .ogroup { display:flex; flex-direction:column; align-items:stretch; gap:6px; background:var(--paper); border-radius:var(--r); padding:14px; box-shadow:var(--sh-1); }
+  .ogroup > b { font-size:14px; margin-bottom:2px; } .ogroup .btn, .ogroup summary.btn { justify-content:flex-start; font-size:14px; padding:8px 12px; min-height:44px; } .olang { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:12px; } .olang b { font-size:14px; } .olang .btn { font-size:14px; padding:8px 12px; min-height:44px; } .ogroup summary.btn { display:flex; width:100%; }
   @media (max-width:1000px) { .ogrid { grid-template-columns:1fr 1fr; } } @media (max-width:560px) { .ogrid { grid-template-columns:1fr; } }
   .xbox { border:1px solid var(--line); border-radius:14px; padding:14px; margin:6px 0 14px; } .xbox p { margin:10px 0; }
   .xask { display:flex; flex-wrap:wrap; gap:8px; align-items:center; } .xask input { padding:7px 10px; border-radius:8px; border:1px solid var(--field); min-width:200px; font:inherit; }
@@ -347,13 +347,11 @@
   @keyframes up { from { opacity:0; transform:translate(-50%,8px); } }
 
   /* 인쇄·태블릿 */
-  .langrow { flex-wrap:wrap; }
-  .langrow { display:flex; align-items:center; gap:12px; }
   .seg { display:inline-flex; gap:2px; padding:3px; border-radius:999px; background:var(--bg); }
   .seg button { border:none; background:none; padding:6px 14px; font-size:13px; font-weight:600; color:var(--muted); border-radius:999px; transition:background .15s, color .15s; }
   .seg button:hover:not(.on) { color:var(--ink); }
   .seg button.on { background:var(--paper); color:var(--ink); box-shadow:var(--sh-1); }
-  .picbar .seg, .langrow .seg { background:var(--bg); }
+  .picbar .seg { background:var(--bg); }
   .sheet { background:#fff; width:100%; max-width:794px; aspect-ratio:210/297; margin:0 auto 28px; box-shadow:var(--sh-2); border-radius:6px; padding:4%; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(3,minmax(0,1fr)); gap:3%; }
   .sheet { position:relative; }
   .shead { position:absolute; top:1.2%; left:4%; right:4%; font-size:12px; font-weight:700; color:var(--muted); }
@@ -884,7 +882,7 @@ async function home() {
       </label>
       <div class="trust center">${[T("영상은 Meta AI가 분석하고, 카드 만들기용으로 이 서버에 보관돼요", "The video is analysed by Meta AI and kept on this server to make the cards"), T("지우면 영상·카드가 함께 지워져요", "Deleting a set deletes its video and cards"), T("마지막은 사람이 정해요", "A person decides")].map(t => `<span>${icon("check")}${t}</span>`).join("")}</div>
     </section>
-    ${mine.length ? `<section class="pastbox" id="pastbox"></section>` : `<p class="center muted">${T("아직 만든 카드 묶음이 없어요. 위에 영상을 넣거나, 라이브러리에서 '복사해서 고치기'로 시작해요.", "No card sets yet. Add a video above, or start from 'Copy and edit' in the library.")}</p>`}
+    ${mine.length ? `<section class="pastbox" id="pastbox"></section>` : `<p class="center muted">${T("아직 만든 카드 묶음이 없어요. 위에 영상을 넣거나, 라이브러리에서 '내 카드로 가져오기'로 시작해요.", "No card sets yet. Add a video above, or start from 'Copy and edit' in the library.")}</p>`}
     ${mine.length && S.role === "admin" ? `<p class="muted adminlink"><a href="#view=admin">${T("저장 공간 관리(관리자)", "Storage (admin)")}</a></p>` : ""}
     </div>`;
     })()}`;
@@ -921,7 +919,7 @@ function libCard(r) {
       <span class="muted">${T(`카드 ${r.count}장`, `${r.count} cards`)}</span>
       <span class="ltags">${tags.map(t => `<span>${t}</span>`).join("")}</span>
       <span class="lacts"><a class="btn primary" href="#run=${r.id}&view=coach">${T("따라 하기", "Follow")}</a><a class="btn" href="#run=${r.id}&view=use">${T("카드 보기", "View cards")}</a>
-        <button class="btn" onclick="copyRun('${r.id}')" title="${T("원본은 그대로 두고 내 카드에 사본을 만들어요", "Makes a copy in My cards; the original stays as it is")}">${T("복사해서 고치기", "Copy and edit")}</button></span></div>
+        <button class="btn" onclick="copyRun('${r.id}')" title="${T("원본은 그대로 두고 내 카드에 사본을 만들어요", "Makes a copy in My cards; the original stays as it is")}">${T("내 카드로 가져오기", "Copy to My cards")}</button></span></div>
   </article>`;
 }
 function libBodyHtml() {  // 분류·검색어로 보일 카드(검색 칸은 그대로 두고 이것만 다시 그린다: 한글 조합이 끊기지 않게)
@@ -940,7 +938,7 @@ function libList() {
   const all = S.lib || [];
   box.innerHTML = `<div class="libtop"><h2>${T("카드 라이브러리", "Card library")}</h2>
       <input type="search" class="lq" placeholder="${T("제목·직무로 찾기", "Search titles and jobs")}" value="${esc(LV.q)}" oninput="LV.q=this.value;document.getElementById('libbody').innerHTML=libBodyHtml()"></div>
-    <p class="muted libnote">${T("미리 만들어 둔 카드예요. 누구나 바로 따라 할 수 있어요. 고쳐 쓰려면 '복사해서 고치기'를 누르세요. 내 카드에 사본이 생기고, 원본은 그대로 남아요.", "Ready-made cards anyone can follow right away. To change one, press \"Copy and edit\": a copy goes to My cards, and the original stays as it is.")}</p>
+    <p class="muted libnote">${T("미리 만들어 둔 카드예요. 누구나 바로 따라 할 수 있어요. 고쳐 쓰려면 '내 카드로 가져오기'를 누르세요. 내 카드에 사본이 생기고, 원본은 그대로 남아요.", "Ready-made cards anyone can follow right away. To change one, press \"Copy to My cards\": a copy goes to My cards, and the original stays as it is.")}</p>
     <div class="pchips libchips">${[["all", T("전체", "All"), all.length], ...libcat().map(([k, l]) => [k, l, all.filter(r => (r.cats || []).includes(k)).length]).filter(x => x[2])]
       .map(([k, l, n]) => `<button class="${LV.cat === k ? "on" : ""}" onclick="LV.cat='${k}';libList()">${l} <b>${n}</b></button>`).join("")}</div>
     <div id="libbody">${libBodyHtml()}</div>`;
@@ -1692,10 +1690,8 @@ function use() {
               <label class="fh-rec"><input type="checkbox" ${S.rec ? "checked" : ""} onchange="setRec(this.checked)"> ${T("이 기기에서 기록 남기기", "Keep records on this device")}</label>
               <span class="muted">${T("이름 없이 날짜·카드·확인 결과·도움 단계만. 사진은 남지 않아요.", "No names: date, card, check result and help level. No photos.")}</span>
               <button class="btn" onclick="showRecords()">${T("기록 보기", "View records")}</button><div id="records"></div></div></details></div>
-          <div class="ogroup"><b>${T("다른 언어로", "In another language")}</b>
-            <span class="langrow">${segHtml()}</span>
-            <button class="btn" onclick="openX()">${icon("plus")} ${T("다른 언어 추가", "Add a language")}</button></div>
         </div>
+        <div class="olang"><b>${T("다른 언어로", "In another language")}</b>${segHtml()}<button class="btn" onclick="openX()">${icon("plus")} ${T("다른 언어 추가", "Add a language")}</button></div>
       </div>
       <div id="xbox">${S.data.extra ? xboxHtml() : ""}</div>
     </div>
