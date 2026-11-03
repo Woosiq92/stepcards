@@ -581,3 +581,62 @@ def test_copy_run_makes_my_own_unreviewed_set(monkeypatch):
     assert new != rid and got["title"] == "냅킨 접기 사본" and got["reviewed"] is False  # 복사본은 다시 확인
     assert not (A.RUNS / new / "coach_log.jsonl").exists() and A.owner_of(new) == "admin"
     assert len(got["cards"]) == len(client.get(f"/api/runs/{rid}/cards").json()["cards"])
+
+
+# 11-03 검토: 심사·교사 키로 복사하면 500(storage.size 가 숫자인데 ["total"]), 복사본을 지우면 원본 영상까지 지워짐
+def test_judge_copy_and_delete_keeps_shared_video(monkeypatch):
+    rid, d = make_run()
+    v = A.UPLOADS / f"{uuid.uuid4().hex[:8]}_v.mp4"; A.UPLOADS.mkdir(parents=True, exist_ok=True); v.write_bytes(b"x")
+    (d / "progress.json").write_text(json.dumps({"video": v.name, "video_path": str(v), "events": [{"stage": "done"}]}))
+    monkeypatch.setattr(A, "APP_KEY", "teach-1"); monkeypatch.setattr(A, "JUDGE_KEY", "judge-9")
+    c = TestClient(A.app, base_url="https://testserver", raise_server_exceptions=False)
+    assert c.post("/login", data={"k": "judge-9"}).status_code == 200
+    r = c.post(f"/api/runs/{rid}/copy")
+    assert r.status_code == 200, r.text
+    new = r.json()["id"]
+    assert c.delete(f"/api/runs/{new}").status_code == 200
+    assert v.exists()  # 원본 묶음이 아직 쓰는 영상
+
+
+# 11-03 검토: 한도는 처리 전에 자리를 잡고(동시 요청 경쟁), 4xx 는 돌려주고 5xx 는 센다(Meta 를 이미 불렀을 수 있음)
+def test_judge_limit_counts_5xx_refunds_4xx(monkeypatch):
+    rid, d = make_run()
+    (d / "owner.txt").write_text("judge")
+    monkeypatch.setattr(A, "APP_KEY", "teach-1"); monkeypatch.setattr(A, "JUDGE_KEY", "judge-9")
+    monkeypatch.setitem(A.JUDGE_LIMITS, "agent", 2); A.JUDGE_USE.update(day="", n={})
+    import agent
+    def fail(*a):
+        raise RuntimeError("model timeout")
+    monkeypatch.setattr(agent, "run", fail)
+    c = TestClient(A.app, base_url="https://testserver", raise_server_exceptions=False)
+    c.post("/login", data={"k": "judge-9"})
+    assert c.post(f"/api/runs/{rid}/agent", json={"instruction": ""}).status_code == 400  # 돌려줌
+    assert A.JUDGE_USE["n"]["agent"] == 0
+    assert [c.post(f"/api/runs/{rid}/agent", json={"instruction": "x"}).status_code for _ in range(3)] == [500, 500, 429]
+
+
+def test_learner_total_limit_across_sets(monkeypatch):
+    (r1, _), (r2, _) = make_run(), make_run()
+    monkeypatch.setattr(A, "APP_KEY", "secret")
+    monkeypatch.setitem(A.PUBLIC_TOTAL, "records", 1); A.PUBLIC_USE.update(day="", n={})  # 묶음마다 한도와 별개로 기기 전체 합계
+    rows = {"s": "abc", "rows": [{"n": 1, "lv": 2}]}
+    assert client.post(f"/api/runs/{r1}/records", json=rows).status_code == 200
+    assert client.post(f"/api/runs/{r2}/records", json=rows).status_code == 429
+
+
+# 11-03 검토: 모델이 쓸 수 없는 단계(0개·시각 없음)를 내면 캐시하지 않는다(남기면 다시 만들어도 모델을 다시 부르지 않고 같은 실패)
+def test_unusable_steps_not_cached(monkeypatch):
+    import importlib
+    P = importlib.reload(pipeline)  # no_network 가 바꾼 main 대신 진짜 build 를 쓴다
+    monkeypatch.setattr(P, "listen", lambda run: [])
+    monkeypatch.setattr(P, "alert", lambda *a: None)
+    for bad in ([], [{"start": 0, "end": 2, "ko": "x", "en": "x"}]):  # 비었음, rep 빠짐
+        monkeypatch.setattr(P, "split_steps", lambda *a, **k: {"steps": bad, "status": "needs_review", "problems": ["x"], "warnings": []})
+        rid = uuid.uuid4().hex[:12]
+        with pytest.raises(ValueError):
+            P.main(str(VIDEO), run_id=rid)
+        d = A.RUNS / rid
+        assert not (d / "steps.json").exists() and not (d / "cards.json").exists()
+        assert json.loads((d / "progress.json").read_text())["events"][-1]["stage"] == "error"
+        assert (d / "frames").is_dir() and not (d / ".frames_tmp").exists()
+    importlib.reload(pipeline)

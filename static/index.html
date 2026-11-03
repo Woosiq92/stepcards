@@ -583,7 +583,17 @@ function go(p) { location.hash = p.run ? new URLSearchParams(p).toString() : "";
 window.addEventListener("hashchange", route);
 
 const VIEWS = ["making", "edit", "use", "tablet", "coach"];
+// 화면 그리기가 망 오류로 멈추면 빈 화면 대신 알리고 다시 시도 단추를 둔다
 async function route() {
+  const me = (S.nav || 0) + 1;
+  try { await routeView(); } catch (e) {
+    if (S.nav !== me) return;  // 그사이 다른 화면으로 갔으면 그 화면이 그린다
+    $("#main").innerHTML = `<div class="center" style="padding:48px 0"><p>${T("불러오지 못했어요. 인터넷 연결을 확인해 주세요.", "Could not load. Please check your connection.")}</p>
+      <button class="btn primary" onclick="route()">${T("다시 시도", "Try again")}</button></div>`;
+  }
+}
+async function routeView() {
+  if (S.savePending && S.data) saveNow();  // 입력하고 0.7초 안에 다른 화면으로 가도 고친 내용을 먼저 보낸다
   const me = S.nav = (S.nav || 0) + 1;  // 빨리 연달아 옮기면 늦게 온 옛 응답은 버린다
   clearInterval(S.poll); clearInterval(S.livePoll);
   stopCoach();
@@ -768,6 +778,7 @@ function missing() {
 /* ① 처음 화면 */
 async function home() {
   const runs = await (await fetch(`/api/runs?ui=${ui}`)).json();
+  if (S.view !== "home") return;  // 목록이 늦게 와서 그사이 고른 화면을 덮지 않게
   const mine = runs.filter(r => !r.use);  // 지난 카드 묶음 = 내가 올린 것만(견본은 위 칸들에 이미 있다). 키가 없으면 비어서 칸·관리자 링크가 숨는다
   $("#main").innerHTML = `
     ${(() => {  // 첫 화면은 이야기 순서로: 큰 영상 한 장면 → 도움 → 확인 → 시작하기 → 쓰임새 → 판단 위치
@@ -927,14 +938,14 @@ function pastList() {
   if (PV.folder && PV.folder !== "" && !folders.includes(PV.folder)) PV.folder = null;  // 그 폴더가 비면 전체로
   const shown = pastShown();
   const cnt = f => all.filter(r => (r.folder || "") === f).length;
-  const fbtn = (f, label, n) => `<button class="fold ${PV.folder === f || (f === null && (PV.folder === null || PV.folder === undefined)) ? "on" : ""}" onclick='PV.folder=${JSON.stringify(f)};pastSave();pastList()'>${esc(label)}<span>${n}</span></button>`;
+  const fbtn = (f, label, n) => `<button class="fold ${PV.folder === f || (f === null && (PV.folder === null || PV.folder === undefined)) ? "on" : ""}" onclick="PV.folder=${esc(JSON.stringify(f))};pastSave();pastList()">${esc(label)}<span>${n}</span></button>`;
   const chips = [["all", T("전체", "All")], ["unreviewed", T("확인 전", "Not checked")], ["reviewed", T("확인 끝", "Checked")], ["making", T("만드는 중", "Making")], ["archived", T("보관됨", "Archived")]];
   const picking = !!S.picking;
   box.innerHTML = `<h3>${T("지난 카드 묶음", "Previous card sets")}</h3>
     <div class="pastwrap ${folders.length ? "" : "nofold"}">
       <nav class="folders" aria-label="${T("폴더", "Folders")}" ${folders.length ? "" : "hidden"}>
         ${fbtn(null, T("전체", "All"), all.length)}
-        ${folders.map(f => `<div class="frow">${fbtn(f, f, cnt(f))}<button class="fren" title="${T("이름 바꾸기", "Rename")}" aria-label="${T("이름 바꾸기", "Rename")}" onclick='folderRename(${JSON.stringify(f)})'>⋯</button></div>`).join("")}
+        ${folders.map(f => `<div class="frow">${fbtn(f, f, cnt(f))}<button class="fren" title="${T("이름 바꾸기", "Rename")}" aria-label="${T("이름 바꾸기", "Rename")}" onclick="folderRename(${esc(JSON.stringify(f))})">⋯</button></div>`).join("")}
         ${cnt("") && folders.length ? fbtn("", T("폴더 없음", "No folder"), cnt("")) : ""}
         <div id="fedit"></div>
       </nav>
@@ -1027,7 +1038,9 @@ async function making() {
   const draw = async () => {
     if (S.view !== "making") return clearInterval(S.poll);  // 그사이 다른 화면으로 갔다
     const wasOpen = $("details.log")?.open;
-    const p = await (await fetch(`/api/runs/${S.run}/progress`)).json();
+    let p;
+    try { p = await (await fetch(`/api/runs/${S.run}/progress`)).json(); } catch { return; }  // 망이 잠깐 끊기면 다음 차례(1.2초 뒤)에 다시
+    if (S.view !== "making") return;
     const ev = p.events || [];
     const has = s => ev.some(e => e.stage === s);
     const splits = ev.filter(e => e.stage === "split" && e.n !== undefined);
@@ -1244,7 +1257,7 @@ async function toggle(which, n) {
 
 /* 고친 내용은 저절로 저장하고, 저장할 때마다 서버가 규칙 검사를 다시 한다 */
 function setSave(s) { S.saveState = s; const el = $("#saved"); if (el) el.textContent = saveText(); }
-function scheduleSave(ms = 700) { clearTimeout(S.saveTimer); setSave("dirty"); S.saveTimer = setTimeout(saveNow, ms); }
+function scheduleSave(ms = 700) { clearTimeout(S.saveTimer); setSave("dirty"); S.savePending = true; S.saveTimer = setTimeout(saveNow, ms); }
 /* 막지는 않지만 교사가 꼭 볼 곳(11-02 검토: 검사기는 형식만 보고 내용은 못 잡는다). 숫자가 영상 말소리에 없음 / 왼쪽·오른쪽(거울처럼 뒤바뀌기 쉬움) */
 function notesHtml(c) {
   const t = `${c.ko || ""} ${c.en || ""}`, heard = new Set(S.data.heard_nums || []), out = [];
@@ -1255,17 +1268,18 @@ function notesHtml(c) {
 // '다 됐어요': 교사가 지금 카드를 확인했다고 남기고 따라 하기로. 그 뒤 카드를 고치면 다시 '확인 전'
 async function markReviewed() { S.reviewNext = true; await saveNow(); go({ run: S.run, view: "use" }); }
 function saveNow() {
-  clearTimeout(S.saveTimer);
-  const cards = JSON.parse(JSON.stringify(S.data.cards)), title = S.data.title ?? "";
+  clearTimeout(S.saveTimer); S.savePending = false;
+  const run = S.run, cards = JSON.parse(JSON.stringify(S.data.cards)), title = S.data.title ?? "";  // 부른 순간의 묶음·카드로 저장(그사이 다른 묶음으로 옮겨도 섞이지 않게)
   S.saving = S.saving.then(async () => {
     setSave("saving");
     const reviewed = !!S.reviewNext; S.reviewNext = false;
-    const r = await fetch(`/api/runs/${S.run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards, title, ...(S.foldDrop ? { fold: null } : {}), ...(reviewed ? { reviewed: true } : {}) }) });
+    const r = await fetch(`/api/runs/${run}/cards`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards, title, ...(S.foldDrop ? { fold: null } : S.foldPut ? { fold: S.data.fold } : {}), ...(reviewed ? { reviewed: true } : {}) }) });
     if (r.status === 401) return setSave("readonly");
     if (r.status === 403) return setSave("others");  // 다른 교사의 카드 묶음
     if (!r.ok) throw new Error(r.status);
     const d = await r.json();
-    Object.assign(S.data, { problems: d.problems, warnings: d.warnings, status: d.status, extra: d.extra, next_n: d.next_n, edited_at: d.edited_at, reviewed: !!d.reviewed_at && d.reviewed_at === d.edited_at }); S.foldDrop = false;  // 문장이 바뀌면 서버가 번역 확인을 푼다
+    if (S.run !== run || !S.data) return setSave("saved");
+    Object.assign(S.data, { problems: d.problems, warnings: d.warnings, status: d.status, extra: d.extra, next_n: d.next_n, edited_at: d.edited_at, reviewed: !!d.reviewed_at && d.reviewed_at === d.edited_at }); S.foldDrop = false; S.foldPut = false;  // 문장이 바뀌면 서버가 번역 확인을 푼다
     setSave("saved");
     if (S.view === "edit") updateIssues();
   }).catch(() => setSave("error"));
@@ -1307,7 +1321,11 @@ function fixStuck(n) {  // 그 카드 하나만 콕 집어 부탁한다. 결과�
 async function askAgent(e) {
   e.preventDefault();
   const q = $("#askin").value.trim(), box = $("#askres");
-  if (!q) return;
+  if (!q || S.asking) return;  // 기다리는 동안 다시 누르면 유료 요청이 두 번 나갔다
+  S.asking = true; const btn = document.querySelector("form.ask button"); if (btn) btn.disabled = true;
+  try { await askAgentRun(q, box); } finally { S.asking = false; const b = document.querySelector("form.ask button"); if (b) b.disabled = false; }
+}
+async function askAgentRun(q, box) {
   await saveNow();
   box.innerHTML = `<div class="askbox muted">${T("Muse Spark가 고치고, 검사기로 확인하는 중…", "Muse Spark is revising and running the checker…")}</div>`;
   let d = null;
@@ -1322,7 +1340,7 @@ async function askAgent(e) {
 }
 function applyAgent() {
   const before = snapshot(), by = Object.fromEntries(S.ask.changes.map(c => [c.n, c]));
-  S.data.cards.forEach(c => { if (by[c.n]) { c.ko = by[c.n].ko; c.en = by[c.n].en; } });
+  S.data.cards.forEach(c => { if (by[c.n] && c.ko === by[c.n].ko_before && c.en === by[c.n].en_before) { c.ko = by[c.n].ko; c.en = by[c.n].en; } });  // 기다리는 동안 손으로 고친 카드는 덮지 않는다
   $("#askres").innerHTML = ""; changed();
   undoable(T(`카드 ${S.ask.changes.length}장의 문장을 바꿨어요.`, `Changed ${S.ask.changes.length} cards.`), before);
 }
@@ -1353,12 +1371,12 @@ function redraw() {  // 칸을 고친 채 단추를 누르면 change 가 먼저 
 document.addEventListener("pointerdown", () => { S.pdown = true; }, true);
 document.addEventListener("pointerup", () => { S.pdown = false; if (S.redrawLater) { S.redrawLater = false; setTimeout(() => S.view === "edit" && edit(), 0); } }, true);
 function typed(i, k, el) { S.data.cards[i][k] = el.value; S.undo = null; autosize(el); scheduleSave(); }
-function snapshot() { return JSON.parse(JSON.stringify(S.data.cards)); }
+function snapshot() { return JSON.parse(JSON.stringify({ cards: S.data.cards, fold: S.data.fold || null })); }  // 3D 접기도 같이: 옮기기·빼기가 3D 를 지운 뒤 되돌리면 카드만 돌아와 3D 보기가 빈 채 남았다
 function undoable(msg, before) {
   S.undo = before; if (S.view === "edit") edit();
   toast(msg, T("되돌리기", "Undo"), undoLast);
 }
-function undoLast() { if (!S.undo) return; const u = S.undo; document.querySelector(".toast")?.remove(); S.data.cards = u; changed(); }
+function undoLast() { if (!S.undo) return; const u = S.undo; document.querySelector(".toast")?.remove(); S.data.cards = u.cards; if (u.fold && !S.data.fold) { S.data.fold = u.fold; S.foldPut = true; } S.foldDrop = false; changed(); }
 // 3D 접기 프로그램은 카드 순서대로 접는다: 순서·장수가 바뀌면 맞지 않으니 빼고(3D 카드는 움직임으로) 다시 만들게 한다
 function foldStale() {
   if (!S.data.fold) return;
@@ -1372,7 +1390,7 @@ function merge(i) {
   const before = snapshot(), cs = S.data.cards, a = cs[i], b = cs[i + 1];
   a.start = Math.min(a.start, b.start); a.end = Math.max(a.end, b.end);
   if (!a.ko.trim()) a.ko = b.ko;
-  cs.splice(i + 1, 1); changed(); undoable(T("두 카드를 하나로 합쳤어요.", "Cards merged."), before);
+  cs.splice(i + 1, 1); foldStale(); changed(); undoable(T("두 카드를 하나로 합쳤어요.", "Cards merged."), before);  // 장수가 바뀌면 3D 접기도 맞지 않는다
 }
 function setTime(i, k, v) {
   const c = S.data.cards[i];
@@ -1626,7 +1644,7 @@ function use() {
       <div id="xbox">${S.data.extra ? xboxHtml() : ""}</div>
     </div>
     <div class="printonly">${sheets}${record}</div>`;
-  liveBoard(); S.livePoll = setInterval(liveBoard, 3000);
+  liveBoard(); clearInterval(S.livePoll); S.livePoll = setInterval(liveBoard, 3000);  // use() 는 언어·설정을 바꿀 때마다 다시 불린다: 앞 폴링을 지우고 건다
 }
 /* 한 언어 더(보호자·동료의 언어): Muse Spark 가 옮기고, 원문을 안 본 두 번째 호출이 되옮긴다.
    만든 사람은 그 언어를 못 읽어도 되옮긴 문장으로 뜻을 확인하고 '확인했어요'를 눌러야 학습자 화면에 나온다 */
@@ -1877,12 +1895,15 @@ function playCard(c, afterSpeech) {
     a.onended = () => { if (curAudio === a) step(k + 1); };
     a.play().catch(fallback);
   };
-  if (afterSpeech) { const wait = setInterval(() => { if (!speechSynthesis.speaking) { clearInterval(wait); step(0); } }, 150); } else step(0);
+  if (afterSpeech) {  // 기다리는 사이 카드가 넘어가면(stopVoice 가 표시를 바꾼다) 옛 카드 소리를 틀지 않는다
+    const tok = curAudio = {};
+    const wait = setInterval(() => { if (curAudio !== tok) return clearInterval(wait); if (!speechSynthesis.speaking) { clearInterval(wait); step(0); } }, 150);
+  } else step(0);
 }
 /* 선생님 목소리: 교사 녹음 → 시범 영상 속 그 단계 말소리. 재생이 안 되면 기기 음성으로 카드 문장 */
 let curAudio = null;
 const useVoice = c => c.voice === "rec" || (c.voice === "auto" && c.voice_ok);  // 영상 속 목소리는 교사가 들어 보고 고른 것만(수다가 섞일 수 있어서)
-function stopVoice() { window.speechSynthesis?.cancel(); curAudio?.pause(); curAudio = null; }
+function stopVoice() { window.speechSynthesis?.cancel(); curAudio?.pause?.(); curAudio = null; }
 function playVoice(c, afterSpeech) {
   const a = new Audio(`/api/runs/${S.run}/voice/${c.n}?v=${c.voiceV || 0}`);
   curAudio = a;
@@ -2125,7 +2146,7 @@ function coachStart() {
   C.lastMove = Date.now();
   navigator.wakeLock?.request("screen").then(l => { C.lock = l; }).catch(() => {});  // 휴대폰 화면이 꺼지지 않게
   const v = $("#cvid"), cv = document.createElement("canvas"), sm = document.createElement("canvas");
-  sm.width = 32; sm.height = 18; C.lastSm = null; C.moved = false; C.inflight = 0;
+  sm.width = 32; sm.height = 18; C.lastSm = null; C.moved = false; C.inflight = 0; C.sess = (C.sess || 0) + 1;  // 세션 번호: 나갔다 다시 들어와도 앞 세션의 루프·답은 버린다
   C.timer = setInterval(() => {  // 0.5초에 한 장, 최근 4장(2초)만 둔다: 카드가 바뀐 뒤 판단 준비가 빨라진다(11-01 실측: 1초 간격이면 카드당 최소 7초)
     if (v.readyState < 2) return;
     cv.width = 480; cv.height = Math.round(480 * v.videoHeight / v.videoWidth);
@@ -2256,25 +2277,29 @@ async function applyCoach(d, cur) {
 const canAsk = () => C.running && S.view === "coach" && !C.manual && !C.checking && C.buf.length >= 2 && S.idx + 1 <= S.data.cards.length;
 async function coachLoop() {
   if (C.where === "device") return odLoop();
-  while (C.running && S.view === "coach") {
+  const sess = C.sess;
+  while (C.running && S.view === "coach" && sess === C.sess) {
     if (canAsk()) {
       const cur = S.idx + 1;
       C.inflight = (C.inflight || 0) + 1;
       const d = await askCoach(cur);
+      if (sess !== C.sess) return;  // 그사이 새로 시작했으면 이 답과 루프는 버린다(새 세션 개수도 건드리지 않음)
       C.inflight--;
       if (d === "off") continue;
+      C.fail = d ? 0 : (C.fail || 0) + 1;  // 답이 없으면(망 끊김·서버 오류) 0.8·1.6·3.2·5초로 늦춘다: 0.4초마다 다시 보내던 것
       if (await applyCoach(d, cur) === "end") break;
     }
-    await new Promise(r => setTimeout(r, 400));  // 판단 사이 쉬는 시간(1.5초 → 0.4초, 짧은 단계에서 밀리지 않게)
+    await new Promise(r => setTimeout(r, C.fail ? Math.min(5000, 400 * 2 ** C.fail) : 400));  // 판단 사이 쉬는 시간(1.5초 → 0.4초, 짧은 단계에서 밀리지 않게)
   }
 }
 /* 손이 멈춘 순간에는 앞 질문의 답을 기다리지 않고 한 번 더 바로 묻는다(동시에 최대 2개). 단계가 끝난 직후 사진이 응답 한 번만큼 빨리 판단에 들어간다.
    Meta 응답이 느릴 때(4~13초, 11-02 오후) 넘김이 그만큼 밀렸다. 추가 질문은 멈춤 순간에만 생겨 비용은 조금만 는다 */
 async function coachSettled() {
   if (!canAsk() || (C.inflight || 0) >= 2 || C.where === "device") return;
-  const cur = S.idx + 1;
+  const cur = S.idx + 1, sess = C.sess;
   C.inflight = (C.inflight || 0) + 1;
   const d = await askCoach(cur);
+  if (sess !== C.sess) return;
   C.inflight--;
   if (d !== "off") await applyCoach(d, cur);
 }

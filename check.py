@@ -4,9 +4,17 @@ import re
 KEYS = ("start", "end", "rep", "ko", "en", "object", "look")
 KO_MAX, EN_MAX = 25, 60
 GAP_WARN = 15
-TWO_ACTIONS = re.compile(r"[가-힣]+(고|며|면서)\s(?!(계|있))")  # "꽂고 저어주세요"처럼 동작이 이어지는 문장. "누르고 계세요"(한 동작을 이어 함)는 제외
+TWO_ACTIONS = re.compile(r"([가-힣]+)(고|며|면서)\s(?!(계|있))")  # "꽂고 저어주세요"처럼 동작이 이어지는 문장. "누르고 계세요"(한 동작을 이어 함)는 제외
+# '고'로 끝나는 명사("냉장고 문을 여세요")와 인용("'끝'이라고 말하세요")은 동작 잇기가 아니다
+KO_GO_NOUNS = {"냉장", "창", "최", "금", "광", "경", "참", "재", "원", "공"}  # 보고·신고·사고는 동사(보다·신다·사다)로도 쓰여 넣지 않는다
 # 영어: ", then" 이나 "and/then + 동사 + 목적어·방향어"("and fold it", "then press down"). "milk and sugar", "the cash and card"(물건 나열)는 뒤에 목적어가 없어 통과
-EN_TWO_ACTIONS = re.compile(r",\s*then\b|\b(?:and|then)\s+(?!(?:the|a|an|your)\b)[a-z]+\s+(?:the|a|an|it|them|your|this|that|up|down|out|off|back|away)\b", re.I)
+# "and" 뒤에 방향어만 오는 꼴("the knife and fork away")은 물건 나열이라 방향어는 "then" 뒤에서만 본다. "press and hold"는 한 동작
+EN_TWO_ACTIONS = re.compile(r",\s*then\b|\bthen\s+(?!(?:the|a|an|your)\b)[a-z]+\s+(?:the|a|an|it|them|your|this|that|up|down|out|off|back|away)\b"
+                            r"|\band\s+(?!(?:the|a|an|your|hold)\b)[a-z]+\s+(?:the|a|an|it|them|your|this|that)\b", re.I)
+
+
+def two_actions_ko(ko):
+    return any(m.group(1) not in KO_GO_NOUNS and not (m.group(2) == "고" and m.group(1).endswith("라")) for m in TWO_ACTIONS.finditer(ko + " "))
 # ㅅ 불규칙 동사는 '으' 앞에서 ㅅ이 빠진다(붓다→부으세요). 씻다·벗다는 규칙 동사라 받침 모양으로는 못 가려서 동사를 적어 둔다
 S_IRREGULAR = {"붓": "부", "젓": "저", "긋": "그", "잇": "이", "짓": "지", "낫": "나"}
 S_IRREGULAR_RE = re.compile("(" + "|".join(S_IRREGULAR) + ")으")
@@ -51,9 +59,11 @@ def check(steps, duration):
             problems.append(f"{i}단계: 맞춤법이 틀렸습니다('{m.group(0)}' → '{S_IRREGULAR[m.group(1)]}으'): {ko}")
         elif (m := RIEUL_EU.search(ko)) and drop_rieul(m.group(1)):
             problems.append(f"{i}단계: 맞춤법이 틀렸습니다('{m.group(1)}으' → '{drop_rieul(m.group(1))}'): {ko}")
-        elif TWO_ACTIONS.search(ko + " "):
+        elif two_actions_ko(ko):
             problems.append(f"{i}단계: 한 문장에 동작이 둘 이상입니다. 두 단계로 나누세요: {ko}")
-        if len(str(s["en"])) > EN_MAX:
+        if not str(s["en"]).strip():
+            problems.append(f"{i}단계: 영어 문장이 비어 있습니다.")
+        elif len(str(s["en"])) > EN_MAX:
             problems.append(f"{i}단계: 영어 문장이 깁니다({EN_MAX}자 이하): {s['en']}")
         elif EN_TWO_ACTIONS.search(str(s["en"])):
             problems.append(f"{i}단계: 영어 문장에 동작이 둘 이상입니다. 두 단계로 나누세요: {s['en']}")

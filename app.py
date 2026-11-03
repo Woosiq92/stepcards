@@ -58,6 +58,7 @@ JUDGE_LIMITS = {"upload": 15, "illustrate": 60, "agent": 20, "translate": 10, "s
 JUDGE_USE = {"day": "", "n": {}}
 PUBLIC_LIMITS = {"coach": 900, "verify": 300, "records": 2000, "log": 2000}  # 키 없는 학습자 기기: 카드 묶음마다 하루(판단 약 $0.003·확인 약 $0.005 → 묶음당 하루 최대 약 $4)
 PUBLIC_USE = {"day": "", "n": {}}
+PUBLIC_TOTAL = {"coach": 3000, "verify": 900}  # 키 없는 기기 전체 하루 합계(견본 11개를 돌아가며 써도 하루 약 $14 안: 상한 $140 을 심사위원 몫으로 남긴다)
 PAID_PATHS = ("/upload", "/retry", "/illustrate", "/agent", "/coach", "/verify", "/translate", "/step", "/compare", "/frame")  # Meta 를 부르는 요청
 TEACHERS = dict(x.strip().split(":", 1) for x in os.environ.get("TEACHER_KEYS", "").split(",") if ":" in x)  # 교사별 키 "이름:키,이름:키"
 NOW_PATH = re.compile(r"/api/runs/\w+/(now|call|mark)$")  # 안경은 키(쿠키)가 없다: 지금 카드 맞추기와 '도와줘요'·'여기서 막혔어요'는 키 없이
@@ -150,14 +151,15 @@ async def need_key(request: Request, call_next):
             PUBLIC_USE.update(day=today, n={})
         if not (RUNS / m.group(1)).is_dir():  # 없는 카드 묶음 id 로는 세지도 않는다(상태 파일이 끝없이 커지지 않게)
             return JSONResponse({"error": "no such card set"}, 404)
-        used = PUBLIC_USE["n"].setdefault(m.group(1), {})
-        if used.get(kind, 0) >= PUBLIC_LIMITS[kind]:
+        used, total = PUBLIC_USE["n"].setdefault(m.group(1), {}), PUBLIC_USE["n"].setdefault("*", {})
+        if used.get(kind, 0) >= PUBLIC_LIMITS[kind] or total.get(kind, 0) >= PUBLIC_TOTAL.get(kind, 10**9):
             return JSONResponse({"error": "daily limit for this card set"}, 429)
+        used[kind] = used.get(kind, 0) + 1; total[kind] = total.get(kind, 0) + 1  # 처리 전에 자리를 잡는다: 동시에 몰린 요청이 모두 검사를 통과하던 것을 막는다
         request.state.who = "learner"
         r = await call_next(request)
-        if r.status_code < 400:  # 처리된 요청만 센다: 빈·잘못된 요청 900번으로 돈 안 들이고 그날 따라 하기를 막을 수 있었다(11-02 검토)
-            used[kind] = used.get(kind, 0) + 1
-            save_state()
+        if 400 <= r.status_code < 500:  # 빈·잘못된 요청은 돌려준다(돈 안 들이고 그날 따라 하기를 막지 못하게). 5xx 는 Meta 를 이미 불렀을 수 있어 센다
+            used[kind] -= 1; total[kind] -= 1
+        save_state()
         return r
     if not role:
         return JSONResponse({"error": "key required"}, 401)
@@ -175,13 +177,15 @@ async def need_key(request: Request, call_next):
                 JUDGE_USE.update(day=today, n={})
             if JUDGE_USE["n"].get(kind, 0) >= JUDGE_LIMITS[kind]:
                 return JSONResponse({"error": "daily limit for the judge key"}, 429)
+            JUDGE_USE["n"][kind] = JUDGE_USE["n"].get(kind, 0) + 1  # 처리 전에 센다(동시 요청 경쟁), 4xx 면 아래에서 돌려준다
     request.state.who = role
     if m and not use_only and (RUNS / m.group(1)).is_dir():  # 누가 무엇을 바꿨는지(따라 하기 판단은 너무 잦아서 뺀다)
         with (RUNS / m.group(1) / "audit.jsonl").open("a") as f:
             f.write(json.dumps({"t": round(time.time()), "who": role, "do": f"{request.method} {path[len(m.group(0)):] or '/'}"}, ensure_ascii=False) + "\n")
     r = await call_next(request)
-    if role == "judge" and kind and r.status_code < 400:  # 심사 키도 처리된 요청만 센다
-        JUDGE_USE["n"][kind] = JUDGE_USE["n"].get(kind, 0) + 1
+    if role == "judge" and kind:  # 4xx 는 돈이 안 든 요청이라 돌려준다. 5xx 는 Meta 를 부른 뒤 실패했을 수 있어 그대로 센다
+        if 400 <= r.status_code < 500:
+            JUDGE_USE["n"][kind] -= 1
         save_state()
     return r
 
@@ -213,7 +217,10 @@ def run_dir(run_id):
 
 def read(d, name, default=None):
     p = d / name
-    return json.loads(p.read_text()) if p.exists() else default
+    try:  # 반쯤 쓰인 파일 하나가 목록 전체를 500 으로 만들지 않게(없는 것처럼 다룬다)
+        return json.loads(p.read_text()) if p.exists() else default
+    except ValueError:
+        return default
 
 
 def inside(d, rel):
@@ -293,7 +300,7 @@ def copy_run(run_id: str, request: Request):
     role = getattr(request.state, "who", "admin")
     if role != "admin":  # 저장 한도(올리기와 같은 기준)
         n, used = storage.owned_usage(RUNS, UPLOADS, role)
-        if n >= storage.TEACHER_MAX_SETS or used + storage.size(src)["total"] > storage.TEACHER_QUOTA_MB << 20:
+        if n >= storage.TEACHER_MAX_SETS or used + storage.size(src) > storage.TEACHER_QUOTA_MB << 20:
             raise HTTPException(403, f"저장 한도({storage.TEACHER_MAX_SETS}묶음·{storage.TEACHER_QUOTA_MB}MB)를 넘었습니다")
     new = uuid.uuid4().hex[:12]
     dst = RUNS / new
@@ -336,8 +343,9 @@ def delete_run(run_id: str):
         if run_id in RUNNING:
             raise HTTPException(409, "아직 만드는 중입니다")
     video = Path((read(d, "progress.json") or {}).get("video_path") or "")
+    keep = storage.shared(video, RUNS, d)  # 복사본이나 같은 파일을 올린 다른 묶음이 쓰는 영상은 남긴다
     shutil.rmtree(d)
-    if video.is_file() and video.resolve().parent == UPLOADS.resolve():
+    if video.is_file() and video.resolve().parent == UPLOADS.resolve() and not keep:
         video.unlink()
     NOW.pop(run_id, None)
     return {"ok": True}
@@ -566,6 +574,8 @@ def clean_cards(cards):
 
 def _save(d, body):
     data = read(d, "cards.json")
+    if not data:
+        raise HTTPException(404, "카드가 아직 없습니다")
     was_reviewed = bool(data.get("reviewed_at")) and data.get("reviewed_at") == data.get("edited_at")
     body["cards"] = clean_cards(body.get("cards"))
     same_cards = body["cards"] == data.get("cards")
@@ -685,7 +695,11 @@ def coach_check(run_id: str, body: dict):
         on_card = float(body["on_card"]) if body.get("on_card") is not None else None  # 이 카드가 뜬 지 몇 초
     except (TypeError, ValueError):
         on_card = None
-    return coach.check(data["cards"], cur, frames, int(body.get("prev_seen") or 0), local, ref, refs,
+    try:
+        prev_seen = int(body.get("prev_seen") or 0)
+    except (TypeError, ValueError):
+        prev_seen = 0
+    return coach.check(data["cards"], cur, frames, prev_seen, local, ref, refs,
                        prev_match, bool(refs) and coach.change(d, data["cards"], cur) < coach.SIMILAR, on_card)
 
 

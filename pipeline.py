@@ -1,6 +1,6 @@
 # 영상 → 단계 카드 파이프라인 ①~④
 # 사용: .venv/bin/python pipeline.py 영상.mp4 [--fresh]
-import base64, hashlib, json, os, re, subprocess, sys, threading, time
+import base64, hashlib, json, os, re, shutil, subprocess, sys, threading, time
 from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -91,10 +91,12 @@ def extract(run):
     duration = int(float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
                                          str(run.video)], capture_output=True, text=True, check=True).stdout))
     frames = run.path("frames")
-    if not frames.exists():
-        frames.mkdir()
+    if not frames.exists():  # 다른 폴더에 다 뽑은 뒤 이름을 바꾼다: 중간에 멈추면 빈 frames/ 가 남아 다음 시도가 사진 없이 가던 것을 막는다
+        tmp = run.path(".frames_tmp")
+        shutil.rmtree(tmp, ignore_errors=True); tmp.mkdir()
         subprocess.run(["ffmpeg", "-v", "error", "-i", str(run.video), "-vf", "fps=1,scale=-2:360", "-q:v", "6",
-                        str(frames / "f%03d.jpg")], check=True)
+                        str(tmp / "f%03d.jpg")], check=True)
+        os.replace(tmp, frames)
     run.log("extract", f"영상 {duration}초, 사진 {len(list(frames.glob('*.jpg')))}장")
     return duration, sorted(frames.glob("*.jpg"))
 
@@ -375,6 +377,8 @@ def build(run, fresh, look=False, local=False):
         run.log("split", "저장된 단계 사용(캐시)")
     else:
         result = split_steps(run, duration, frames, speech, look, local=local)
+        if not result["steps"] or any(not all(isinstance(st.get(k), (int, float)) for k in ("start", "end", "rep")) for st in result["steps"]):
+            raise ValueError("모델이 쓸 수 있는 단계를 내지 못했어요(다시 만들기를 누르면 모델에게 다시 물어요)")  # 캐시하지 않는다: 남기면 다시 만들어도 같은 실패
         steps_file.write_text(json.dumps(result, ensure_ascii=False, indent=1))
     cards_file = run.path("cards.json")
     if cards_file.exists() and not fresh:

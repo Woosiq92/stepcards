@@ -125,3 +125,13 @@ def test_two_actions_skips_holding_form():
     assert not TWO_ACTIONS.search("버튼을 3초 동안 누르고 계세요.")
     assert not TWO_ACTIONS.search("손잡이를 잡고 있으세요.")
     assert TWO_ACTIONS.search("빨대를 꽂고 저으세요.")
+
+
+# 11-03 검토: '고'로 끝나는 명사·인용, 물건 나열 뒤 방향어, "press and hold" 는 동작 둘이 아니다
+def test_two_actions_false_positives():
+    for ko in ["냉장고 문을 여세요.", "창고 안에 두세요.", "최고 온도로 맞추세요.", "'끝'이라고 말하세요."]:
+        assert check([step(0, 5, ko=ko), step(6, 10)], 20) == ([], []), ko
+    for en in ["Press and hold the button.", "Put the knife and fork away.", "Take the lid and cap off."]:
+        assert check([step(0, 5, en=en), step(6, 10)], 20) == ([], []), en
+    for ko in ["영상을 보고 따라 하세요.", "신발을 신고 나가세요."]:  # 보고·신고는 동사로 쓰인 때 잡는다
+        assert any("동작이 둘" in x for x in check([step(0, 5, ko=ko), step(6, 10)], 20)[0]), ko

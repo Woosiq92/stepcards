@@ -64,8 +64,9 @@ def run(cards, duration, instruction, lang="ko"):
     except json.JSONDecodeError:
         ans = {}
     old = {c["n"]: c for c in cards}
+    last = {c.get("n"): c for c in ans.get("changes", []) if isinstance(c, dict)}  # 같은 카드를 두 번 내면 마지막 것만(apply 와 같게)
     changes = [{"n": c["n"], "ko": c["ko"].strip(), "en": c["en"].strip(), "ko_before": old[c["n"]].get("ko", ""), "en_before": old[c["n"]].get("en", "")}
-               for c in ans.get("changes", []) if isinstance(c, dict) and c.get("n") in old
+               for c in last.values() if c.get("n") in old
                and isinstance(c.get("ko"), str) and isinstance(c.get("en"), str)
                and (c["ko"].strip(), c["en"].strip()) != (old[c["n"]].get("ko", ""), old[c["n"]].get("en", ""))]
     problems, _ = check(apply(cards, changes), duration)  # 최종 판정은 모델이 아니라 코드

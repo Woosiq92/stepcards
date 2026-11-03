@@ -154,7 +154,7 @@ The app asks for the key the first time an action needs it, and a cookie keeps i
 
 Command line only: `.venv/bin/python pipeline.py video.mp4 [--fresh]`. Results go to `runs/<hash of the video>/` (not committed).
 
-Tests (89 with pytest: checker, server, Coach decisions; no paid model calls): `.venv/bin/pip install pytest httpx && .venv/bin/python -m pytest -q`
+Tests (97 with pytest: checker, server, Coach decisions, agent; no paid model calls): `.venv/bin/pip install pytest httpx && .venv/bin/python -m pytest -q`
 
 ## Files
 
@@ -171,7 +171,7 @@ Tests (89 with pytest: checker, server, Coach decisions; no paid model calls): `
 | `app.py` | local web server (FastAPI) |
 | `static/index.html` | the whole interface, one file |
 | `coach_sim.py`, `coach_bench*.py` | Coach mode replay test and latency measurements |
-| `exp1-3.py` | first experiments (video input modes, stability, SAM prompts) |
+| `exp1-3.py`, `look_eval.py` | first experiments (video input modes, stability, SAM prompts) and an object-description check; like the replay and latency scripts above, they read local `runs/` folders that are not committed |
 | `demo/` | scripted screen recording and demo video assembly |
 
 ## Running it for real
@@ -183,7 +183,7 @@ Tests (89 with pytest: checker, server, Coach decisions; no paid model calls): `
 - Restarts: when a restart or redeploy interrupts card making, the set is marked as stopped, so "Try again" appears instead of an endless "Making".
 - Failure cases (from a review of failure scenarios on 11-02): with no camera, or when camera permission is denied, Coach starts in Back/Next mode. A 401, 402, 409 or 429 answer stops auto-advance and the screen says why. If the model names a reference number it was not shown, the app ignores it. Coach and Check calls to Meta time out after 30 s. Uploads no longer block other requests, and the video is hashed in 1 MB chunks. If another maker uploads the same video, they get their own card set. Reference stills are written atomically.
 - Health and alerts: `/api/health` (free space, jobs, key present) is Railway's health check (`railway.json`), and `ALERT_WEBHOOK` sends failures to a chat.
-- Storage over time (`storage.py`, runs every 6 hours): the audio file is deleted once speech is transcribed. A card set unused for `COMPACT_DAYS` (14) keeps a 640 px silent copy of its video instead of the original and drops its 1-second frames and caches (frames come back from the copy when the frame strip is opened). After `ARCHIVE_DAYS` (90) only cards, drawings and text are kept. With `RETAIN_DAYS` set, sets are deleted after that many days, with a warning on the home and edit pages for the last 7 days. Each teacher key has a quota (`TEACHER_QUOTA_MB` 5000, `TEACHER_MAX_SETS` 50). On the samples, compacting cut a set by roughly three quarters. Design notes: per-component sizes and the full lifecycle.
+- Storage over time (`storage.py`, runs every 6 hours): the audio file is deleted once speech is transcribed. A card set unused for `COMPACT_DAYS` (14) keeps a 640 px copy of its video with low-bitrate mono sound instead of the original and drops its 1-second frames and caches (frames come back from the copy when the frame strip is opened). After `ARCHIVE_DAYS` (90) only cards, drawings and text are kept. With `RETAIN_DAYS` set, sets are deleted after that many days, with a warning on the home and edit pages for the last 7 days. Each teacher key has a quota (`TEACHER_QUOTA_MB` 5000, `TEACHER_MAX_SETS` 50). On the samples, compacting cut a set by roughly three quarters.
 - Admin page (`#view=admin`, admin key): every card set with owner, stage, last use and size by part; per-owner totals; compact, archive, .zip and delete buttons.
 - Backups: a backup by maker (cards, drawings, titles, owners, audit; no video) is written every day to `backups/` and kept for 7 days, and you can download it from the admin page. Each card set also downloads as a .zip from the Use page. Railway volume backups need a paid plan.
 - Without an API key (for example after the hackathon credit ends) the site still starts. Viewing, printing, tablet and glasses views work, and cards can still be made on a school computer with Muse Glimmer. A school deployment should use its own paid Meta API key, or Glimmer for anything involving students.
@@ -194,7 +194,7 @@ Tests (89 with pytest: checker, server, Coach decisions; no paid model calls): `
 - If you run it on your own computer, videos and cards stay there (`runs/`). The hosted demo sends frames to the Meta Model API to make cards and run Coach mode.
 - If `GTTS_KEY` is set, the text of card sentences (no photos, no video) is sent to Google Cloud Text-to-Speech to make the read-aloud audio, and the audio is cached with the card set. Without the key, the device voice reads them and nothing is sent.
 - Do not use videos of students. Our tests and demo use adult demonstrations only.
-- Coach mode never stores camera frames and keeps no records of the learner.
+- Coach mode never stores camera frames. The only learning records are anonymous help and check counts per card, sent only from devices where a person switched them on (no photos, no names).
 - For school use, both making cards and Coach mode can run on Muse Glimmer on the school's own computer, so student video never leaves it.
 
 ## Credits

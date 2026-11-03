@@ -44,3 +44,13 @@ def test_agent_unchanged_or_garbage(monkeypatch):
     create, _ = fake([("final", "not json")])
     monkeypatch.setattr(agent.client.responses, "create", create)
     assert agent.run(CARDS, 40, "?")["changes"] == []
+
+
+# 11-03 검토: 같은 카드를 두 번 내면 미리보기와 적용이 달랐다(마지막 것만), 빈 영어 문장은 검사기가 잡는다
+def test_agent_duplicate_and_empty_english(monkeypatch):
+    twice = [{"n": 1, "ko": "컵을 드세요.", "en": "Lift the cup."}, {"n": 1, "ko": "컵을 드세요.", "en": ""}]
+    create, _ = fake([("final", {"changes": twice, "note": ""})])
+    monkeypatch.setattr(agent.client.responses, "create", create)
+    r = agent.run(CARDS, 40, "x")
+    assert len(r["changes"]) == 1 and r["changes"][0]["en"] == ""
+    assert any("영어 문장이 비어" in p for p in r["problems"])

@@ -84,7 +84,8 @@ def compact(d, runs, uploads):
     os.replace(tmp, small)
     p = progress(d)
     p["video_path"] = str(small)
-    (d / "progress.json").write_text(json.dumps(p, ensure_ascii=False, indent=1))
+    tmp = d / ".progress.json.tmp"  # 반쯤 쓴 progress.json 이 목록 전체를 깨지 않게
+    tmp.write_text(json.dumps(p, ensure_ascii=False, indent=1)); os.replace(tmp, d / "progress.json")
     if v.resolve().parent == uploads.resolve() and not shared(v, runs, d):
         v.unlink(missing_ok=True)
     for sub in ("frames", "clips", "glass"):
@@ -168,31 +169,34 @@ def maintain(runs, uploads, seeds, backups, now_state, running=()):
     """하루 몇 번 도는 정리: 소리 파일·캐시·단계 넘기기·삭제·기록 줄이기·백업. 무엇을 했는지 돌려준다"""
     t, did = time.time(), {"finalized": 0, "compacted": 0, "archived": 0, "deleted": 0, "cache_files": 0}
     for f in list(runs.glob("*/clips/*")) + list(runs.glob("*/glass/*")):
-        if t - f.stat().st_mtime > CACHE_DAYS * DAY:
-            f.unlink(missing_ok=True)
-            did["cache_files"] += 1
+        try:  # 그사이 지워지거나 쓰이는 파일이 있어도 정리 전체가 멈추지 않게
+            if t - f.stat().st_mtime > CACHE_DAYS * DAY:
+                f.unlink(missing_ok=True)
+                did["cache_files"] += 1
+        except OSError:
+            pass
     for d in list(runs.iterdir()):
         if not d.is_dir() or d.name in seeds or d.name in running:
             continue
-        st, idle = stage(d), t - last_used(d) if last_used(d) else 0
-        if st == "done" and (d / "audio.wav").exists():
-            finalize(d)
-            did["finalized"] += 1
-        if RETAIN_DAYS and last_used(d) and idle > RETAIN_DAYS * DAY:
-            v = video_of(d)
-            shutil.rmtree(d)
-            if v and v.resolve().parent == uploads.resolve() and not shared(v, runs, d):
-                v.unlink(missing_ok=True)
-            did["deleted"] += 1
-            continue
-        try:
+        try:  # 하나가 실패해도 나머지 묶음과 백업은 계속(다음 차례에 다시)
+            st, idle = stage(d), t - last_used(d) if last_used(d) else 0
+            if st == "done" and (d / "audio.wav").exists():
+                finalize(d)
+                did["finalized"] += 1
+            if RETAIN_DAYS and last_used(d) and idle > RETAIN_DAYS * DAY:
+                v = video_of(d)
+                shutil.rmtree(d)
+                if v and v.resolve().parent == uploads.resolve() and not shared(v, runs, d):
+                    v.unlink(missing_ok=True)
+                did["deleted"] += 1
+                continue
             if st in ("done", "compact") and idle > ARCHIVE_DAYS * DAY:
                 did["archived"] += archive(d, runs, uploads)
             elif st == "done" and idle > COMPACT_DAYS * DAY:
                 did["compacted"] += compact(d, runs, uploads)
-        except (OSError, subprocess.CalledProcessError):
-            pass  # 하나가 실패해도 나머지는 계속(다음 차례에 다시)
-        trim_audit(d)
+            trim_audit(d)
+        except (OSError, ValueError, subprocess.CalledProcessError):
+            pass
     for k in [k for k, v in now_state.items() if t - v.get("t", t) > NOW_KEEP_DAYS * DAY]:
         now_state.pop(k, None)
     backup(runs, backups, seeds)
