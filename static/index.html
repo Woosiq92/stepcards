@@ -484,6 +484,8 @@
   .csteps li > div { display:grid; gap:6px; flex:1; color:#a9b8c6; } .csteps b { color:#fff; font-size:17px; } .csteps .navb { justify-self:start; margin-top:4px; }
   .csettings { width:min(540px, 100%); } .csettings summary { cursor:pointer; color:#9db5ff; font-size:14px; min-height:44px; display:flex; align-items:center; justify-content:center; }
   .csettings[open] { display:grid; gap:10px; justify-items:center; }
+  .csettings .livetoggle { min-height:48px; padding:4px 8px; cursor:pointer; } .csettings .livetoggle input { width:24px; height:24px; flex:none; }
+  .tab .cstart:not(#csum) { padding-top:max(72px, env(safe-area-inset-top)); }  /* 내용이 길어 위로 붙어도 소리·나가기 단추에 제목이 가리지 않게 */
   .cstart .t { font-size:34px; font-weight:800; letter-spacing:-.03em; } .cstart .d { color:#a9b8c6; max-width:540px; }
   .cstart .seg { background:var(--dark2); } .cstart .seg button { color:#a9b8c6; } .cstart .seg button.on { background:var(--accent); color:#fff; box-shadow:none; }
   .cstart .linkbtn { color:#9db5ff; }
@@ -1945,8 +1947,8 @@ function coach() {
       <div class="seg" id="chelpseg">${[[false, T("카드 다 보여 주기", "Show the whole card")], [true, T("필요할 때만 도움", "Help only when needed")]].map(([v, l]) =>
         `<button class="${C.help === v ? "on" : ""}" aria-pressed="${!!(C.help === v)}" onclick="setHelp(${v})">${l}</button>`).join("")}</div>
       <div class="d" id="chelpd"></div>
+      <label class="linkbtn" style="cursor:pointer;min-height:44px;display:inline-flex;align-items:center">${T("영상 파일로 시험하기", "Try with a video file")}<input type="file" accept="video/*" hidden onchange="coachFile(this.files[0])"></label>
       </details>
-      <label class="linkbtn" style="cursor:pointer">${T("영상 파일로 시험하기", "Try with a video file")}<input type="file" accept="video/*" hidden onchange="coachFile(this.files[0])"></label>
     </div>
   </div>`;
   C.started = false; C.shown = -1; C.max = {}; C.manual = false; C.syncN = 0; C.againSaid = -1; setVoice(C.voice); setHelp(C.help);
@@ -1981,7 +1983,7 @@ function coach() {
 function coachWhere(where) {
   C.where = where; C.local = where === "mac";
   $("#cwhere").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.getAttribute("onclick").includes(`'${where}'`)));
-  $("#cwhered").hidden = noDone();  // 카메라를 안 켜는 카드에 카메라 판단 설명을 띄우지 않는다
+  $("#cwhered").hidden = noDone() || where === "api";  // 카메라를 안 켜는 카드, 기본(Meta API)에는 설명을 띄우지 않는다(ui-ux-check 11-03)
   $("#cwhered").innerHTML = { mac: T("공개 가중치 모델이 이 맥에서 판단해요. 카메라 사진이 맥 밖으로 나가지 않아요. 물건 확인(SAM)은 건너뛰어요.", "An open-weight model decides on this Mac. Camera frames never leave it. The object check (SAM) is skipped."),
     device: T("이 기기 안의 작은 모델(MediaPipe)이 1초에 여러 번 시범 영상 장면과 비교해 단계를 따라가요. 비용이 없고 사진이 밖으로 나가지 않아요. 결과 확인(달라요)은 '확인하기'로 해요.", "A small on-device model (MediaPipe) compares the camera with the demonstration several times a second. No cost, nothing leaves the device. Use Check to compare results."),
     api: T("Muse Spark가 카메라 화면을 시범 영상의 단계 사진과 맞춰 봐요.", "Muse Spark compares the camera with photos of each step from the demonstration.") }[where];
