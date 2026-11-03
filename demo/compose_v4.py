@@ -85,39 +85,35 @@ if not KO:
     ag = next(m for m in json.loads((V3 / "agent.marks.json").read_text())["marks"] if m["what"] == "agent")  # 에이전트 장면의 실제 결과
     ag_n, ag_cents, ag_wait = ag["changes"], round(ag["cost"] * 100), round(ag["wait_s"])
     retry_en = "One card broke a rule, so it went back for a rewrite and then passed. " if retried else ""
-    S = [
+    S = [  # 11-03: "빠르고 호흡이 짧다" 피드백 → 화면에 보이는 설명·기술 세부를 빼고 속도를 1.17 → 1.06, 장면 사이 쉼 +0.5초
         ("hook", "gen:hook", None, "Generated scene", "Some things you only learn by watching."),
-        ("p_cafe", "gen:cafe", None, "First week at a cafe · generated scene", "New at the cafe? You watch the barista make it once, and then it's your turn."),
+        ("p_cafe", "gen:cafe", None, "First week at a cafe · generated scene", "New at the cafe? You watch the barista once, then it's your turn."),
         ("p_reel", "gen:reel", None, "Learning from a Reel · generated scene", "Learning a dance from a Reel means pause, rewind, pause, rewind."),
         ("p_family", "gen:family", None, "Mom's recipe · generated scene", "Mom's recipe? It was never written down."),
         ("p_job", "gen:job", None, "Job training · generated scene", "Job coaches still make picture cards by hand, screenshot after screenshot, for every task."),
         ("p_sum", "statement", None, None, "Watching once isn't enough. Writing it all down takes hours."),
         ("reveal", "duo", (max(0, first_turn - 7), 12, 1), "Replay · demo video used as the camera · live decisions",
-         "That's what StepCards is for. Film the task once, and the video becomes step cards, one action per card. While someone follows along, the app watches their hands through the camera and shows the next card when a step is done."),
+         "StepCards fixes that. Film the task once, and it becomes step cards, one action each. As someone follows along, the camera sees when a step is done and shows the next card."),
         ("making", "single:making", None, "Real run · Muse Spark · SAM 3.1 · Voice Transcribe",
-         f"Here's a real run: a {video_min}-minute napkin-folding video. Muse Spark splits it into steps, one action each, with timestamps and a short sentence in Korean and English. "
-         f"Our code checks every card for overlapping timestamps, long sentences, or two actions in one card. {retry_en}"
-         f"SAM 3.1 picks a photo for each card. {make_s} seconds later, we have {n_cards} cards, for about {make_cost} cents."),
+         f"Here's a real run with a {video_min}-minute napkin-folding video. Muse Spark splits it into steps, each with a short sentence in Korean and English. "
+         f"Our code checks every card, and SAM 3.1 picks the photos. {retry_en}In {make_s} seconds: {n_cards} cards, for {make_cost} cents."),
         ("edit", "single:edit", None, "Review",
-         "Next, the person who knows the task checks the cards. The rule checker reads each sentence. On card 2, I add \"pick up the napkin and\" at the start. Now it has two actions, so the card turns red and says why. Take it out and it passes. "
-         "Yellow notes flag numbers that never came up in the video, and any left or right, since those are easy to mix up."),
+         "Then the person who knows the task reviews them. If I add \"pick up the napkin and\" to card 2, it has two actions, so the card turns red and says why. "
+         "Yellow notes flag numbers that never came up in the video, and left or right, which are easy to mix up."),
         ("agent", "single:agent", None, f"Agent · Muse Spark runs our checker as a tool · {ag_wait} s wait cut",
          "Or just ask: \"simpler words for a learner who reads little.\" "
-         f"Muse Spark rewrites {ag_n} cards and runs our checker on its draft before answering. "
-         f"About {ag_cents} cents, with the {ag_wait}-second wait cut. Nothing changes until someone taps Apply."),
+         f"Muse Spark rewrites {ag_n} cards, checking its draft with our checker first. Nothing changes until someone taps Apply."),
         ("follow", "duo", (v_start + 2, last_turn - v_start + 4, FOLLOW_X), f"Replay at {FOLLOW_X:g}x · demo video used as the camera",
-         f"This is the learner's screen. The camera is on the left, the card on the right, and the glasses show the same card. "
-         "The line under the camera says what the model sees, like \"still looks like before step 2,\" or \"step 2 looks like the demonstration, card 3.\" "
-         f"In this replay the cards moved on by themselves up to card {auto_to}, about {LAG} seconds after each step."),
+         "This is the learner's screen, and the glasses show the same card. The line under the camera says what the model sees. "
+         f"In this replay, the cards moved on by themselves up to card {auto_to}, about {LAG} seconds after each step."),
         ("help", "trio", (3.0, at("help", "learner sees help coming") + 2.0, 1), "Help when stuck · helper's board on the right",
-         "Stuck? Help comes one step at a time. A picture, then the sentence read aloud, then a short clip. "
-         "Still stuck? Tapping \"Ask for help\" puts the card number on the helper's board. They tap \"On my way,\" and the learner sees help is coming. There are no scores, and no video is kept."),
+         "Stuck? Help grows one step at a time: a picture, the sentence read aloud, then a short clip. "
+         "\"Ask for help\" puts the card on the helper's board. No scores, and no video is kept."),
         ("breadth", "single:breadth", None, "Same app · CC BY demo videos",
-         "Openly licensed videos also became cards for a cafe drink, a family stew, a cabinet, and a dance. "
-         "We also made cards for jobs in Korea's national job program for people with severe disabilities. For care work, the camera stays off, and a person decides when each step is done."),
+         "Openly licensed videos also became cards for a cafe drink, a stew, a cabinet and a dance, and for jobs in Korea's program for people with severe disabilities. "
+         "In care work, the camera stays off, and a person decides when each step is done."),
         ("glimmer", "single:glimmer", None, f"Recorded on this Mac · Muse Glimmer · {g_s} s · $0",
-         f"Schools that can't send learners' video out can make the cards on one Mac with the open-weight Muse Glimmer model. "
-         f"In this run, the checker sent the steps back {({1: 'once', 2: 'twice'}).get(g_tries - 1, f'{g_tries - 1} times')} before they passed. The napkin video became {g_cards} cards in {g_s} seconds, at no cost. "
+         f"Schools that can't send video out can make the cards on one Mac with the open-weight Muse Glimmer: {g_cards} cards in {g_s} seconds, at no cost. "
          "We haven't yet tested it with real learners, or with a different person in front of a live camera."),
         ("close", "close", None, None, "Show it once. Then they've got it. StepCards."),
     ]
@@ -390,7 +386,7 @@ def base_video(name, layout, span, seg_len):
 # ---- 목소리: 구글 Chirp3-HD(디지털 챔피언 때 고른 Zephyr). 키(~/.gtts_key)가 없으면 맥 기본 음성 ----
 GKEY = Path("~/.gtts_key").expanduser()
 CACHE = ROOT / "demo" / "out" / "tts_cache"  # 같은 문장은 한 번만 만든다(비용)
-RATE = 1.12 if KO else 1.17  # 1.0 이면 두 판 모두 3분 7초: 3분 안으로. 영어판은 11-03 대본 고친 뒤 1.12 로 181초라 조금 더 빠르게
+RATE = 1.12 if KO else 1.06  # 1.0 이면 두 판 모두 3분 7초: 3분 안으로. 영어판은 11-03 "빠르다" 피드백으로 대본을 줄이고 1.17 → 1.06 (1.0 은 늘어지게 들릴 수 있어서)
 
 
 def voice(text):
@@ -415,7 +411,7 @@ parts, lens = [], []
 for idx, (name, layout, span, label, text) in enumerate(S):
     aiff = voice(text)
     nar = duration(aiff)
-    seg_len = round(max(nar + 0.9 + XF, (span[1] / span[2]) if span else 0), 2)
+    seg_len = round(max(nar + (0.9 if KO else 1.4) + XF, (span[1] / span[2]) if span else 0), 2)
     base = base_video(name, layout, span, seg_len)
     inputs, overlays = [], []
     if layout not in ("statement", "close"):  # 큰 글자 화면은 글자가 곧 자막
