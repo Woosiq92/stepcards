@@ -315,6 +315,7 @@
   .row .rnote { margin:8px 10px 0; padding:8px 12px; border-radius:var(--r-s); background:#FBEFD3; color:#8A5A00; font-size:14px; line-height:1.4; }  /* 막지 않는 '확인 필요' */
   .unreviewed { display:inline-block; background:#FBEFD3; color:#8A5A00; border-radius:999px; padding:4px 12px; font-size:14px; font-weight:700; }
   .tab .unreviewed { position:absolute; top:16px; left:50%; transform:translateX(-50%); z-index:5; }
+  .tab .cstart .unreviewed { position:static; transform:none; margin:6px 0; }  /* 따라 하기 시작 화면: 위쪽 소리·나가기 단추에 가려지던 것(390폭) */
   .actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; padding:0 10px; }
   /* 시안 4(고치기): 흰 카드 줄, ⋯ 는 줄 오른쪽 위, 보기 전환은 그림 위, 영상 시간은 알약, 빼기는 빨강 */
   .row { border-radius:16px; } .row .actions { position:absolute; top:14px; right:14px; margin:0; padding:0; }
@@ -360,9 +361,9 @@
   .rhead { display:flex; justify-content:space-between; align-items:baseline; font-size:18px; } .rkey { font-size:13px; color:var(--muted); margin:6px 0 12px; }
   .record table { width:100%; border-collapse:collapse; font-size:14px; } .record th, .record td { border:1px solid #9aa7b3; padding:4px 6px; text-align:left; vertical-align:middle; }
   .record th:nth-child(n+4), .record td:nth-child(n+4) { width:9%; } .record td:first-child { width:28px; text-align:center; font-weight:700; }
-  .record td img { width:72px; aspect-ratio:16/9; object-fit:cover; display:block; } .record thead { display:table-header-group; } .record tr { break-inside:avoid; }
+  .record td img { width:72px; aspect-ratio:16/9; object-fit:contain; background:#f4f5f8; display:block; } .record thead { display:table-header-group; } .record tr { break-inside:avoid; }
   .pcard { border:2px solid var(--ink); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; position:relative; min-height:0; }
-  .pcard img { width:100%; aspect-ratio:16/9; object-fit:cover; display:block; }
+  .pcard img { width:100%; aspect-ratio:16/9; object-fit:contain; background:#f4f5f8; display:block; }  /* 세로로 찍은 영상도 손이 잘리지 않게 */
   .pcard .txt { padding:6px 10px; font-size:clamp(12px,2.2vw,19px); font-weight:700; }
   .pcard .n { position:absolute; top:6px; left:6px; width:28px; height:28px; font-size:13px; }
   .pcard .en, .tab .en, .record .en { display:block; font-size:.72em; font-weight:400; opacity:.75; }
@@ -548,7 +549,7 @@ function askKey() {
       <input type="password" autocomplete="current-password" aria-label="${T("접속 키", "Access key")}" placeholder="${T("접속 키", "Access key")}">
       <span class="red" hidden></span>
       <div><button class="btn primary">${T("확인", "OK")}</button> <button type="button" class="btn">${T("취소", "Cancel")}</button></div></form>`;
-    const end = ok => { box.remove(); keyAsk = null; if (!ok) keyDeclined = Date.now(); done(ok); };
+    const end = ok => { box.remove(); keyAsk = null; if (!ok) keyDeclined = Date.now(); else loadRole(); done(ok); };
     box.querySelector("button[type=button]").onclick = () => end(false);
     box.querySelector("form").onsubmit = async e => {
       e.preventDefault();
@@ -581,7 +582,8 @@ let lang = (() => { try { return localStorage.getItem("lang") === "x" ? "x" : nu
 let ui = (() => {  // 화면 글자: 주소의 ?ui= → 저장된 값 → 영어
   const q = new URLSearchParams(location.search).get("ui");
   if (q === "ko" || q === "en") return q;
-  try { return localStorage.getItem("ui") || "en"; } catch { return "en"; }  // 기본은 영어(심사·해외 사용자). 한국어는 위 단추로
+  const nav = /^ko/i.test(navigator.language || "") ? "ko" : "en";  // 저장값이 없으면 브라우저 언어(한국어 브라우저의 교사가 영어 화면을 먼저 보지 않게)
+  try { return localStorage.getItem("ui") || nav; } catch { return nav; }  // 기본은 영어(심사·해외 사용자). 한국어는 위 단추로
 })();
 const T = (ko, en) => ui === "en" ? en : ko;
 lang ??= ui === "en" ? "en" : "ko";
@@ -643,9 +645,9 @@ function header() {
   }).join("");
 }
 
-function imgSrc(c) {
+function imgSrc(c, plain) {  // plain: 인쇄·공유(종이·메신저에는 물건 테두리가 사진만 가린다)
   if (c.view === "ill" && c.ill) return `/runs/${S.run}/${c.ill}?v=${c.v || 0}`;
-  const f = c.box && !c.hl_off ? c.image.replace(".jpg", "_hl.jpg") : c.image;
+  const f = c.box && !c.hl_off && !plain ? c.image.replace(".jpg", "_hl.jpg") : c.image;
   return `/runs/${S.run}/${f}?v=${c.v || 0}`;
 }
 // 움직임 보기: 그 단계 영상 몇 초를 소리 없이 반복. 인쇄·미리 불러오기는 사진(imgSrc)을 쓴다
@@ -665,7 +667,9 @@ function text(c) {
 function setLang(v) { lang = v; try { localStorage.setItem("lang", v); } catch {} ({ use, tablet })[S.view]?.(); }
 // 망이 끊기면 알린다(요청마다 실패 알림이 따로 뜨기 전에 원인을 먼저)
 addEventListener("offline", () => toast(T("인터넷 연결이 끊겼어요. 다시 이어지면 계속돼요.", "You're offline. It will continue when the connection is back.")));
-addEventListener("online", () => toast(T("다시 연결됐어요.", "Back online.")));
+const loadRole = () => rawFetch("/api/me").then(r => r.json()).then(d => { const was = S.role; S.role = d.role; if (was !== S.role && S.view === "home") route(); }).catch(() => {});
+loadRole();
+addEventListener("online", () => { toast(T("다시 연결됐어요.", "Back online.")); if (S.saveState === "error" || S.savePending) saveNow(); });
 function toast(msg, label, act) {
   document.querySelector(".toast")?.remove();
   const t = document.createElement("div");
@@ -673,7 +677,7 @@ function toast(msg, label, act) {
   t.innerHTML = `<span>${esc(msg)}</span>${label ? `<button>${esc(label)}</button>` : ""}`;
   if (label) t.querySelector("button").onclick = () => { t.remove(); act(); };
   document.body.append(t);
-  setTimeout(() => t.remove(), 6000);
+  setTimeout(() => t.remove(), label ? 15000 : 6000);  // 되돌리기 단추가 있는 알림은 천천히 읽는 사람도 누를 수 있게
 }
 
 /* 관리자 화면: 저장 공간을 카드 묶음·교사별로 보고 정리·보관·백업 */
@@ -714,7 +718,7 @@ async function showRecords() {
 // 앞 카메라(맞은편에서 하는 사람을 봄)는 거울처럼 좌우를 뒤집어 하는 사람의 왼쪽이 화면 왼쪽에 오게 한다. 미리보기(.mirror)와 판단에 보내는 사진이 같은 모습이 되게
 // (11-03 실사용: 180도 돌린 사진만 보내고 미리보기는 그대로였더니 화면의 좌우가 시범 그림과 반대였고, 카메라 앞에 들고 하면 위아래도 뒤집혔다)
 const mirrored = video => S.data?.pov !== "facing" && isFront(video.srcObject?.getVideoTracks?.()[0]);
-const isFront = track => { const st = track?.getSettings?.() || {}; return !!track && (st.facingMode ? st.facingMode === "user" : !/Android|iPhone|iPad/i.test(navigator.userAgent)); };  // 맥 FaceTime 은 facingMode 를 안 알려 준다
+const isFront = track => { const st = track?.getSettings?.() || {}; return !!track && (st.facingMode ? st.facingMode === "user" : !(/Android|iPhone|iPad/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1))); };  // 맥 FaceTime 은 facingMode 를 안 알려 준다
 function drawFrame(cv, video) {
   const g = cv.getContext("2d");
   if (mirrored(video)) { g.save(); g.translate(cv.width, 0); g.scale(-1, 1); g.drawImage(video, 0, 0, cv.width, cv.height); g.restore(); }
@@ -730,9 +734,10 @@ function faceLoad() {
     const { FilesetResolver, FaceDetector } = await import(`${MP}/vision_bundle.mjs`);
     const files = await FilesetResolver.forVisionTasks(`${MP}/wasm`);
     FACE.det = await FaceDetector.createFromOptions(files, { baseOptions: { modelAssetPath: FACE_MODEL }, runningMode: "IMAGE", minDetectionConfidence: 0.3 });  // 11-03 합성 웹캠 141장: 0.4 면 14장 놓침·오검출 1, 0.3 이면 1장 놓침·오검출 3
-  })().catch(() => { FACE.failed = true; });  // 못 불러오면(망 막힘) 가리지 않고 보낸다: 따라 하기가 멈추지 않게
+  })().catch(() => { FACE.failed = true; });  // 못 불러오면(망 막힘) 카메라 사진을 보내지 않는다: 손으로 넘기기는 그대로
 }
-const faceReady = () => S.data?.pov === "facing" || !!FACE.det || FACE.failed;
+const faceReady = () => S.data?.pov === "facing" || !!FACE.det;
+const faceBlocked = video => !!video.srcObject && S.data?.pov !== "facing" && FACE.failed;  // 시범 영상 재생(srcObject 없음)은 사람 얼굴이 아니라 그대로
 function hideFaces(cv) {
   if (!FACE.det || S.data?.pov === "facing") return 0;
   const g = cv.getContext("2d"), sm = document.createElement("canvas"), faces = FACE.det.detect(cv).detections;
@@ -748,6 +753,7 @@ function hideFaces(cv) {
 }
 async function grabPhoto(video) {
   await faceLoad();
+  if (faceBlocked(video)) return null;
   const cv = document.createElement("canvas"); cv.width = 640; cv.height = Math.round(640 * video.videoHeight / video.videoWidth);
   drawFrame(cv, video); return cv.toDataURL("image/jpeg", 0.8);
 }
@@ -772,6 +778,9 @@ async function verifyNow(glassesReq) {
   }
   for (const n of [3, 2, 1]) { if (!$("#vbox")) return; box.querySelector(".vcount").textContent = n; await new Promise(r => setTimeout(r, 800)); }
   const photo = await grabPhoto(v);
+  if (!photo) { box.querySelector(".vcount").textContent = ""; box.querySelector(".vmsg").textContent = T("얼굴 가리기를 불러오지 못해 사진을 보내지 않았어요. 인터넷을 확인해 주세요.", "Face blur could not load, so no photo was sent. Check the connection.");
+    if (!useCoach) box.stream?.getTracks().forEach(t => t.stop());
+    setTimeout(() => { if ($("#vbox") === box) closeVerify(); }, 4000); return fail(["얼굴 가리기를 불러오지 못했어요", "Face blur could not load"]); }
   box.querySelector(".vcount").textContent = ""; box.querySelector(".vmsg").textContent = T("확인하는 중…", "Checking…");
   if (!useCoach) box.stream?.getTracks().forEach(t => t.stop());
   let d = null, status = 0; const t0 = Date.now();
@@ -867,16 +876,16 @@ async function home() {
         <input type="file" accept="video/*" id="file" hidden>
         <div class="plus">${icon("plus")}</div>
         <div class="big">${T("영상을 여기에 끌어다 놓거나, 눌러서 고르세요", "Drop a video here, or click to choose one")}</div>
-        <div class="muted">${T("손과 물건이 잘 보이게 · 배우는 사람 얼굴이 나오는 영상은 넣지 마세요", "Hands and objects clearly visible · no videos that show a learner's face")}</div>
+        <div class="muted">${T("휴대폰은 가로로 · 손과 물건이 잘 보이게 · 배우는 사람 얼굴이 나오는 영상은 넣지 마세요", "Hold the phone sideways · hands and objects clearly visible · no videos that show a learner's face")}</div>
         <span class="btn primary">${T("영상 고르기", "Choose a video")}</span>
         <span class="seg makewhere" id="mkwhere" hidden onclick="event.preventDefault();event.stopPropagation()">
           <button class="on" onclick="makeWhere(false)">${T("Meta API", "Meta API")}</button><button onclick="makeWhere(true)">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button></span>
         <span class="muted" id="mkwhered" hidden></span>
       </label>
-      <div class="trust center">${[T("칭찬도 점수도 없어요", "No praise, no scores"), T("사진은 남지 않아요", "No photos kept"), T("얼굴을 알아보지 않아요", "No face or voice ID"), T("마지막은 사람이 정해요", "A person decides")].map(t => `<span>${icon("check")}${t}</span>`).join("")}</div>
+      <div class="trust center">${[T("영상은 Meta AI가 분석하고, 카드 만들기용으로 이 서버에 보관돼요", "The video is analysed by Meta AI and kept on this server to make the cards"), T("지우면 영상·카드가 함께 지워져요", "Deleting a set deletes its video and cards"), T("마지막은 사람이 정해요", "A person decides")].map(t => `<span>${icon("check")}${t}</span>`).join("")}</div>
     </section>
     ${mine.length ? `<section class="pastbox" id="pastbox"></section>` : `<p class="center muted">${T("아직 만든 카드 묶음이 없어요. 위에 영상을 넣거나, 라이브러리에서 '복사해서 고치기'로 시작해요.", "No card sets yet. Add a video above, or start from 'Copy and edit' in the library.")}</p>`}
-    ${mine.length ? `<p class="muted adminlink"><a href="#view=admin">${T("저장 공간 관리(관리자)", "Storage (admin)")}</a></p>` : ""}
+    ${mine.length && S.role === "admin" ? `<p class="muted adminlink"><a href="#view=admin">${T("저장 공간 관리(관리자)", "Storage (admin)")}</a></p>` : ""}
     </div>`;
     })()}`;
   S.mine = mine; if (mine.length) pastList();
@@ -899,7 +908,7 @@ function homeTab(t) {
   try { localStorage.setItem("homeTab", t); } catch {}
 }
 /* 카드 라이브러리: 하는 일로 나눈 분류 칩, 제목 찾기. '전체'에서는 생활 속 쓰임새를 먼저, 특수교육·장애인 일자리는 그 아래(출처·★ 설명과 함께) */
-const LIBCAT = [["job", T("직업 훈련", "Job training")], ["food", T("카페·음식", "Cafe & food")], ["house", T("집안일", "Housework")], ["build", T("조립", "Assembly")],
+const libcat = () => [["job", T("직업 훈련", "Job training")], ["food", T("카페·음식", "Cafe & food")], ["house", T("집안일", "Housework")], ["build", T("조립", "Assembly")],
   ["care", T("돌봄", "Care")], ["talk", T("의사소통", "Communication")], ["move", T("운동·춤", "Movement")]];
 const LV = { cat: "all", q: "" };
 const libKicker = r => r.use === "special" ? T("특수교육 직무 훈련", "Special-education job training") : r.use === "job" ? `${r.custom ? "★ " : ""}${esc(r.job)}`
@@ -932,7 +941,7 @@ function libList() {
   box.innerHTML = `<div class="libtop"><h2>${T("카드 라이브러리", "Card library")}</h2>
       <input type="search" class="lq" placeholder="${T("제목·직무로 찾기", "Search titles and jobs")}" value="${esc(LV.q)}" oninput="LV.q=this.value;document.getElementById('libbody').innerHTML=libBodyHtml()"></div>
     <p class="muted libnote">${T("미리 만들어 둔 카드예요. 누구나 바로 따라 할 수 있어요. 고쳐 쓰려면 '복사해서 고치기'를 누르세요. 내 카드에 사본이 생기고, 원본은 그대로 남아요.", "Ready-made cards anyone can follow right away. To change one, press \"Copy and edit\": a copy goes to My cards, and the original stays as it is.")}</p>
-    <div class="pchips libchips">${[["all", T("전체", "All"), all.length], ...LIBCAT.map(([k, l]) => [k, l, all.filter(r => (r.cats || []).includes(k)).length]).filter(x => x[2])]
+    <div class="pchips libchips">${[["all", T("전체", "All"), all.length], ...libcat().map(([k, l]) => [k, l, all.filter(r => (r.cats || []).includes(k)).length]).filter(x => x[2])]
       .map(([k, l, n]) => `<button class="${LV.cat === k ? "on" : ""}" onclick="LV.cat='${k}';libList()">${l} <b>${n}</b></button>`).join("")}</div>
     <div id="libbody">${libBodyHtml()}</div>`;
 }
@@ -1057,9 +1066,17 @@ async function upload(f) {
   if (!f.type.startsWith("video/")) return toast(T("영상 파일만 넣을 수 있어요.", "Only video files can be added."));
   const dur = await new Promise(res => { const v = document.createElement("video"); v.preload = "metadata"; v.onloadedmetadata = () => res(v.duration); v.onerror = () => res(0); v.src = URL.createObjectURL(f); });
   if (dur > 600) return toast(T(`영상이 ${Math.round(dur / 60)}분이에요. 10분 안으로 잘라서 넣어 주세요(1~5분이 가장 좋아요).`, `This video is ${Math.round(dur / 60)} min. Please trim it to under 10 minutes (1–5 is best).`));
-  $("#drop").innerHTML = `<div class="big">${T("영상을 올리는 중…", "Uploading…")}</div>`;
+  if (f.size > 500 * 1048576) return toast(T(`영상이 ${Math.round(f.size / 1048576)}MB예요. 500MB 아래로 줄여 주세요(휴대폰 설정에서 1080p로 찍거나, 앞뒤를 잘라 주세요).`, `This video is ${Math.round(f.size / 1048576)} MB. Please keep it under 500 MB (record at 1080p, or trim it).`));
+  const me = await rawFetch("/api/me").then(r => r.json()).catch(() => ({}));  // 큰 영상을 다 올린 뒤에 키를 묻고 또 올리지 않게, 키부터
+  if (me.role === null && !(await askKey())) return;
+  $("#drop").innerHTML = `<div class="big">${T("영상을 올리는 중…", "Uploading…")} <span id="upct"></span></div><div class="prog"><i id="upbar" style="width:0%"></i></div>`;
   const fd = new FormData(); fd.append("file", f); if (S.makeLocal) fd.append("local", "true");
-  const r = await fetch("/api/upload", { method: "POST", body: fd }).catch(() => null);
+  const r = await new Promise(res => {  // fetch 는 올리는 진행을 못 알려서 XHR 로(몇 분 걸리는 휴대폰 영상에서 멈춘 줄 알지 않게)
+    const x = new XMLHttpRequest(); x.open("POST", "/api/upload");
+    x.upload.onprogress = e => { if (!e.lengthComputable) return; const p = Math.round(e.loaded / e.total * 100); const b = $("#upbar"), t = $("#upct"); if (b) b.style.width = p + "%"; if (t) t.textContent = p + "%"; };
+    x.onload = () => res({ ok: x.status < 300, status: x.status, json: async () => JSON.parse(x.responseText) });
+    x.onerror = () => res(null); x.send(fd);
+  });
   if (!r) { toast(T("연결이 끊겨서 올리지 못했어요. 인터넷을 확인하고 다시 넣어 주세요.", "The connection dropped during upload. Check the internet and add the video again.")); return home(); }
   if (!r.ok) {  // 서버가 알려 준 이유(크기·길이·저장 공간·키 없음)를 그대로
     const why = { 413: T("영상이 너무 커요(500MB 이하).", "The video is too large (max 500 MB)."), 400: T("영상 길이는 10분 이하여야 해요. 영상 파일이 맞는지도 확인해 주세요.", "Videos must be 10 minutes or shorter, and a real video file."),
@@ -1181,7 +1198,7 @@ function chipHtml(n) {
 }
 function saveText() {
   return { saved: T("✓ 저장됨", "✓ Saved"), dirty: T("고치는 중…", "Editing…"), saving: T("저장 중…", "Saving…"),
-           error: T("저장하지 못했어요. 서버가 켜져 있는지 확인해 주세요.", "Could not save. Check that the server is running."),
+           error: T("저장하지 못했어요. 인터넷이 다시 이어지면 저절로 저장해요.", "Not saved yet. It saves by itself when the connection is back."),
            readonly: T("보기 전용이라 저장되지 않아요 · 접속 키가 있으면 다시 고쳐 보세요", "View only: changes are not saved without the access key"),
            others: T("다른 사람이 만든 카드 묶음이라 고친 내용은 저장되지 않아요", "Someone else made this card set, so changes are not saved") }[S.saveState];
 }
@@ -1301,6 +1318,7 @@ function scheduleSave(ms = 700) { clearTimeout(S.saveTimer); setSave("dirty"); S
 function notesHtml(c) {
   const t = `${c.ko || ""} ${c.en || ""}`, heard = new Set(S.data.heard_nums || []), out = [];
   if ((t.match(/\d+(?:[.,]\d+)?/g) || []).some(x => !heard.has(x))) out.push(T("숫자(양·시간)가 영상 말소리에 없어요. 맞는지 봐 주세요.", "This number isn't in what was said in the video. Please check it."));
+  if (c.en_src != null && c.en_src !== c.ko) out.push(T("한국어 문장을 고쳤어요. 영어 문장도 같은 뜻인지 맞춰 주세요.", "The Korean sentence changed. Please make the English one match."));
   if (/왼|오른|\b(left|right)\b/i.test(t)) out.push(T("왼쪽·오른쪽이 영상과 같은지 봐 주세요. 거울처럼 바뀌기 쉬워요.", "Check left and right against the video. They are easy to mirror."));
   return out.map(x => `<div class="rnote">${esc(x)}</div>`).join("");
 }
@@ -1372,14 +1390,14 @@ async function askAgentRun(q, box) {
   if (!d) { box.innerHTML = ""; return toast(T("답을 받지 못했어요. 다시 해 주세요.", "No answer. Please try again.")); }
   S.ask = d;
   box.innerHTML = `<div class="askbox"><b>${esc(d.note || T("고칠 안", "Proposed changes"))}</b>
-    <span class="muted">${T(`바뀌는 카드 ${d.changes.length}장 · 검사 ${d.checks}번 · $${d.cost}`, `${d.changes.length} cards change · checker run ${d.checks}× · $${d.cost}`)}</span>
+    <span class="muted">${S.role === "teacher" ? T(`바뀌는 카드 ${d.changes.length}장`, `${d.changes.length} cards change`) : T(`바뀌는 카드 ${d.changes.length}장 · 검사 ${d.checks}번 · $${d.cost}`, `${d.changes.length} cards change · checker run ${d.checks}× · $${d.cost}`)}</span>
     ${d.changes.map(c => `<div class="askrow"><span class="n">${S.data.cards.findIndex(x => x.n === c.n) + 1}</span><div>${ui === "en" ? `<s>${esc(c.en_before)}</s><br><b>${esc(c.en)}</b><span class="muted"> · ${esc(c.ko)}</span>` : `<s>${esc(c.ko_before)}</s><br><b>${esc(c.ko)}</b><span class="muted"> · ${esc(c.en)}</span>`}</div></div>`).join("")}
     ${d.problems.length ? `<div class="issue">${T("적용하면 검사에 걸리는 곳이 있어요:", "Applying this leaves issues:")} ${esc(d.problems.map(m => problemText(m, true)).join(" / "))}</div>` : ""}
     <div class="askbtns">${d.changes.length ? `<button class="btn primary" onclick="applyAgent()">${T("적용", "Apply")}</button>` : ""}<button class="btn" onclick="$('#askres').innerHTML=''">${T("닫기", "Close")}</button></div></div>`;
 }
 function applyAgent() {
   const before = snapshot(), by = Object.fromEntries(S.ask.changes.map(c => [c.n, c]));
-  S.data.cards.forEach(c => { if (by[c.n] && c.ko === by[c.n].ko_before && c.en === by[c.n].en_before) { c.ko = by[c.n].ko; c.en = by[c.n].en; } });  // 기다리는 동안 손으로 고친 카드는 덮지 않는다
+  S.data.cards.forEach(c => { if (by[c.n] && c.ko === by[c.n].ko_before && c.en === by[c.n].en_before) { c.ko = by[c.n].ko; c.en = by[c.n].en; delete c.en_src; } });  // 기다리는 동안 손으로 고친 카드는 덮지 않는다
   $("#askres").innerHTML = ""; changed();
   undoable(T(`카드 ${S.ask.changes.length}장의 문장을 바꿨어요.`, `Changed ${S.ask.changes.length} cards.`), before);
 }
@@ -1409,7 +1427,7 @@ function redraw() {  // 칸을 고친 채 단추를 누르면 change 가 먼저 
 }
 document.addEventListener("pointerdown", () => { S.pdown = true; }, true);
 document.addEventListener("pointerup", () => { S.pdown = false; if (S.redrawLater) { S.redrawLater = false; setTimeout(() => S.view === "edit" && edit(), 0); } }, true);
-function typed(i, k, el) { S.data.cards[i][k] = el.value; S.undo = null; autosize(el); scheduleSave(); }
+function typed(i, k, el) { const c = S.data.cards[i]; if (k === "ko" && c.en_src == null && c.en) c.en_src = c.ko; if (k === "en") delete c.en_src; c[k] = el.value; S.undo = null; autosize(el); scheduleSave(); }
 function snapshot() { return JSON.parse(JSON.stringify({ cards: S.data.cards, fold: S.data.fold || null })); }  // 3D 접기도 같이: 옮기기·빼기가 3D 를 지운 뒤 되돌리면 카드만 돌아와 3D 보기가 빈 채 남았다
 function undoable(msg, before) {
   S.undo = before; if (S.view === "edit") edit();
@@ -1428,7 +1446,8 @@ function del(i) { const before = snapshot(); S.data.cards.splice(i, 1); foldStal
 function merge(i) {
   const before = snapshot(), cs = S.data.cards, a = cs[i], b = cs[i + 1];
   a.start = Math.min(a.start, b.start); a.end = Math.max(a.end, b.end);
-  if (!a.ko.trim()) a.ko = b.ko;
+  const join = (x, y) => [x, y].map(s => (s || "").trim()).filter(Boolean).join(" ");  // 아래 카드 문장이 조용히 사라지던 것(검수 11-03): 이어 붙이고 교사가 다듬게
+  a.ko = join(a.ko, b.ko); a.en = join(a.en, b.en); delete a.en_src;
   cs.splice(i + 1, 1); foldStale(); changed(); undoable(T("두 카드를 하나로 합쳤어요.", "Cards merged."), before);  // 장수가 바뀌면 3D 접기도 맞지 않는다
 }
 function setTime(i, k, v) {
@@ -1618,12 +1637,12 @@ function use() {
   let sheets = "";
   for (let p = 0; p < pages; p++)
     sheets += `<div class="sheet">${title ? `<div class="shead">${title} · ${p + 1}/${pages}</div>` : ""}${cs.slice(p * 6, p * 6 + 6).map((c, j) =>
-      `<div class="pcard"><img src="${imgSrc(c)}" alt="${esc(main(c))}"><div class="n">${p * 6 + j + 1}</div><div class="txt">${text(c)}</div></div>`).join("")}</div>`;
+      `<div class="pcard"><img src="${imgSrc(c, true)}" alt="${esc(main(c))}"><div class="n">${p * 6 + j + 1}</div><div class="txt">${text(c)}</div></div>`).join("")}</div>`;
   // 교사용 기록지: 카드마다 한 줄, 날짜 칸에 그날 도움 단계를 손으로 적는다(서버에는 아무것도 남기지 않음)
   const record = `<div class="record"><div class="rhead"><b>${title || T("과제분석 기록지", "Task-analysis record")}</b><span>${T("이름", "Name")} ______________</span></div>
     <div class="rkey">${T("적는 법: ○ 혼자 · 1 글 · 2 그림 · 3 소리 · 4 움직임 · 5 손으로 도움", "Key: ○ on own · 1 text · 2 picture · 3 sound · 4 motion · 5 hands-on help")}</div>
     <table><thead><tr><th>#</th><th></th><th>${T("할 일", "Step")}</th>${"<th>/</th>".repeat(6)}</tr></thead>
-    <tbody>${cs.map((c, i) => `<tr><td>${i + 1}</td><td><img src="${imgSrc(c)}" alt=""></td><td>${text(c)}</td>${"<td></td>".repeat(6)}</tr>`).join("")}</tbody></table></div>`;
+    <tbody>${cs.map((c, i) => `<tr><td>${i + 1}</td><td><img src="${imgSrc(c, true)}" alt=""></td><td>${text(c)}</td>${"<td></td>".repeat(6)}</tr>`).join("")}</tbody></table></div>`;
   // 3번 화면의 중심은 '안경(눈높이) 카메라로 따라 하며 확인하기'. 인쇄·태블릿·보내기는 아래에 작게
   const first = cs[0];
   $("#main").innerHTML = `
@@ -1643,7 +1662,7 @@ function use() {
             <li>${T("안경(또는 태블릿)에 지금 할 카드가 떠요", "The current card shows on the glasses (or a tablet)")}</li>
             <li>${T("막히면 글 → 그림 → 소리 → 움직임 순서로 도움이 늘어요", "If stuck, help grows: text → picture → sound → motion")}</li>
             <li>${T("카드는 사람이 넘겨요. 사람을 돕는 일이라 기계가 '됐어요'라고 하지 않아요", "A person turns the cards. This work helps a person, so the app never says 'done'")}</li>
-          </ol>` : `<h2>${T("안경을 쓰고 따라 하면, 잘 하고 있는지 바로 알려 줘요", "Follow along with glasses on, and know right away you're doing it right")}</h2>
+          </ol>` : `<h2>${T("안경이나 태블릿 카메라로 따라 하면, 잘 하고 있는지 바로 알려 줘요", "Follow along with glasses or a tablet camera, and know right away you're doing it right")}</h2>
           <ol class="fh-steps">
             <li>${S.data.pov === "facing" ? T("앞 카메라가 몸 전체를 봐요", "The front camera watches the whole body") : T("눈높이 카메라가 손과 물건을 봐요", "An eye-level camera watches the hands and objects")}</li>
             <li>${T("지금 단계를 알아보고 카드를 넘겨요", "It follows the step and turns the card")}</li>
@@ -1750,7 +1769,7 @@ function beep() {
   try { const a = new AudioContext(), o = a.createOscillator(), g = a.createGain(); o.frequency.value = 880; g.gain.value = 0.08; o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + 0.15); } catch {}
 }
 /* 카드를 이미지로: 휴대폰은 공유창(메신저·문자 등)으로 카드마다 한 장씩, 그 밖에는 모든 카드를 한 장에 모아 내려받기 */
-function cardCanvas(c, n, img) {
+function cardCanvas(c, n, img, total, title) {
   const W = 1080, IH = 608, cv = document.createElement("canvas"), g = cv.getContext("2d");
   const font = "-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif";
   const lines = [[main(c), 64, 700, "#11183a"], ...(xOn() && c.x ? [[c.x, 40, 400, "#5f6888"]] : [])];
@@ -1762,12 +1781,14 @@ function cardCanvas(c, n, img) {
   const rows = lines.flatMap(([t, size, weight, color]) => wrap(t, size, weight).map(x => [x, size, weight, color]));
   cv.width = W; cv.height = IH + 80 + rows.reduce((h, [, size]) => h + size * 1.3, 0) + 50;
   g.fillStyle = "#fff"; g.fillRect(0, 0, W, cv.height);
-  const r = Math.max(W / img.naturalWidth, IH / img.naturalHeight);  // 16:9 칸을 가득(가운데 기준)
+  const r = Math.min(W / img.naturalWidth, IH / img.naturalHeight);  // 16:9 칸 안에 다 담는다(세로 영상의 손·작업대가 잘리지 않게)
+  g.fillStyle = "#f4f5f8"; g.fillRect(0, 0, W, IH);
   g.drawImage(img, (W - img.naturalWidth * r) / 2, (IH - img.naturalHeight * r) / 2, img.naturalWidth * r, img.naturalHeight * r);
   g.fillStyle = "#11183a"; g.beginPath(); g.arc(70, 70, 42, 0, 7); g.fill();
   g.fillStyle = "#fff"; g.font = `700 40px ${font}`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(n, 70, 72);
   g.textAlign = "left"; g.textBaseline = "alphabetic"; let y = IH + 80;
   for (const [t, size, weight, color] of rows) { g.font = `${weight} ${size}px ${font}`; g.fillStyle = color; g.fillText(t, 60, y + size * 0.9); y += size * 1.3; }
+  if (total) { g.font = `400 28px ${font}`; g.fillStyle = "#8a91a8"; g.textAlign = "right"; g.fillText(`${title ? title + " · " : ""}${n}/${total}`, W - 40, cv.height - 22); g.textAlign = "left"; }  // 메신저에서 여러 장을 넘겨 볼 때
   return cv;
 }
 async function shareLink(to) {  // QR을 찍을 수 없는 같은 기기(휴대폰)에서는 링크로
@@ -1779,8 +1800,8 @@ async function shareCards(btn) {
   btn.disabled = true;
   try {
     const cs = S.data.cards, name = (S.data.title || "StepCards").replace(/[\\/:*?"<>|]/g, "");
-    const imgs = await Promise.all(cs.map(c => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = imgSrc(c); })));
-    const cvs = cs.map((c, i) => cardCanvas(c, i + 1, imgs[i]));
+    const imgs = await Promise.all(cs.map(c => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = imgSrc(c, true); })));
+    const cvs = cs.map((c, i) => cardCanvas(c, i + 1, imgs[i], cs.length, S.data.title || ""));
     const blob = cv => new Promise(r => cv.toBlob(r, "image/jpeg", 0.88));
     const files = await Promise.all(cvs.map(async (cv, i) => new File([await blob(cv)], `${name}_${pad(i + 1)}.jpg`, { type: "image/jpeg" })));
     if (navigator.canShare?.({ files })) {
@@ -1855,9 +1876,9 @@ function coach() {
         <button onclick="coachWhere('mac')" hidden id="cwmac">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button>
       </div>
       <div class="d" id="cwhered" hidden></div>
-      <details class="pairwrap"><summary>${T("안경으로 보기", "Use with glasses")} · <b>${C.pair}</b></summary><div class="pairbox"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&s=${C.pair}" alt="" width="96" height="96">
+      <details class="pairwrap"><summary>${T("안경과 연결하기", "Connect glasses")} · ${T("연결 코드", "code")} <b>${C.pair}</b></summary><div class="pairbox"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&s=${C.pair}" alt="" width="96" height="96">
         <span>${T("안경 연결", "Glasses link")} · <b>${C.pair}</b><br><span class="d">${T("이 화면 전용 코드라, 같은 카드를 다른 사람이 써도 섞이지 않아요.", "This screen's own code, so other learners on the same cards don't mix.")}</span></span></div></details>
-      <label class="livetoggle" ${noDone() ? "hidden" : ""}><input type="checkbox" ${C.live ? "checked" : ""} onchange="setLive(this.checked)"> ${T("따라 하는 동안 계속 확인하기 (단계 결과를 기준 사진과 비교)", "Keep checking while following (compare each step's result with its reference)")}</label>
+      <label class="livetoggle" ${noDone() ? "hidden" : ""}><input type="checkbox" ${C.live ? "checked" : ""} onchange="setLive(this.checked)"> ${T("단계마다 다 됐는지 시범 사진과 맞춰 보기", "Check each step against the demonstration photo")}</label>
       <div class="seg" id="chelpseg">${[[false, T("카드 다 보여 주기", "Show the whole card")], [true, T("필요할 때만 도움", "Help only when needed")]].map(([v, l]) =>
         `<button class="${C.help === v ? "on" : ""}" aria-pressed="${!!(C.help === v)}" onclick="setHelp(${v})">${l}</button>`).join("")}</div>
       <div class="d" id="chelpd"></div>
@@ -2205,6 +2226,7 @@ function coachStart() {
   sm.width = 32; sm.height = 18; C.lastSm = null; C.moved = false; C.inflight = 0; C.sess = (C.sess || 0) + 1;  // 세션 번호: 나갔다 다시 들어와도 앞 세션의 루프·답은 버린다
   C.timer = setInterval(() => {  // 0.5초에 한 장, 최근 4장(2초)만 둔다: 카드가 바뀐 뒤 판단 준비가 빨라진다(11-01 실측: 1초 간격이면 카드당 최소 7초)
     if (v.readyState < 2) return;
+    if (faceBlocked(v)) { pill(T("얼굴 가리기를 불러오지 못해 자동 넘김을 멈췄어요 · 이전·다음 단추로 넘겨 주세요", "Face blur could not load, so auto-advance is off · use Back and Next")); C.faceWait = true; return; }
     if (v.srcObject && !faceReady()) { pill(T("얼굴 가리기 준비 중…", "Preparing face blur…")); C.faceWait = true; return; }  // 카메라 사진은 얼굴 가리기가 준비된 뒤부터 보낸다(시범 영상 재생은 그대로)
     if (C.faceWait) { C.faceWait = false; pill(T("지켜보는 중 · 얼굴은 가려서 보내요", "Watching · faces are blurred before sending")); }
     cv.width = 480; cv.height = Math.round(480 * v.videoHeight / v.videoWidth);

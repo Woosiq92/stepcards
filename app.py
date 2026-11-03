@@ -56,9 +56,9 @@ APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정
 JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 수 있지만 하루 한도가 있다(제출 설명에 적는 키)
 JUDGE_LIMITS = {"upload": 15, "illustrate": 60, "agent": 20, "translate": 10, "step": 400, "compare": 400, "coach": 3000, "frame": 60, "retry": 15, "verify": 600}  # 하루 횟수, 심사위원 전원 합계(키가 하나라 사람을 못 가른다). 따라 하기 3000번 ≈ 2시간·약 $9. 전체는 비용 상한이 막는다
 JUDGE_USE = {"day": "", "n": {}}
-PUBLIC_LIMITS = {"coach": 900, "verify": 300, "records": 2000, "log": 2000}  # 키 없는 학습자 기기: 카드 묶음마다 하루(판단 약 $0.003·확인 약 $0.005 → 묶음당 하루 최대 약 $4)
+PUBLIC_LIMITS = {"coach": int(os.environ.get("PUBLIC_COACH_SET", 900)), "verify": int(os.environ.get("PUBLIC_VERIFY_SET", 300)), "records": 2000, "log": 2000}  # 키 없는 학습자 기기: 카드 묶음마다 하루(판단 약 $0.003·확인 약 $0.005 → 묶음당 하루 최대 약 $4)
 PUBLIC_USE = {"day": "", "n": {}}
-PUBLIC_TOTAL = {"coach": 3000, "verify": 900}  # 키 없는 기기 전체 하루 합계(견본 11개를 돌아가며 써도 하루 약 $14 안: 상한 $140 을 심사위원 몫으로 남긴다)
+PUBLIC_TOTAL = {"coach": int(os.environ.get("PUBLIC_COACH_DAY", 3000)), "verify": int(os.environ.get("PUBLIC_VERIFY_DAY", 900))}  # 환경 변수로 바꿀 수 있다(코드 수정 없이 한 반 규모·심사 기간에 맞추게)  # 키 없는 기기 전체 하루 합계(견본 11개를 돌아가며 써도 하루 약 $14 안: 상한 $140 을 심사위원 몫으로 남긴다)
 PAID_PATHS = ("/upload", "/retry", "/illustrate", "/agent", "/coach", "/verify", "/translate", "/step", "/compare", "/frame")  # Meta 를 부르는 요청
 TEACHERS = dict(x.strip().split(":", 1) for x in os.environ.get("TEACHER_KEYS", "").split(",") if ":" in x)  # 교사별 키 "이름:키,이름:키"
 NOW_PATH = re.compile(r"/api/runs/\w+/(now|call|mark)$")  # 안경은 키(쿠키)가 없다: 지금 카드 맞추기와 '도와줘요'·'여기서 막혔어요'는 키 없이
@@ -347,7 +347,8 @@ def delete_run(run_id: str):
     shutil.rmtree(d)
     if video.is_file() and video.resolve().parent == UPLOADS.resolve() and not keep:
         video.unlink()
-    NOW.pop(run_id, None)
+    for k in [k for k in NOW if k == run_id or k.startswith(run_id + "|")]:  # 짝 코드가 붙은 키("id|코드")도
+        NOW.pop(k, None)
     return {"ok": True}
 
 
@@ -545,7 +546,7 @@ def save(run_id: str, body: dict):
 
 
 NUM_KEYS = ("start", "end", "rep", "frame_t", "done_t", "v")
-TEXT_KEYS = {"ko": 300, "en": 300, "object": 120, "look": 200, "check": 300, "x": 300, "xsrc": 300, "box_prompt": 120}
+TEXT_KEYS = {"ko": 300, "en": 300, "en_src": 300, "object": 120, "look": 200, "check": 300, "x": 300, "xsrc": 300, "box_prompt": 120}
 
 
 def clean_cards(cards):
@@ -1145,6 +1146,13 @@ def get_records(run_id: str, request: Request):
         raise HTTPException(401, "key required")
     f = run_dir(run_id) / "records.jsonl"
     return [json.loads(x) for x in f.read_text().splitlines() if x.strip()] if f.exists() else []
+
+
+@app.get("/api/me")
+def me(request: Request):
+    """화면이 미리 알기 위한 역할(키 값은 주지 않는다): 큰 영상을 다 올린 뒤에야 키를 묻지 않게, 관리자 링크는 관리자에게만"""
+    r = who(request)
+    return {"role": r.split(":")[0] if r else None}
 
 
 @app.get("/api/health")

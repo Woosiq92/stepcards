@@ -20,7 +20,7 @@ LogicCraft built StepCards during the Meta AI Developer Hackathon (Oct 26 – No
 Live: https://stepcards-production.up.railway.app
 
 - You can look without a key. On the home page, open a sample under "In the café, the kitchen, the classroom" (the napkin fold is the quickest) and look through the cards. Then press "Follow & check" → "Tablet view", or "Glasses view" for the 600×600 Ray-Ban Display page.
-- Making cards from your own video, editing, drawings, Check, translation and Coach mode call the Meta Model API, so the app asks once for an access key. Judges: use the judge key from the submission form (it has a daily limit). Without a key, Coach mode still runs, but cards move only by hand.
+- Making cards from your own video, editing, drawings, Check, translation and Coach mode call the Meta Model API, so the app asks once for an access key. Judges: use the judge key from the submission form (it has a daily limit). Without a key, Coach mode and Check still work on any card set within a shared daily limit per set (learner devices need no key); "Watch it work" on the samples moves the cards by itself. Samples are read-only: press "Copy and edit" to try editing and Ask on your own copy.
 - No camera at hand? On the sample card sets, Coach mode can "Watch it work": it plays the demonstration video (CC BY) as the camera and makes live decisions, so you can see cards move on by themselves. Card sets that makers upload are not played this way.
 - A 30-second path: napkin sample → "Follow & check" → "Start following & checking" → choose "Help only when needed" and start (allow the camera) → press Help a few times to see text → picture → sound → motion → "Ask for help". Then sign in with the key, open the same card set's Follow & check page in another tab, look at the live board and press "On my way".
 
@@ -176,7 +176,7 @@ Tests (97 with pytest: checker, server, Coach decisions, agent; no paid model ca
 
 ## Running it for real
 
-- Who sees what: without a key, the home page lists only the sample sets. Card sets that makers upload are unlisted and open only by their link (an unguessable id), which is what the QR codes carry. `/runs/` serves only card pictures and frame stills; before 11-02 the whole run folder was public.
+- Who sees what: without a key, the home page lists only the sample sets. Card sets that makers upload are unlisted and open only by their link, which is what the QR codes carry. The id comes from the video's hash, so it is hard to guess but not secret to someone who has the same file; anyone with the link can see the card pictures and frame stills. `/runs/` serves only card pictures and frame stills; before 11-02 the whole run folder was public.
 - Accounts: one admin key, optional per-teacher keys (own sets only), and a judge key with daily limits. Every change to a card set is appended to its `audit.jsonl` (who, when, what).
 - Several learners at once: each Coach screen has its own pairing code, and its glasses link carries that code, so learners on the same card set don't move each other's cards. This state and the judge-key usage survive restarts (`state.json`).
 - Cost guards: Coach mode pauses its camera after 5 minutes without a step change. The server limits uploads to 500 MB and 10 minutes, and refuses them when less than 2 GB is free. The keyless and judge daily limits count only requests that were handled, and only for card sets that exist. All judges share one set of judge limits. Daily limits reset at midnight Korea time.
@@ -186,7 +186,7 @@ Tests (97 with pytest: checker, server, Coach decisions, agent; no paid model ca
 - Storage over time (`storage.py`, runs every 6 hours): the audio file is deleted once speech is transcribed. A card set unused for `COMPACT_DAYS` (14) keeps a 640 px copy of its video with low-bitrate mono sound instead of the original and drops its 1-second frames and caches (frames come back from the copy when the frame strip is opened). After `ARCHIVE_DAYS` (90) only cards, drawings and text are kept. With `RETAIN_DAYS` set, sets are deleted after that many days, with a warning on the home and edit pages for the last 7 days. Each teacher key has a quota (`TEACHER_QUOTA_MB` 5000, `TEACHER_MAX_SETS` 50). On the samples, compacting cut a set by roughly three quarters.
 - Admin page (`#view=admin`, admin key): every card set with owner, stage, last use and size by part; per-owner totals; compact, archive, .zip and delete buttons.
 - Backups: a backup by maker (cards, drawings, titles, owners, audit; no video) is written every day to `backups/` and kept for 7 days, and you can download it from the admin page. Each card set also downloads as a .zip from the Use page. Railway volume backups need a paid plan.
-- Without an API key (for example after the hackathon credit ends) the site still starts. Viewing, printing, tablet and glasses views work, and cards can still be made on a school computer with Muse Glimmer. A school deployment should use its own paid Meta API key, or Glimmer for anything involving students.
+- Without an API key (for example after the hackathon credit ends) the site still starts. Viewing, printing, tablet and glasses views work, and cards can still be made with Muse Glimmer on an Apple Silicon Mac with 48 GB of memory (without speech transcription or SAM outlines). A school deployment should use its own paid Meta API key, or Glimmer for anything involving students.
 - Reproducible builds: the base image is pinned (`python:3.14.8-slim`) and Python packages are pinned in `requirements.txt`.
 
 ## Privacy
@@ -195,12 +195,13 @@ Tests (97 with pytest: checker, server, Coach decisions, agent; no paid model ca
 - If `GTTS_KEY` is set, the text of card sentences (no photos, no video) is sent to Google Cloud Text-to-Speech to make the read-aloud audio, and the audio is cached with the card set. Without the key, the device voice reads them and nothing is sent.
 - Do not use videos of students. Our tests and demo use adult demonstrations only.
 - Coach mode never stores camera frames. The only learning records are anonymous help and check counts per card, sent only from devices where a person switched them on (no photos, no names).
-- For school use, both making cards and Coach mode can run on Muse Glimmer on the school's own computer, so student video never leaves it.
+- For school use, card making can run on Muse Glimmer on the school's own 48 GB Mac, so the video never leaves it. Coach mode on Glimmer still uses the older sentence-based decision and is slower (12–19 s per decision); a tablet needs an HTTPS address to use its camera, which we have not set up for a local network.
+- In Coach mode and Check, the browser pixelates faces before a live camera frame is sent to the Meta API. If the face model cannot load (for example a network that blocks the CDN), no frame is sent and cards move by hand. Sets filmed facing the camera (sign language, dance) are not blurred, and the demonstration video is not blurred when cards are made.
 
 ## Credits
 
 - We learned design patterns from Meta's hackathon workshop repository `meta-models/legal-agent-workshop`: checks built into the pipeline instead of left to the model, code-only verdicts, retry with reasons, content-hash caching, SAM box tokens and a progress board. No code was copied from it.
-- Sample videos used for testing and the demo (not included in this repository unless noted):
+- Sample videos used for testing and the demo (small silent copies of the shipped samples are in `seed/`; the full videos are not included):
   - "POV Morning Latte in Costa Rica ASMR" by Cornffy, YouTube `vqv_DMMDqC8`, CC BY. Korean narration was added with a synthetic voice for testing.
   - Starbucks black glazed latte recipe by 베란다스튜디오, YouTube `sjgucMN4Aa8`, CC BY.
   - "Napkin Folding - Butterfly" by maitp, YouTube `jaHe0SBRLVA`, CC BY. 
