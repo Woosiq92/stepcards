@@ -96,13 +96,13 @@ if not KO:
          "StepCards fixes that. Film the task once, and it becomes step cards, one action each. As someone follows along, the camera sees when a step is done and shows the next card."),
         ("making", "single:making", None, "Real run · Muse Spark · SAM 3.1 · Voice Transcribe",
          f"Here's a real run with a {video_min}-minute napkin-folding video. Muse Spark splits it into steps, each with a short sentence in Korean and English. "
-         f"Our code checks every card, and SAM 3.1 picks the photos. {retry_en}In {make_s} seconds: {n_cards} cards, for {make_cost} cents."),
+         f"Our code then checks every card, and sends any card that breaks a rule back to the model to rewrite. {retry_en}SAM 3.1 picks the photos. In {make_s} seconds: {n_cards} cards, for {make_cost} cents."),
         ("edit", "single:edit", None, "Review",
          "Then the person who knows the task reviews them. If I add \"pick up the napkin and\" to card 2, it has two actions, so the card turns red and says why. "
          "Yellow notes flag numbers that never came up in the video, and left or right, which are easy to mix up."),
         ("agent", "single:agent", None, f"Agent · Muse Spark runs our checker as a tool · {ag_wait} s wait cut",
          "Or just ask: \"simpler words for a learner who reads little.\" "
-         f"Muse Spark rewrites {ag_n} cards, checking its draft with our checker first. Nothing changes until someone taps Apply."),
+         f"Muse Spark calls our checker as a tool, fixes what it flags, and only then answers, with {ag_n} new sentences. Nothing changes until someone taps Apply."),
         ("follow", "duo", (v_start + 2, last_turn - v_start + 4, FOLLOW_X), f"Replay at {FOLLOW_X:g}x · demo video used as the camera",
          "This is the learner's screen, and the glasses show the same card. The line under the camera says what the model sees. "
          f"In this replay, the cards moved on by themselves up to card {auto_to}, about {LAG} seconds after each step."),
