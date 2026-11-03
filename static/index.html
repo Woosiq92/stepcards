@@ -463,12 +463,14 @@
   .sumgrid span { color:#a9b8c6; }
   .coachv .voice { right:124px; } .coachv #ctxt { cursor:pointer; }
   .coachv .cstart ~ .voice { z-index:5; }
-  .cstart { position:absolute; inset:0; background:radial-gradient(120% 80% at 50% 0%, #16212c 0%, var(--dark) 60%); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; z-index:4; text-align:center; padding:24px; }
+  .cstart { position:absolute; inset:0; background:radial-gradient(120% 80% at 50% 0%, #16212c 0%, var(--dark) 60%); display:flex; flex-direction:column; align-items:center; justify-content:safe center; gap:12px; z-index:4; text-align:center; padding:24px; overflow-y:auto; }
+  .pairwrap summary { cursor:pointer; color:#9db5ff; font-size:14px; min-height:44px; display:flex; align-items:center; justify-content:center; } .pairwrap summary b { letter-spacing:.1em; } .pairwrap[open] summary { margin-bottom:6px; }
   .cstart .glyph { width:72px; height:72px; border-radius:22px; background:var(--accent); display:grid; place-items:center; box-shadow:0 12px 32px rgba(47,99,244,.4); }
   .cstart .glyph .ico { width:36px; height:36px; color:#fff; stroke-width:1.7; }
   .cstart .t { font-size:34px; font-weight:800; letter-spacing:-.03em; } .cstart .d { color:#a9b8c6; max-width:540px; }
   .cstart .seg { background:var(--dark2); } .cstart .seg button { color:#a9b8c6; } .cstart .seg button.on { background:var(--accent); color:#fff; box-shadow:none; }
   .cstart .linkbtn { color:#9db5ff; }
+  @media (max-height:860px) { .cstart .glyph { display:none; } .cstart .t { font-size:28px; } }  /* 노트북 한 화면에 시작 단추까지 들어오게(11-03) */
   [hidden] { display:none !important; }
   @media (max-width:720px) {
     header { padding:0 16px; gap:10px; } .logo span:last-child { display:none; } .step { padding:6px 8px; font-size:0; gap:0; } .step .dot { font-size:12px; } .step.on { font-size:13px; gap:6px; padding-right:12px; white-space:nowrap; } .steps { flex-shrink:0; } #uiseg .long { display:none; } #uiseg button { padding:6px 10px; }
@@ -1851,8 +1853,8 @@ function coach() {
         <button onclick="coachWhere('mac')" hidden id="cwmac">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button>
       </div>
       <div class="d" id="cwhered" hidden></div>
-      <div class="pairbox"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&s=${C.pair}" alt="" width="96" height="96">
-        <span>${T("안경 연결", "Glasses link")} · <b>${C.pair}</b><br><span class="d">${T("이 화면 전용 코드라, 같은 카드를 다른 사람이 써도 섞이지 않아요.", "This screen's own code, so other learners on the same cards don't mix.")}</span></span></div>
+      <details class="pairwrap"><summary>${T("안경으로 보기", "Use with glasses")} · <b>${C.pair}</b></summary><div class="pairbox"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&s=${C.pair}" alt="" width="96" height="96">
+        <span>${T("안경 연결", "Glasses link")} · <b>${C.pair}</b><br><span class="d">${T("이 화면 전용 코드라, 같은 카드를 다른 사람이 써도 섞이지 않아요.", "This screen's own code, so other learners on the same cards don't mix.")}</span></span></div></details>
       <label class="livetoggle" ${noDone() ? "hidden" : ""}><input type="checkbox" ${C.live ? "checked" : ""} onchange="setLive(this.checked)"> ${T("따라 하는 동안 계속 확인하기 (단계 결과를 기준 사진과 비교)", "Keep checking while following (compare each step's result with its reference)")}</label>
       <div class="seg" id="chelpseg">${[[false, T("카드 다 보여 주기", "Show the whole card")], [true, T("필요할 때만 도움", "Help only when needed")]].map(([v, l]) =>
         `<button class="${C.help === v ? "on" : ""}" aria-pressed="${!!(C.help === v)}" onclick="setHelp(${v})">${l}</button>`).join("")}</div>
@@ -1863,6 +1865,7 @@ function coach() {
     </div>
   </div>`;
   C.started = false; C.shown = -1; C.max = {}; C.manual = false; C.syncN = 0; C.againSaid = -1; setVoice(C.voice); setHelp(C.help);
+  if (S.data?.pov !== "facing") faceLoad();  // 얼굴 가리기 모델을 시작 화면에서 미리 받아 둔다: 카메라를 켜면 바로 보낼 수 있게
   C.hold = true; coachCard();  // 지난 위치를 읽기 전에 1번 카드로 덮어쓰지 않게 안경 알림을 잠시 멈춘다
   fetch(`/api/runs/${S.run}/now?s=${C.pair}`).then(r => r.json()).then(d => {  // 지난번에 중간에 멈췄으면 그 카드부터 이어 하기
     const n = S.data.cards.length;
