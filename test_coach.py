@@ -67,7 +67,7 @@ def test_in_view_and_what_to_show(monkeypatch):
 
 # 11-02 시범의 단계 끝 사진과 맞추기(Meta API 경로)
 def states(monkeypatch, match, cur, prev_match=-1, similar=False, seen=0):
-    monkeypatch.setattr(coach, "ask_states", lambda c, n, f, r, live=False: (match, seen, 0.0, {}, coach.view({})))
+    monkeypatch.setattr(coach, "ask_states", lambda c, n, f, r, live=False, action=False: (match, seen, 0.0, {}, coach.view({})))
     return coach.check(CARDS, cur, ["f"], 0, False, None, [("a", "u")], prev_match, similar)
 
 
@@ -100,7 +100,7 @@ def test_states_last_card_finishes(monkeypatch):
 
 def test_states_waits_half_the_demo_time(monkeypatch):
     cards = [{"en": "sprinkle", "start": 10, "end": 30}, {"en": "stir", "start": 31, "end": 40}]
-    monkeypatch.setattr(coach, "ask_states", lambda c, n, f, r, live=False: (1, 0, 0.0, {}, coach.view({})))
+    monkeypatch.setattr(coach, "ask_states", lambda c, n, f, r, live=False, action=False: (1, 0, 0.0, {}, coach.view({})))
     assert coach.check(cards, 1, ["f"], 0, False, None, [("a", "u")], -1, False, 4)["decision"] == "wait"  # 20초 단계, 4초째
     assert coach.check(cards, 1, ["f"], 0, False, None, [("a", "u")], -1, False, 11)["decision"] == "next"
 
@@ -112,3 +112,20 @@ def test_states_match_out_of_range_is_ignored(monkeypatch):
     monkeypatch.setattr(coach.pipeline.client.responses, "create", lambda **k: R())
     m, *_ = coach.ask_states(CARDS, 2, ["f"], [("a", "u")] * 4)
     assert m == -1
+
+
+# 11-03 일반화 개선: 앞서 감(-2) → 다음엔 넓힌다, 막힘 판정, 뒤집기는 동작을 보면 한 번으로
+def test_states_further_than_shown_sets_ahead(monkeypatch):
+    r = states(monkeypatch, -2, 2)
+    assert r["decision"] == "wait" and r["ahead"] is True
+
+
+def test_stuck_after_twice_the_demo_time():
+    cards = [{"en": "fold", "start": 10, "end": 20}]
+    assert not coach.stuck(cards, 1, 15) and coach.stuck(cards, 1, 21) and not coach.stuck(cards, 1, None)
+
+
+def test_lookalike_step_moves_once_when_action_seen(monkeypatch):
+    monkeypatch.setattr(coach, "ask_states", lambda c, n, f, r, live=False, action=False: (1, 0, 0.0, {}, {**coach.view({}), "action_seen": action}))
+    assert coach.check(CARDS, 2, ["f"] * 4, 0, False, None, [("a", "u")], -1, True)["decision"] == "next"  # 사진 4장: 동작을 봄
+    assert coach.check(CARDS, 2, ["f"] * 2, 0, False, None, [("a", "u")], -1, True)["decision"] == "wait"  # 2장뿐: 두 번 확인 규칙

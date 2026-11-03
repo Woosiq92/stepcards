@@ -416,6 +416,7 @@
   .coachv .cam { position:absolute; top:16px; left:16px; width:240px; border-radius:var(--r); overflow:hidden; background:#000; box-shadow:0 0 0 1px rgba(255,255,255,.12), 0 10px 30px rgba(0,0,0,.5); z-index:3; }
   .coachv .cam video { width:100%; display:block; min-height:135px; }
   .coachv .cam video.mirror { transform:scaleX(-1); }
+  .coachv .cam .ghost { display:none; } .coachv.ghosting.aim .cam .ghost { display:block; position:absolute; top:0; left:0; width:100%; object-fit:cover; opacity:.35; pointer-events:none; }
   .coachv .cam .guide, .coachv .cam .aimtxt { display:none; }
   .coachv.aim .cam { width:min(34vw, 380px); top:72px; left:16px; z-index:6; box-shadow:0 0 0 3px var(--accent), 0 20px 60px rgba(0,0,0,.6); transition:width .25s; cursor:pointer; }
   .coachv.aim .imgwrap { padding-left:calc(min(34vw, 380px) + 40px); }  /* 카드는 미리보기 옆으로 비켜서 계속 보인다 */
@@ -473,6 +474,12 @@
   .pairwrap summary { cursor:pointer; color:#9db5ff; font-size:14px; min-height:44px; display:flex; align-items:center; justify-content:center; } .pairwrap summary b { letter-spacing:.1em; } .pairwrap[open] summary { margin-bottom:6px; }
   .cstart .glyph { width:72px; height:72px; border-radius:22px; background:var(--accent); display:grid; place-items:center; box-shadow:0 12px 32px rgba(47,99,244,.4); }
   .cstart .glyph .ico { width:36px; height:36px; color:#fff; stroke-width:1.7; }
+  .csteps { list-style:none; padding:0; margin:0; display:grid; gap:12px; width:min(540px, 100%); }
+  .csteps li { display:flex; gap:12px; align-items:flex-start; background:#18222c; border:1px solid #2a3846; border-radius:16px; padding:14px 16px; text-align:left; }
+  .csteps .cnum { flex:none; width:28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; display:grid; place-items:center; font-weight:800; }
+  .csteps li > div { display:grid; gap:6px; flex:1; color:#a9b8c6; } .csteps b { color:#fff; font-size:17px; } .csteps .navb { justify-self:start; margin-top:4px; }
+  .csettings { width:min(540px, 100%); } .csettings summary { cursor:pointer; color:#9db5ff; font-size:14px; min-height:44px; display:flex; align-items:center; justify-content:center; }
+  .csettings[open] { display:grid; gap:10px; justify-items:center; }
   .cstart .t { font-size:34px; font-weight:800; letter-spacing:-.03em; } .cstart .d { color:#a9b8c6; max-width:540px; }
   .cstart .seg { background:var(--dark2); } .cstart .seg button { color:#a9b8c6; } .cstart .seg button.on { background:var(--accent); color:#fff; box-shadow:none; }
   .cstart .linkbtn { color:#9db5ff; }
@@ -1894,7 +1901,7 @@ function coach() {
     <button class="exit voice" id="cvoice" onclick="setVoice(!C.voice)"></button>
     <div class="ttop"><div class="tprog" id="cmid"></div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
     <div class="cstage">
-    <div class="cam" data-label="${T("카메라", "Camera")}" onclick="aim(false)" title="${T("누르면 맞추기 안내 닫기", "Tap to close the framing guide")}"><video id="cvid" muted playsinline></video><div class="guide"></div><div class="aimtxt" id="caimtxt">${T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box")}</div>
+    <div class="cam" data-label="${T("카메라", "Camera")}" onclick="aim(false)" title="${T("누르면 맞추기 안내 닫기", "Tap to close the framing guide")}"><video id="cvid" muted playsinline></video><img class="ghost" id="cghost" alt=""><div class="guide"></div><div class="aimtxt" id="caimtxt">${T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box")}</div>
       <div class="judge" id="cjudge" aria-live="polite"></div></div>
     <div class="livehint" id="clive" hidden></div>
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
@@ -1913,8 +1920,15 @@ function coach() {
       <div class="t">${T("따라 하기", "Coach mode")}</div>
       ${S.data.reviewed === false ? `<div class="unreviewed">${T("만든 사람이 아직 확인하지 않은 카드예요", "The maker hasn't checked these cards yet")}</div>` : ""}
       <div class="d">${noDone() ? (S.data.pov === "facing" ? T("몸 전체 동작(춤·수어)은 카메라 판단을 아직 검증하지 못해 꺼 두었어요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "Camera judging for whole-body moves (dance, signing) isn't verified yet, so it's off. Turn cards with Back and Next; help grows when you're stuck.") : T("사람을 돕는 일이라 카메라를 켜지 않아요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "This work helps a person, so the camera stays off. Turn cards with Back and Next; help grows when you're stuck."))
-        : T("카메라가 손과 물건을 보고, 지금 할 카드를 띄워 줘요.<br>언제든 이전·다음 단추로 직접 넘길 수 있어요. 카메라 사진은 저장하지 않아요.",
-        "The camera watches hands and objects and shows the card for the current step.<br>Back and Next always work by hand. Camera frames are never stored.")}</div>
+        : T("카메라가 손과 물건을 보고, 지금 할 카드를 띄워 줘요. 이전·다음으로 직접 넘길 수도 있어요.",
+        "The camera watches hands and objects and shows the card for the current step. Back and Next always work by hand.")}</div>
+      ${S.data.sample && !noDone() ? `<ol class="csteps">
+        <li><span class="cnum">1</span><div><b>${T("먼저 보기", "Watch first")}</b><span>${T("시범 영상이 카메라 대신 들어가요. 카드가 저절로 넘어가는 걸 봐요. 카메라는 필요 없어요.", "The demonstration video plays as the camera, and the cards move on by themselves. No camera needed.")}</span>
+          <button class="navb next" onclick="coachWatch()">${icon("video")} ${T("시범 영상으로 보기", "Watch the demo")}</button></div></li>
+        <li><span class="cnum">2</span><div><b>${T("직접 해 보기", "Try it yourself")}</b><span>${T("카메라 앞에서 따라 하면, 지금 할 카드를 띄우고 다 됐는지 봐 줘요. 사진은 저장하지 않아요.", "Follow along in front of the camera. It shows the current card and checks each step. Frames are never stored.")}</span>
+          <button class="navb" onclick="coachCamera()">${icon("camera")} ${T("카메라 켜기", "Turn on camera")}</button></div></li></ol>`
+        : `<button class="navb next" onclick="coachCamera()">${noDone() ? T("시작하기", "Start") : T("카메라 켜기", "Turn on camera")}</button>`}
+      <details class="csettings"><summary>${T("설정 · 도움 방식, 안경 연결", "Settings · help, glasses")}</summary>
       <div class="seg" id="cwhere">
         <button class="on" onclick="coachWhere('api')">${T("Meta API", "Meta API")}</button>
         ${LAB ? `<button onclick="coachWhere('device')">${T("이 기기 (실험)", "On this device (lab)")}</button>` : ""}
@@ -1927,8 +1941,7 @@ function coach() {
       <div class="seg" id="chelpseg">${[[false, T("카드 다 보여 주기", "Show the whole card")], [true, T("필요할 때만 도움", "Help only when needed")]].map(([v, l]) =>
         `<button class="${C.help === v ? "on" : ""}" aria-pressed="${!!(C.help === v)}" onclick="setHelp(${v})">${l}</button>`).join("")}</div>
       <div class="d" id="chelpd"></div>
-      <button class="navb next" onclick="coachCamera()">${noDone() ? T("시작하기", "Start") : T("카메라 켜기", "Turn on camera")}</button>
-      ${S.data.sample && !noDone() ? `<button class="navb watchbtn" onclick="coachWatch()">${icon("video")} ${T("작동 보기 · 시범 영상을 카메라 대신", "Watch it work · demo video as the camera")}</button>` : ""}
+      </details>
       <label class="linkbtn" style="cursor:pointer">${T("영상 파일로 시험하기", "Try with a video file")}<input type="file" accept="video/*" hidden onchange="coachFile(this.files[0])"></label>
     </div>
   </div>`;
@@ -2111,6 +2124,7 @@ function coachEnd(finished, endBy) {
   clog("end", { cur: S.idx + 1, finished: !!finished });
   const rec = Object.entries(C.max || {});
   const by = [1, 2, 3, 4].map(l => rec.filter(([, m]) => m === l).map(([i]) => +i + 1));
+  const cv = $("#cvid"), demo = !!cv && !cv.srcObject && /\/demo\.mp4/.test(cv.src || "");  // 1단계(시범 영상을 카메라 대신)였다
   if (S.rec && Object.keys(C.max || {}).length)
     fetch(`/api/runs/${S.run}/records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ s: C.pair, rows: Object.entries(C.max).map(([i, lv]) => ({ n: S.data.cards[+i].n, lv })) }) }).catch(() => {});
   if (finished) fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: S.idx, by: "coach", fin: true, s: C.pair }) }).catch(() => {});
@@ -2119,10 +2133,11 @@ function coachEnd(finished, endBy) {
     <div class="sumgrid">${by.map((ns, j) => `<div><b>${j ? T(`${lvName(j + 1)}까지`, `Up to ${lvName(j + 1).toLowerCase()}`) : T("글만 보고", "Text only")}</b><span>${ns.length ? T(`카드 ${ns.join(", ")}`, `Card${ns.length > 1 ? "s" : ""} ${ns.join(", ")}`) : "–"}</span></div>`).join("")}</div>
     <div class="d">${S.rec ? T("기록에 남겼어요. 3번 화면의 '기록 보기'에서 볼 수 있어요.", "Saved to records. See 'View records' on the Follow & check page.") : T("도와주는 분께: 이 요약은 저장되지 않아요. 필요하면 적어 두세요.", "For whoever is helping: this summary isn't saved. Note it down if you need it.")}</div>` : ""}
     ${runResult()}
+    ${demo ? `<button class="navb next" onclick="S.idx=0;route();setTimeout(() => { if ($('#cstart')) coachCamera(); }, 300)">${icon("camera")} ${T("2단계 · 이제 직접 해 보기", "Step 2 · Now try it yourself")}</button>` : ""}
     <button class="navb" onclick="S.idx=0;route()">${T("처음부터 다시", "Start over")}</button>
     <button class="navb" onclick="shareRun()">${T("오늘 한 것 보내기", "Share today's run")}</button>
     ${by[2].length + by[3].length ? `<button class="navb next" onclick="sendStuck()">${T("막힌 카드 고치러 가기", "Fix the cards that were hard")}</button>` : ""}
-    <button class="navb ${by[2].length + by[3].length ? "" : "next"}" onclick="go({})">${T("처음 화면으로", "Home")}</button></div>`);  // 끝났으면 묶음 화면이 아니라 처음 화면으로(11-03 사용자). 막힌 카드가 있으면 그것을 주 단추로
+    <button class="navb ${by[2].length + by[3].length || demo ? "" : "next"}" onclick="go({})">${T("처음 화면으로", "Home")}</button></div>`);  // 끝났으면 묶음 화면이 아니라 처음 화면으로(11-03 사용자). 막힌 카드가 있으면 그것을 주 단추로
   C.sum = { finished: !!finished, upto: S.idx + 1, by };
   if (finished) { const st = runStats(); markPracticed(S.run, { at: Date.now(), auto: st.auto, check: st.check, hand: st.hand }); }
   stopCoach(true);
@@ -2232,6 +2247,24 @@ function judge(d, cur, moved) {
   else { el.classList.add("near"); el.textContent = pre + T(`${cur}번 끝과 비슷해요 · 한 번 더 보는 중`, `looks like step ${cur} done · checking once more`); }
 }
 /* 카메라 맞추기: 모델이 손·물건을 못 보면(두 번 연속) 미리보기를 크게 띄우고 점선 네모로 안내, 보이면 다시 작게 */
+/* 자리 잡기(11-03): 카메라가 시범과 같은 곳을 비슷한 시점에서 보는지 먼저 한 번. 아니면 고칠 한 마디와 시범 장면을 흐리게 겹쳐 맞추게 한다.
+   여섯 번(약 25초) 안에 못 맞추면 막지 않고 판단을 시작한다(안 보이면 판단이 '보이게 해 주세요'로 다시 안내) */
+async function setupCheck(v) {
+  C.setupBusy = true; C.setupAt = Date.now(); C.setupN = (C.setupN || 0) + 1; const sess = C.sess;
+  const cv = document.createElement("canvas"); cv.width = 480; cv.height = Math.round(480 * v.videoHeight / v.videoWidth); drawFrame(cv, v);
+  let d = null;
+  try { const r = await fetch(`/api/runs/${S.run}/setup`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ frame: cv.toDataURL("image/jpeg", 0.7), cur: S.idx + 1 }) }); if (r.ok) d = await r.json(); } catch {}
+  C.setupBusy = false;
+  if (!C.running || sess !== C.sess) return;
+  if (!d || d.ok || C.setupN >= 6) {
+    C.setupOk = true; $(".coachv")?.classList.remove("ghosting"); aim(false); C.since = Date.now();
+    pill(d && !d.ok ? T("자리를 다 못 맞췄지만 지켜볼게요", "Watching, though the camera isn't quite set up") : T("자리 좋아요 · 지켜보는 중", "Camera set · watching")); return;
+  }
+  const g = $("#cghost"); if (g) { g.src = `/api/runs/${S.run}/cards/${S.data.cards[S.idx].n}/before.jpg`; g.style.height = `${v.clientHeight}px`; }
+  $(".coachv")?.classList.add("ghosting");
+  aim(true, T(`카메라 자리부터 맞춰요\n${d.move_ko || "시범처럼 작업하는 곳이 보이게 해 주세요"}`, `Set up the camera first\n${d.move_en || "Show the work area like the demonstration"}`));
+  pill(T("자리 잡는 중 · 흐린 사진에 맞춰 보세요", "Setting up · line up with the faint photo"));
+}
 function aim(on, text) {
   $(".coachv")?.classList.toggle("aim", on);
   if (on && text) $("#caimtxt").textContent = text;
@@ -2276,7 +2309,7 @@ function coachWatch() {
   const v = $("#cvid"); v.srcObject = null; v.src = `/api/runs/${S.run}/demo.mp4`; v.muted = true; v.classList.remove("mirror");
   $(".coachv .cam")?.setAttribute("data-label", T("시범 영상 재생 · 카메라 대신", "Demo replay · in place of the camera"));
   v.play().catch(() => {}); coachStart(); aim(false);
-  v.onended = () => { C.running = false; pill(T("영상이 끝났어요", "Video ended")); };
+  v.onended = () => { C.running = false; pill(T("영상이 끝났어요", "Video ended")); setTimeout(() => { if (S.view === "coach" && !$("#csum")) coachEnd(false); }, 1500); };
 }
 function coachFile(f) {
   if (!f) return;
@@ -2302,12 +2335,13 @@ function coachStart() {
   C.lastMove = Date.now();
   navigator.wakeLock?.request("screen").then(l => { C.lock = l; }).catch(() => {});  // 휴대폰 화면이 꺼지지 않게
   const v = $("#cvid"), cv = document.createElement("canvas"), sm = document.createElement("canvas");
-  sm.width = 32; sm.height = 18; C.lastSm = null; C.moved = false; C.inflight = 0; C.sess = (C.sess || 0) + 1;  // 세션 번호: 나갔다 다시 들어와도 앞 세션의 루프·답은 버린다
+  sm.width = 32; sm.height = 18; C.lastSm = null; C.moved = false; C.inflight = 0; C.sess = (C.sess || 0) + 1; C.setupOk = false; C.setupN = 0; C.setupAt = 0;  // 세션 번호: 나갔다 다시 들어와도 앞 세션의 루프·답은 버린다
   C.timer = setInterval(() => {  // 0.5초에 한 장, 최근 4장(2초)만 둔다: 카드가 바뀐 뒤 판단 준비가 빨라진다(11-01 실측: 1초 간격이면 카드당 최소 7초)
     if (v.readyState < 2) return;
     if (document.hidden) { C.buf = []; return; }
     if (faceBlocked(v)) { pill(T("얼굴 가리기를 불러오지 못해 자동 넘김을 멈췄어요 · 이전·다음 단추로 넘겨 주세요", "Face blur could not load, so auto-advance is off · use Back and Next")); C.faceWait = true; return; }
     if (v.srcObject && !faceReady()) { pill(T("얼굴 가리기 준비 중…", "Preparing face blur…")); C.faceWait = true; return; }  // 카메라 사진은 얼굴 가리기가 준비된 뒤부터 보낸다(시범 영상 재생은 그대로)
+    if (v.srcObject && !C.setupOk && !noDone()) { if (!C.setupBusy && Date.now() - (C.setupAt || 0) > 3500) setupCheck(v); return; }  // 자리 잡기가 끝나야 판단을 보낸다(11-03 설계 4)
     if (C.faceWait) { C.faceWait = false; C.since = Date.now(); pill(T("지켜보는 중 · 얼굴은 가려서 보내요", "Watching · faces are blurred before sending")); }
     cv.width = 480; cv.height = Math.round(480 * v.videoHeight / v.videoWidth);
     drawFrame(cv, v);
@@ -2404,7 +2438,7 @@ async function reloadCards(data) {
 /* 판단 한 번: 서버에 묻고 답(d)을 돌려준다. 자동 넘김을 더 할 수 없는 응답(401·402·409·429)이면 멈추고 이유를 말한 뒤 "off" */
 async function askCoach(cur) {
   const t0 = Date.now(); let d = null;
-  try { const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", signal: AbortSignal.timeout?.(30000), headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev, prev_match: C.pm ?? -1, on_card: C.started ? (Date.now() - (C.cardAt || Date.now())) / 1000 : null, local: C.local, live: C.live, ver: S.data.edited_at ?? null }) }); if (r.ok) d = await r.json();
+  try { const r = await fetch(`/api/runs/${S.run}/coach`, { method: "POST", signal: AbortSignal.timeout?.(30000), headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cur, frames: C.buf.slice(), prev_seen: C.prev, prev_match: C.pm ?? -1, ahead: !!C.ahead, on_card: C.started ? (Date.now() - (C.cardAt || Date.now())) / 1000 : null, local: C.local, live: C.live, ver: S.data.edited_at ?? null }) }); if (r.ok) d = await r.json();
     // 같은 요청을 0.4초마다 끝없이 다시 보내며 '다시 보는 중'만 띄우던 것을 멈추고 이유를 말한다(11-02 검토)
     const off = { 401: T("자동 넘김은 접속 키가 필요해요", "Auto-advance needs the access key"), 402: T("지금은 자동 넘김을 쓸 수 없어요", "Auto-advance is unavailable right now"),
       409: T("이 카드는 사람이 '다 했다'를 정해요", "A person decides when this is done"), 429: T("오늘 자동 넘김 횟수를 다 썼어요", "Today's auto-advance limit is used up") }[r.status];
@@ -2422,7 +2456,7 @@ async function applyCoach(d, cur) {
   C.fails = 0;
   if (d.decision === "reload") { await reloadCards(); return; }  // 선생님이 카드를 고쳤다: 새 카드를 받고, 보던 카드(번호 n)에서 이어 간다
   if (d.in_view === true) C.lastMove = Date.now();  // 손과 물건이 보이면 하고 있는 중: 오래 걸리는 단계에서 5분 멈춤에 걸리지 않게
-  C.prev = d.seen; C.pm = d.done_step ?? -1; judge(d, cur);  // 앞뒤가 비슷한 단계는 두 번 연속 '끝'일 때만 넘긴다(서버가 판단)
+  C.prev = d.seen; C.pm = d.done_step ?? -1; C.ahead = !!d.ahead; judge(d, cur);  // 앞뒤가 비슷한 단계는 두 번 연속 '끝'일 때만 넘긴다(서버가 판단)
   viewSeen(d);
   liveCheck(d);
   C.fin = d.decision === "finished" ? (C.fin || 0) + 1 : 0;

@@ -100,12 +100,17 @@ Ignore the camera angle, distance, lighting, background, colour shade and the ha
 The learner may use a similar stand-in (paper for a napkin, another cup or towel): judge the shape and state of the work, not whether it is the same object.
 For a whole-body step (dance, exercise), the camera may cut off the legs or feet in a small room: if the visible body (arms, posture, upper-body movement) is enough to tell the step, still answer match and set in_view true; set in_view false only when the step cannot be told from what is visible.
 Answer only JSON: {{"match": k, "seen": n, "in_view": true/false, "need_ko": "", "need_en": "", "saw_ko": "", "saw_en": ""{live_keys}}}
-- "match": the letter-number k of the reference the latest frame looks most like (0, 1, 2 ...), or -1 if the work is hidden or not in view.
-  If the learner is in the middle of a step, answer the reference it still looks like (the one before the change).
+- "match": the number k of the reference whose finished shape the work in the latest frame has already reached (0, 1, 2 ...); if a step is only half done, the one before it.
+  -1 if the work is hidden or not in view. -2 if the work is clearly further along than every reference shown.
 - "seen": the step number the learner is doing in the latest frame, or 0 if you cannot tell.
 - "in_view": true if the work (or its stand-in) needed to judge step {cur} is clearly inside the latest frame, even if held in one hand or up to the camera; false if cut off, too far, or blurred.
 - "need_ko", "need_en": only when in_view is false, what must come into view, as a short noun phrase in Korean and in English (e.g. "냅킨과 두 손" / "the napkin and both hands"); otherwise empty.
 - "saw_ko", "saw_en": what the latest frame shows about the work, in plain words, Korean ending in ~요 (at most 25 characters) and English (at most 8 words), e.g. "흰 종이를 펼쳐 들고 있어요" / "holding up a flat sheet of paper"."""
+
+if os.environ.get("COACH_OLD") == "1":  # 측정용: 11-03 이전 match 지시(짝 실행 기준선)
+    STATE_PROMPT = STATE_PROMPT.replace("""- "match": the number k of the reference whose finished shape the work in the latest frame has already reached (0, 1, 2 ...); if a step is only half done, the one before it.
+  -1 if the work is hidden or not in view. -2 if the work is clearly further along than every reference shown.""", """- "match": the letter-number k of the reference the latest frame looks most like (0, 1, 2 ...), or -1 if the work is hidden or not in view.
+  If the learner is in the middle of a step, answer the reference it still looks like (the one before the change).""")
 
 STATE_LIVE = """
 - "state": "done" if the latest frame matches reference 1 (step {cur} done right), "not_yet" if the work still looks like reference 0,
@@ -113,18 +118,22 @@ STATE_LIVE = """
 - "hint_ko"/"hint_en": only if "different", ONE short instruction (Korean ending in ~세요, at most 20 characters), else ""."""
 
 
-def ask_states(cards, cur, frames, refs, live=False):
+ACTION_PROMPT = """
+- "action_seen": true only if the camera frames (oldest first) show the learner actually doing step {cur} ("{act}") — for example the work being lifted and turned over — not just holding it. Step {cur} leaves the shape almost the same, so watch the movement."""
+
+
+def ask_states(cards, cur, frames, refs, live=False, action=False):
     """단계 끝 사진들과 맞추기. refs = [(설명, 사진 url)], 0 = 지금 단계 시작 모습, 1 = 지금 단계 끝, 2 = 다음 단계 끝 ...
     돌려줌: (match, seen, cost, live 답, view)"""
     steps = "\n".join(f"{i}. {c['en']}" for i, c in enumerate(cards, 1))
     content = []
-    for k, f in enumerate(frames[-FRAMES:]):
+    for k, f in enumerate(frames[-(4 if action else FRAMES):]):  # 앞뒤가 같은 단계(뒤집기)는 2초치 4장으로 동작을 본다(11-03 설계 3)
         content += [{"type": "input_text", "text": f"camera frame {k + 1}"}, {"type": "input_image", "image_url": f}]
     for k, (label, url) in enumerate(refs):
         content += [{"type": "input_text", "text": f"REFERENCE {k}: {label}"}, {"type": "input_image", "image_url": url}]
     text = STATE_PROMPT.format(steps=steps, cur=cur, refs="\n".join(f"{k}. {label}" for k, (label, _) in enumerate(refs)),
-                               live_keys=', "state": "", "hint_ko": "", "hint_en": ""' if live else "")
-    content.append({"type": "input_text", "text": text + (STATE_LIVE.format(cur=cur) if live else "")})
+                               live_keys=(', "state": "", "hint_ko": "", "hint_en": ""' if live else "") + (', "action_seen": false' if action else ""))
+    content.append({"type": "input_text", "text": text + (STATE_LIVE.format(cur=cur) if live else "") + (ACTION_PROMPT.format(cur=cur, act=cards[cur - 1]["en"]) if action else "")})
     r = pipeline.client.responses.create(model=pipeline.STEP_MODEL, input=[{"role": "user", "content": content}], store=False,
                                          reasoning={"effort": "minimal"}, timeout=30)  # 판단은 보통 2~3초: 멈춘 요청이 서버 일꾼을 최대 15분 붙잡지 않게
     u = r.usage
@@ -138,13 +147,13 @@ def ask_states(cards, cur, frames, refs, live=False):
         match = int(d.get("match", -1))
     except (TypeError, ValueError):
         match = -1
-    if not -1 <= match < len(refs):  # 보여 준 사진에 없는 번호: 확인 규칙을 건너뛰고 맨 끝 카드로 건너뛸 수 있었다(11-02 검토)
+    if not -2 <= match < len(refs):  # 보여 준 사진에 없는 번호: 확인 규칙을 건너뛰고 맨 끝 카드로 건너뛸 수 있었다(11-02 검토)
         match = -1
     try:
         seen = int(d.get("seen") or 0)
     except (TypeError, ValueError):
         seen = 0
-    return match, seen, cost, extras(r.output_text) if live else {}, view(d)
+    return match, seen, cost, extras(r.output_text) if live else {}, {**view(d), **({"action_seen": d.get("action_seen") is True} if action else {})}
 
 
 def in_hand(frame, card):
@@ -191,15 +200,84 @@ def check(cards, cur, frames, prev_seen=0, local=False, ref=None, refs=None, pre
 AHEAD = int(os.environ.get("COACH_AHEAD") or 2)  # 지금 단계 끝 다음으로 몇 단계 끝까지 보여 줄지(빨리 한 학습자도 따라잡게). 환경 변수는 측정용
 
 
-def state_refs(d, cards, cur):
+def state_refs(d, cards, cur, wide=False):
     """맞출 사진: 0 = 지금 단계 시작 모습(앞 단계 끝, 1번이면 시작 전), 1 = 지금 단계 끝, 2.. = 그다음 단계들 끝. 사진은 영상에서 한 번 뽑아 둔다"""
     import verify  # verify 가 coach 를 불러와서 여기서
     i = cur - 1
     refs = [(f"start of step {cur} (before it)", verify.reference(d, cards[0], "before")) if i == 0 else
             (f"after step {cur - 1} = start of step {cur}", verify.reference(d, cards[i - 1], "after"))]
-    for k in range(i, min(len(cards), i + 1 + AHEAD)):
-        refs.append((f"after step {k + 1}", verify.reference(d, cards[k], "after")))
-    return [(label, pipeline.data_url(small(path))) for label, path in refs]
+    for k in range(i, len(cards) if wide else min(len(cards), i + 1 + AHEAD)):  # wide: 남은 단계 끝을 전부(앞서 간 학습자를 따라잡게, 11-03)
+        st = "" if os.environ.get("COACH_NOSTATE") == "1" else cards[k].get("state_en", "")  # 측정용 스위치
+        refs.append((f"after step {k + 1}" + (f": {st}" + (f" (differs from before by: {cards[k]['cue_en']})" if cards[k].get("cue_en") else "") if st else ""),
+                     verify.reference(d, cards[k], "after")))
+    return [(label, pipeline.data_url(small(path, 320 if wide else 480))) for label, path in refs]
+
+
+DESCRIBE_PROMPT = """These are photos from a demonstration video, in order: before step 1, then the finished result after each step.
+The steps are:
+{steps}
+For each step, describe how the work looks right after it, so that someone could recognise the same state when a learner
+does it with a different object of the same kind (another colour, material, table, hands or camera angle).
+Use only shape and arrangement: outline shape, which edge or corner is folded to where, how many layers or points show, what is on top,
+which way it points. Never mention colour, material, texture, background or hands.
+Also give the one visible cue that tells this result apart from the result just before it, and say whether the result looks almost the same
+as the one before (true for flipping something symmetric over, or tiny tucks).
+Answer only JSON: {{"states": [{{"n": 1, "state": "", "cue": "", "same_as_before": false}}]}}"""
+
+
+def describe_states(d, cards):
+    """11-03 설계 2: 단계 끝 모양을 색·재질 없이 글로(만들 때 한 번). 판단 때 기준 사진의 이름표로 붙여 다른 물건에서도 같은 상태를 알아보게"""
+    import verify
+    content = [{"type": "input_text", "text": "before step 1"}, {"type": "input_image", "image_url": pipeline.data_url(small(verify.reference(d, cards[0], "before")))}]
+    for c in cards:
+        content += [{"type": "input_text", "text": f"after step {c['n']}: {c['en']}"}, {"type": "input_image", "image_url": pipeline.data_url(small(verify.reference(d, c, "after")))}]
+    steps = "\n".join(f"{i}. {c['en']}" for i, c in enumerate(cards, 1))
+    content.append({"type": "input_text", "text": DESCRIBE_PROMPT.format(steps=steps)})
+    r = pipeline.client.responses.create(model=pipeline.STEP_MODEL, input=[{"role": "user", "content": content}], store=False, timeout=180)
+    m = re.search(r"\{.*\}", r.output_text or "", re.S)
+    out = json.loads(m.group(0)).get("states", []) if m else []
+    by = {int(x.get("n", 0)): x for x in out if isinstance(x, dict)}
+    return [{"state_en": str(by.get(i, {}).get("state", ""))[:240], "cue_en": str(by.get(i, {}).get("cue", ""))[:160],
+             "same_as_before": bool(by.get(i, {}).get("same_as_before"))} for i in range(1, len(cards) + 1)]
+
+
+SETUP_PROMPT = """The first image is from a learner's camera. The next two are from a demonstration video of the task "{title}":
+how it looks before step {cur} ("{act}") and right after it.
+Can this camera see the place where step {cur} happens, from a viewpoint similar enough to judge it like the demonstration?
+Ignore colour, the exact object, the table and who it is. Faces may be blurred.
+If the demonstration is a person signing, dancing or exercising, the person is the work: every body part that moves in the demonstration
+(both hands and arms for signing, the whole body down to the feet for dancing) must be inside the camera frame, or it is not ok ("work_not_visible").
+Answer only JSON: {{"ok": true/false, "issue": "", "move_ko": "", "move_en": ""}}
+- "issue": one of "faces_person" (the camera looks at a person's face or body instead of the work area), "work_not_visible", "too_far", "too_close",
+  "angle" (e.g. side view where the demonstration looks down from above), "dark", or "" when ok.
+- "move_ko"/"move_en": when not ok, ONE short instruction to fix the camera (Korean ending in ~세요, at most 30 characters; English at most 10 words),
+  e.g. "휴대폰을 세워 탁자를 위에서 비추세요" / "Stand a phone up to look down at the table". Empty when ok."""
+
+
+def setup_check(d, cards, cur, frame, title=""):
+    """11-03 설계 4: 판단을 시작하기 전에 카메라가 시범과 같은 곳을 비슷한 시점에서 보는지 한 번 묻는다(노트북 앞 카메라는 탁자를 못 본다)"""
+    import verify
+    c = cards[cur - 1]
+    content = [{"type": "input_text", "text": "learner camera"}, {"type": "input_image", "image_url": frame},
+               {"type": "input_text", "text": f"demonstration: before step {cur}"}, {"type": "input_image", "image_url": pipeline.data_url(small(verify.reference(d, c, "before")))},
+               {"type": "input_text", "text": f"demonstration: after step {cur}"}, {"type": "input_image", "image_url": pipeline.data_url(small(verify.reference(d, c, "after")))},
+               {"type": "input_text", "text": SETUP_PROMPT.format(title=title, cur=cur, act=c["en"])}]
+    r = pipeline.client.responses.create(model=pipeline.STEP_MODEL, input=[{"role": "user", "content": content}], store=False,
+                                         reasoning={"effort": "minimal"}, timeout=30)
+    m = re.search(r"\{.*\}", r.output_text or "", re.S)
+    try:
+        x = json.loads(m.group(0)) if m else {}
+    except ValueError:
+        x = {}
+    ok = x.get("ok") is not False  # 답을 못 읽으면 막지 않는다
+    return {"ok": ok, "issue": "" if ok else str(x.get("issue") or "")[:30],
+            **{k: "" if ok else str(x.get(k) or "").strip()[:60] for k in ("move_ko", "move_en")}}
+
+
+def stuck(cards, cur, on_card):
+    """한 카드에 시범 단계 시간의 2배(최소 12초)를 넘게 머물렀다 → 다음 판단은 기준 사진을 넓힌다"""
+    c = cards[cur - 1]
+    return on_card is not None and on_card > max(12.0, 2 * ((c.get("end") or 0) - (c.get("start") or 0)))
 
 
 def small(path, w=480):
@@ -239,21 +317,24 @@ def check_states(cards, cur, frames, refs, live, t0, prev_match=-1, similar=Fals
     """시범의 단계 끝 사진과 맞춰서 넘긴다(11-02: 문장만 보고 단계를 가리게 하면 7번 단계부터 50초 넘게 못 넘겼다).
     지금 단계 끝(1) 이후 사진과 같으면 next, 마지막 카드면 finished. 0 이면 wait.
     SAM 확인은 뺐다: 넘기는 판단마다 3~9초를 더했고, 기록된 13번 중 한 번도 넘김을 막지 않았다"""
-    match, seen, cost, lv, seen_view = ask_states(cards, cur, frames, refs, live)
+    c = cards[cur - 1]
+    similar = similar or bool(c.get("same_as_before") and os.environ.get("COACH_NOSTATE") != "1")  # 만들 때 '앞과 거의 같음'으로 적힌 단계
+    action = similar and os.environ.get("COACH_NOACTION") != "1" and len(frames) >= 4  # 측정용 스위치
+    match, seen, cost, lv, seen_view = ask_states(cards, cur, frames, refs, live, action)
     if not 0 <= seen <= len(cards):
         seen = 0
     # 판단은 '몇 번 단계까지 끝난 모습인가'(절대 번호)로 주고받는다: 카드가 넘어가도 앞 판단이 그대로 뜻이 있다
     # (상대값으로 두고 넘길 때 지웠더니, 앞서 간 학습자를 두 번 연속 확인하지 못해 냅킨에서 30초 넘게 뒤처졌다)
     done_step = cur + match - 1 if match >= 0 else -1
-    confirm = similar or CONFIRM_ALL
-    c = cards[cur - 1]
+    ahead = match == -2  # 보여 준 어느 사진보다 더 진행됨: 다음 판단에서 기준 사진을 넓힌다
+    confirm = (similar and not seen_view.get("action_seen")) or CONFIRM_ALL  # 뒤집는 동작을 봤으면 한 번으로
     soon = on_card is not None and on_card < MIN_DWELL * max(0, (c.get("end") or 0) - (c.get("start") or 0))  # 시범 시간의 절반도 안 지났다
     done = done_step > cur or (done_step == cur and not soon and (not confirm or prev_match >= cur))  # 앞뒤가 비슷한 단계는 바로 앞 판단도 '끝'이었을 때만
     # 몇 단계 앞선 모습이 두 번 연속이면 그 카드로 바로(한 번만으로 건너뛰면 수건에서 3번 중 2번 너무 앞섰다). 한 번이면 한 장만
     target = min(len(cards), min(done_step, prev_match) + 1) if done_step > cur and prev_match > cur else None
     decision = "finished" if done and cur == len(cards) else "jump" if target and target > cur + 1 else "next" if done else "wait"
     live_out = live_state(lv, cards[cur - 1]) if live else None
-    return {"decision": decision, "target": target if decision == "jump" else None, "seen": seen, "current_done": done, "match": match, "done_step": done_step, "sam": None,
+    return {"decision": decision, "target": target if decision == "jump" else None, "seen": seen, "current_done": done, "match": match, "done_step": done_step, "sam": None, "ahead": ahead,
             "latency": round(time.time() - t0, 2), "cost": round(cost, 4), "local": False, **seen_view, **(live_out or {})}
 
 

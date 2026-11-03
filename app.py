@@ -687,7 +687,6 @@ def coach_check(run_id: str, body: dict):
     if body.get("live"):  # 실시간 확인: 지금 카드의 완료 기준 사진을 같은 판단에 넣는다
         ref = pipeline.data_url(verify.reference(d, data["cards"][cur - 1], "after"))
     # Meta API 판단은 시범의 단계 끝 사진들과 맞춘다(이 맥 Glimmer 는 사진이 많으면 느려 예전 방식 그대로)
-    refs = None if local else coach.state_refs(d, data["cards"], cur)
     try:
         prev_match = int(body.get("prev_match", -1))
     except (TypeError, ValueError):
@@ -696,6 +695,8 @@ def coach_check(run_id: str, body: dict):
         on_card = float(body["on_card"]) if body.get("on_card") is not None else None  # 이 카드가 뜬 지 몇 초
     except (TypeError, ValueError):
         on_card = None
+    wide = bool(body.get("ahead")) or coach.stuck(data["cards"], cur, on_card)  # 막혔거나 앞서 갔으면 남은 단계 끝 사진을 전부(11-03)
+    refs = None if local else coach.state_refs(d, data["cards"], cur, wide)
     try:
         prev_seen = int(body.get("prev_seen") or 0)
     except (TypeError, ValueError):
@@ -1079,6 +1080,29 @@ def card_similar(run_id: str, n: int):
     d = run_dir(run_id)
     diff = verify.similarity(d, card_by_n(d, n))
     return {"diff": round(diff, 3), "similar": diff < verify.SIMILAR}
+
+
+@app.post("/api/runs/{run_id}/setup")
+def coach_setup(run_id: str, body: dict):
+    """따라 하기 시작 전 자리 잡기: 카메라가 시범과 같은 곳을 비슷한 시점에서 보는가(사진은 저장하지 않는다)"""
+    data = read(run_dir(run_id), "cards.json")
+    if not data:
+        raise HTTPException(404, "카드가 없습니다")
+    f = body.get("frame")
+    if not (isinstance(f, str) and f.startswith("data:image/jpeg;base64,") and len(f) < 1_500_000):
+        raise HTTPException(400, "사진이 없습니다")
+    try:
+        cur = max(1, min(len(data["cards"]), int(body.get("cur", 1))))
+    except (TypeError, ValueError):
+        cur = 1
+    return coach.setup_check(run_dir(run_id), data["cards"], cur, f, data.get("title_en") or data.get("title") or "")
+
+
+@app.get("/api/runs/{run_id}/cards/{n}/before.jpg")
+def card_before(run_id: str, n: int):
+    """단계 시작 모습(자리 잡기 때 카메라 위에 흐리게 겹친다)"""
+    d = run_dir(run_id)
+    return FileResponse(inside(d, str(verify.reference(d, card_by_n(d, n), "before").relative_to(d))))
 
 
 @app.get("/api/runs/{run_id}/cards/{n}/after.jpg")
