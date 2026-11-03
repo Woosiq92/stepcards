@@ -710,8 +710,35 @@ function drawFrame(cv, video) {
   const g = cv.getContext("2d");
   if (mirrored(video)) { g.save(); g.translate(cv.width, 0); g.scale(-1, 1); g.drawImage(video, 0, 0, cv.width, cv.height); g.restore(); }
   else g.drawImage(video, 0, 0, cv.width, cv.height);
+  hideFaces(cv);
+}
+// 얼굴 가리기: 카메라 사진을 Meta API 로 보내기 전에 이 기기에서 얼굴을 찾아 모자이크한다(판단은 그대로 Muse Spark, 11-03).
+// 마주 보고 찍은 시범(수어·춤)은 얼굴·표정이 동작이라 가리지 않는다. 화면 미리보기는 그대로
+const FACE_MODEL = "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite";
+const FACE = { det: null, loading: null, failed: false };
+function faceLoad() {
+  return FACE.loading ??= (async () => {
+    const { FilesetResolver, FaceDetector } = await import(`${MP}/vision_bundle.mjs`);
+    const files = await FilesetResolver.forVisionTasks(`${MP}/wasm`);
+    FACE.det = await FaceDetector.createFromOptions(files, { baseOptions: { modelAssetPath: FACE_MODEL }, runningMode: "IMAGE", minDetectionConfidence: 0.4 });
+  })().catch(() => { FACE.failed = true; });  // 못 불러오면(망 막힘) 가리지 않고 보낸다: 따라 하기가 멈추지 않게
+}
+const faceReady = () => S.data?.pov === "facing" || !!FACE.det || FACE.failed;
+function hideFaces(cv) {
+  if (!FACE.det || S.data?.pov === "facing") return 0;
+  const g = cv.getContext("2d"), sm = document.createElement("canvas"), faces = FACE.det.detect(cv).detections;
+  for (const { boundingBox: b } of faces) {  // 머리카락·턱까지 넉넉히 덮는다
+    const x = Math.max(0, b.originX - b.width * 0.35), y = Math.max(0, b.originY - b.height * 0.6);
+    const w = Math.min(cv.width - x, b.width * 1.7), h = Math.min(cv.height - y, b.height * 1.95);
+    if (w < 1 || h < 1) continue;
+    sm.width = 6; sm.height = Math.max(1, Math.round(6 * h / w));
+    sm.getContext("2d").drawImage(cv, x, y, w, h, 0, 0, sm.width, sm.height);
+    g.save(); g.imageSmoothingEnabled = false; g.drawImage(sm, 0, 0, sm.width, sm.height, x, y, w, h); g.restore();
+  }
+  return faces.length;
 }
 async function grabPhoto(video) {
+  await faceLoad();
   const cv = document.createElement("canvas"); cv.width = 640; cv.height = Math.round(640 * video.videoHeight / video.videoWidth);
   drawFrame(cv, video); return cv.toDataURL("image/jpeg", 0.8);
 }
@@ -2117,6 +2144,7 @@ async function coachCamera() {
     $("#cvid").srcObject = C.stream; await $("#cvid").play();
     // 노트북 앞 카메라는 맞은편에서 비춘다: 화면을 젖히라고 안내하고, 보내는 사진은 180도 돌린다
     C.front = isFront(C.stream.getVideoTracks()[0]);
+    if (S.data?.pov !== "facing") faceLoad();
     $("#cvid").classList.toggle("mirror", mirrored($("#cvid")));
     coachStart();
   } catch {  // 카메라를 못 켜면(거부·없음) 시작 덮개에 갇히지 않게 손으로 넘기는 따라 하기로 시작한다(11-02 검토)
@@ -2157,6 +2185,8 @@ function coachStart() {
   sm.width = 32; sm.height = 18; C.lastSm = null; C.moved = false; C.inflight = 0; C.sess = (C.sess || 0) + 1;  // 세션 번호: 나갔다 다시 들어와도 앞 세션의 루프·답은 버린다
   C.timer = setInterval(() => {  // 0.5초에 한 장, 최근 4장(2초)만 둔다: 카드가 바뀐 뒤 판단 준비가 빨라진다(11-01 실측: 1초 간격이면 카드당 최소 7초)
     if (v.readyState < 2) return;
+    if (v.srcObject && !faceReady()) { pill(T("얼굴 가리기 준비 중…", "Preparing face blur…")); C.faceWait = true; return; }  // 카메라 사진은 얼굴 가리기가 준비된 뒤부터 보낸다(시범 영상 재생은 그대로)
+    if (C.faceWait) { C.faceWait = false; pill(T("지켜보는 중 · 얼굴은 가려서 보내요", "Watching · faces are blurred before sending")); }
     cv.width = 480; cv.height = Math.round(480 * v.videoHeight / v.videoWidth);
     drawFrame(cv, v);
     C.buf.push(cv.toDataURL("image/jpeg", 0.7)); if (C.buf.length > 4) C.buf.shift();
