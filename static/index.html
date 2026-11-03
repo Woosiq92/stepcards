@@ -836,8 +836,10 @@ function missing() {
 }
 /* ① 처음 화면 */
 async function home() {
-  const runs = await (await fetch(`/api/runs?ui=${ui}`)).json();
+  let runs = await (await fetch(`/api/runs?ui=${ui}`)).json();
   if (S.view !== "home") return;  // 목록이 늦게 와서 그사이 고른 화면을 덮지 않게
+  const pr = practiced(), done = runs.filter(r => r.done && pr[r.id]);  // 끝까지 따라 한 카드 묶음은 '연습한 카드'로(이 기기 기준)
+  runs = runs.filter(r => !pr[r.id]);
   const mine = runs.filter(r => !r.use);  // 지난 카드 묶음 = 내가 올린 것만(견본은 위 칸들에 이미 있다). 키가 없으면 비어서 칸·관리자 링크가 숨는다
   $("#main").innerHTML = `
     ${(() => {  // 첫 화면은 이야기 순서로: 큰 영상 한 장면 → 도움 → 확인 → 시작하기 → 쓰임새 → 판단 위치
@@ -861,7 +863,10 @@ async function home() {
     <nav class="htabs" role="tablist">
       <button role="tab" id="tb-lib" onclick="homeTab('lib')">${icon("tablet")} ${T("카드 라이브러리", "Card library")}<span>${runs.filter(r => r.use && r.done).length}</span></button>
       <button role="tab" id="tb-mine" onclick="homeTab('mine')">${icon("check")} ${T("내 카드", "My cards")}<span>${mine.length}</span></button>
+      <button role="tab" id="tb-done" onclick="homeTab('done')">${icon("check")} ${T("연습한 카드", "Practiced")}<span>${done.length}</span></button>
     </nav>
+    <div class="htab" id="hdone" hidden>${done.length ? `<p class="center muted minenote">${T("따라 하기를 끝까지 마친 카드예요. 이 기기에만 남아요.", "Card sets you followed to the end. Kept on this device only.")}</p><div class="libgrid">${done.map(doneCard).join("")}</div>`
+      : `<p class="center muted minenote">${T("아직 없어요. 따라 하기를 끝까지 마치면 여기로 옮겨져요.", "Nothing yet. Card sets move here when you follow one to the end.")}</p>`}</div>
     <div class="htab" id="hlib"><section class="lib" id="lib"></section>
     ${has(N) ? `<section class="mstory full dark">
       <h2>${T("막힐 때만, 딱 그만큼", "Help when stuck. Just enough.")}</h2>
@@ -911,7 +916,7 @@ async function home() {
 /* 처음 화면 탭: 카드 라이브러리(모두가 쓰는 견본) / 내 카드(내가 만든 것). 고른 탭은 이 기기에만 */
 const HT = () => { try { return localStorage.getItem("homeTab") || "lib"; } catch { return "lib"; } };
 function homeTab(t) {
-  for (const [k, id] of [["lib", "hlib"], ["mine", "hmine"]]) {
+  for (const [k, id] of [["lib", "hlib"], ["mine", "hmine"], ["done", "hdone"]]) {
     const on = k === t, tab = $("#tb-" + k), pane = $("#" + id);
     if (pane) pane.hidden = !on; if (tab) { tab.classList.toggle("on", on); tab.setAttribute("aria-selected", on); }
   }
@@ -923,6 +928,19 @@ const libcat = () => [["job", T("직업 훈련", "Job training")], ["food", T("�
 const LV = { cat: "all", q: "" };
 const libKicker = r => r.use === "special" ? T("특수교육 직무 훈련", "Special-education job training") : r.use === "job" ? `${r.custom ? "★ " : ""}${esc(r.job)}`
   : { staff: T("신입 직원 교육", "New staff training"), family: T("가족 손기술 남기기", "Family know-how"), creator: T("크리에이터 따라 하기", "Follow-along for creators"), assembly: T("조립·설치 안내", "Assembly and setup") }[r.use] || "";
+// 연습한 카드: 따라 하기를 끝까지 마친 기록(이 기기 localStorage, 이름·사진 없이 숫자만)
+const practiced = () => { try { return JSON.parse(localStorage.getItem("practiced") || "{}"); } catch { return {}; } };
+function markPracticed(id, x) { try { const p = practiced(); p[id] = x; localStorage.setItem("practiced", JSON.stringify(p)); } catch {} }
+function unpractice(id) { try { const p = practiced(); delete p[id]; localStorage.setItem("practiced", JSON.stringify(p)); } catch {} home(); }
+function doneCard(r) {
+  const x = practiced()[r.id] || {}, d = x.at ? new Date(x.at).toLocaleDateString(ui === "en" ? "en-US" : "ko-KR") : "";
+  return `<article class="libcard">
+    <a href="#run=${r.id}&view=use" class="libimg"><img src="/runs/${r.id}/${r.thumb}" alt=""></a>
+    <div class="libbody"><span class="kicker">${d}</span><a href="#run=${r.id}&view=use"><strong>${esc(runTitle(r).replace(/ \((견본|sample)\)$/, ""))}</strong></a>
+      <span class="muted">${T(`카메라가 넘김 ${x.auto ?? 0} · 직접 ${x.hand ?? 0} · 확인하기 ${x.check ?? 0}`, `Camera ${x.auto ?? 0} · by hand ${x.hand ?? 0} · Check ${x.check ?? 0}`)}</span>
+      <span class="lacts"><a class="btn primary" href="#run=${r.id}&view=coach">${T("다시 하기", "Again")}</a>
+        <button class="btn" onclick="unpractice('${r.id}')">${T("연습 전으로", "Move back")}</button></span></div></article>`;
+}
 function libCard(r) {
   const tags = [r.mode === "alone" ? T("혼자 하기", "Solo") : T("같이 하기", "With helper"), r.no_done ? T("사람이 넘김", "Manual") : T("카메라가 넘김", "Auto-advance"), r.fold3d ? "3D" : ""].filter(Boolean);
   return `<article class="libcard">
@@ -2071,6 +2089,12 @@ function coachExit() {
   coachEnd(false);
 }
 // 끝 화면 결과: 걸린 시간, 카드가 어떻게 넘어갔는지(카메라·확인하기·직접). 카메라가 못 잡은 카드를 알 수 있게(11-03)
+function runStats() {
+  const mv = (C.moves || []).filter(m => m.to > m.cur), how = {};
+  mv.forEach(m => { how[m.cur] ??= m.by; });
+  const cnt = b => Object.values(how).filter(v => b.includes(v)).length;
+  return { how, auto: cnt(["auto"]), check: cnt(["check"]), hand: cnt(["manual", "glasses"]) };
+}
 function runResult() {
   const mv = (C.moves || []).filter(m => m.to > m.cur), how = {};
   mv.forEach(m => { how[m.cur] ??= m.by; });  // 카드마다 처음 앞으로 넘긴 방법
@@ -2103,6 +2127,7 @@ function coachEnd(finished, endBy) {
     ${by[2].length + by[3].length ? `<button class="navb next" onclick="sendStuck()">${T("막힌 카드 고치러 가기", "Fix the cards that were hard")}</button>` : ""}
     <button class="navb ${by[2].length + by[3].length ? "" : "next"}" onclick="go({run:S.run,view:'use'})">${T("나가기", "Exit")}</button></div>`);  // 막힌 카드가 있으면 그것을 주 단추로
   C.sum = { finished: !!finished, upto: S.idx + 1, by };
+  if (finished) { const st = runStats(); markPracticed(S.run, { at: Date.now(), auto: st.auto, check: st.check, hand: st.hand }); }
   stopCoach(true);
   if (finished && C.voice && window.speechSynthesis) speechSynthesis.speak(utter(T("다 했어요.", "All steps done."), ui === "en" ? "en-US" : "ko-KR"));  // 멈춘 뒤에 읽어야 끊기지 않는다
 }
