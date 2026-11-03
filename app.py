@@ -757,7 +757,6 @@ def now_set(run_id: str, body: dict):
     keep = prev.get("i") == i and not body.get("fin")  # '도와줘요'는 그 카드에 있는 동안만 켜 둔다(다음 카드로 가면 저절로 꺼짐)
     NOW[key] = {"call": prev.get("call", 0) if keep else 0, "why": prev.get("why", "") if keep else "","i": max(0, min(n - 1, int(body.get("i", 0)))), "again": bool(body.get("again")), "by": str(body.get("by", ""))[:10], "v": v,
                    "lv": max(0, min(4, int(body.get("lv") or 0))), "fin": bool(body.get("fin")), "t": round(time.time()), "seen": round(time.time()),
-                 "tag": re.sub(r"[<>\"'&]", "", str(body.get("tag", prev.get("tag", ""))))[:16],  # 자리 표시(예: 창가 1번). 이름 대신
                  # 안경 '확인' → 따라 하기 화면이 휴대폰 카메라로 찍어 확인(vreq), 결과를 안경에 돌려준다(vres)
                  # 확인 요청·결과는 보낸 쪽이 바꿀 때만 바뀐다(휴대폰의 평소 동기화가 안경의 확인 요청을 지우지 않게)
                  "vreq": int(body.get("vreq") or 0) if "vreq" in body else prev.get("vreq", 0),
@@ -812,7 +811,7 @@ def live(run_id: str, request: Request):
     now, out = time.time(), []
     for k, st in NOW.items():
         if k.split("|")[0] == run_id and alive(st, now) and not st.get("fin"):
-            out.append({"s": k.split("|")[1] if "|" in k else "", "tag": st.get("tag", ""), "by": st.get("by", ""), "i": st.get("i", 0), "lv": st.get("lv", 0), "call": st.get("call", 0), "why": st.get("why", ""), "t": st.get("t", 0)})
+            out.append({"s": k.split("|")[1] if "|" in k else "", "by": st.get("by", ""), "i": st.get("i", 0), "lv": st.get("lv", 0), "call": st.get("call", 0), "why": st.get("why", ""), "t": st.get("t", 0)})
     return sorted(out, key=lambda x: (-bool(x["call"]), x["call"] or 0, -x["t"]))
 
 
@@ -835,7 +834,7 @@ def calls(request: Request):
         if role.startswith("teacher") and rid not in SEED_INDEX and owner_of(rid) != role:
             continue
         data = read(RUNS / rid, "cards.json") or {}
-        out.append({"run": rid, "title": data.get("title", ""), "s": k.split("|")[1] if "|" in k else "", "tag": st.get("tag", ""), "i": st.get("i", 0), "call": st["call"], "why": st.get("why", "")})
+        out.append({"run": rid, "title": data.get("title", ""), "s": k.split("|")[1] if "|" in k else "", "i": st.get("i", 0), "call": st["call"], "why": st.get("why", "")})
     return sorted(out, key=lambda x: x["call"])
 
 

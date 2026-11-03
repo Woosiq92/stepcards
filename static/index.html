@@ -317,7 +317,6 @@
   .tab .unreviewed { position:absolute; top:16px; left:50%; transform:translateX(-50%); z-index:5; }
   .callbar { position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:50; background:#B42318; color:#fff; border-radius:14px; padding:10px 14px; box-shadow:0 6px 20px rgba(0,0,0,.25); max-width:calc(100% - 32px); display:grid; gap:6px; font-size:15px; }
   .callbar div { display:flex; gap:8px; align-items:center; flex-wrap:wrap; } .callbar .btn { min-height:40px; }
-  .ctag { display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap; } .ctag input { font-size:16px; padding:8px 10px; border-radius:10px; border:1px solid #556; width:150px; }
   .tab .cstart .unreviewed { position:static; transform:none; margin:6px 0; }  /* 따라 하기 시작 화면: 위쪽 소리·나가기 단추에 가려지던 것(390폭) */
   .actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; padding:0 10px; }
   /* 시안 4(고치기): 흰 카드 줄, ⋯ 는 줄 오른쪽 위, 보기 전환은 그림 위, 영상 시간은 알약, 빼기는 빨강 */
@@ -1785,7 +1784,7 @@ async function liveBoard() {
   if (called.length > (S.calledN || 0)) beep();  // 새 부름이 오면 짧게 소리
   S.calledN = called.length;
   b.innerHTML = list.length ? `<div class="livebox"><strong>${T("지금 따라 하는 중", "Following now")}</strong>
-    ${list.map(x => `<div class="liverow ${x.call ? "call" : ""}"><span class="code">${esc(x.tag || x.s || "–")}${x.by === "glasses" ? ` · ${T("안경", "glasses")}` : ""}</span>
+    ${list.map(x => `<div class="liverow ${x.call ? "call" : ""}"><span class="code">${esc(x.s || "–")}${x.by === "glasses" ? ` · ${T("안경", "glasses")}` : ""}</span>
       <span>${T(`${x.i + 1} / ${n}번 카드`, `Card ${x.i + 1} / ${n}`)}${x.lv ? ` · ${T("도움", "Help")}: ${lvName(x.lv)}` : ""}</span>
       ${x.call ? `<b>${x.why === "auto" ? T("계속 막혀 있어요", "Still stuck") : T("도와줘요", "Asked for help")} · ${Math.max(0, Math.round((Date.now() / 1000 - x.call) / 60))}${T("분", " min")}</b>
         <button class="btn primary" onclick="ackCall('${esc(x.s)}')">${T("갈게요", "On my way")}</button>` : ""}</div>`).join("")}</div>` : "";
@@ -1808,7 +1807,7 @@ async function callBar() {
   let bar = $("#callbar");
   if (!list.length) return bar?.remove();
   if (!bar) { bar = document.createElement("div"); bar.id = "callbar"; bar.className = "callbar"; document.body.append(bar); }
-  bar.innerHTML = list.map(x => `<div><b>${T("도와줘요", "Help asked")}</b> ${esc(x.title || "")} · ${esc(x.tag || x.s)} · ${T(`${x.i + 1}번 카드`, `card ${x.i + 1}`)} · ${Math.max(0, Math.round((Date.now() / 1000 - x.call) / 60))}${T("분", " min")}
+  bar.innerHTML = list.map(x => `<div><b>${T("도와줘요", "Help asked")}</b> ${esc(x.title || "")} · ${esc(x.s)} · ${T(`${x.i + 1}번 카드`, `card ${x.i + 1}`)} · ${Math.max(0, Math.round((Date.now() / 1000 - x.call) / 60))}${T("분", " min")}
     <a class="btn primary" href="#run=${x.run}&view=use">${T("보러 가기", "Open")}</a></div>`).join("");
 }
 setInterval(callBar, 6000);
@@ -1922,8 +1921,6 @@ function coach() {
         <button onclick="coachWhere('mac')" hidden id="cwmac">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button>
       </div>
       <div class="d" id="cwhered" hidden></div>
-      <label class="ctag d">${T("자리 표시(선택)", "Seat label (optional)")} <input id="ctag" maxlength="12" value="${esc(C.tag || "")}" placeholder="${T("예: 창가 1번", "e.g. Table 1")}" oninput="C.tag=this.value.trim();try{localStorage.setItem('ctag',C.tag)}catch{}"></label>
-      <div class="d">${T("선생님 현황판에 이 이름으로 보여요. 사람 이름 대신 자리로 적어 주세요.", "Shown on the teacher's board. Use a seat, not a person's name.")}</div>
       <details class="pairwrap"><summary>${T("안경과 연결하기", "Connect glasses")} · ${T("연결 코드", "code")} <b>${C.pair}</b></summary><div class="pairbox"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&s=${C.pair}" alt="" width="96" height="96">
         <span>${T("안경 연결", "Glasses link")} · <b>${C.pair}</b><br><span class="d">${T("이 화면 전용 코드라, 같은 카드를 다른 사람이 써도 섞이지 않아요.", "This screen's own code, so other learners on the same cards don't mix.")}</span></span></div></details>
       <label class="livetoggle" ${noDone() ? "hidden" : ""}><input type="checkbox" ${C.live ? "checked" : ""} onchange="setLive(this.checked)"> ${T("단계마다 다 됐는지 시범 사진과 맞춰 보기", "Check each step against the demonstration photo")}</label>
@@ -2048,14 +2045,13 @@ function utter(text, langCode) {
 // 안경 화면(/glasses)에 지금 카드를 알린다
 function glassesSync(again) {
   if (C.hold) return;
-  fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: S.idx, again: !!again, by: "coach", lv: C.help ? C.lv : 0, s: C.pair, base: C.v || 0, tag: C.tag || "" }) })
+  fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: S.idx, again: !!again, by: "coach", lv: C.help ? C.lv : 0, s: C.pair, base: C.v || 0 }) })
     .then(r => r.json()).then(d => { if (!d.held) C.v = d.v; }).catch(() => {});  // held: 안경이 먼저 바꾼 게 있어 서버가 적용 안 함 → 다음 폴링에서 받는다
 }
 /* 필요할 때만 도움(촉구 위계): 1 글 → 2 그림·사진 → 3 소리 → 4 움직임.
    카드가 바뀌면 1부터, 10초 동안 넘어가지 않으면 한 칸 올린다. 학생·교사가 '도움'을 눌러도 올라간다.
    카드마다 몇 단계까지 갔는지는 화면에만 보여 주고 저장하지 않는다 */
 C.help = (() => { try { return localStorage.getItem("help") === "on"; } catch { return false; } })();
-C.tag = (() => { try { return localStorage.getItem("ctag") || ""; } catch { return ""; } })();
 const HELP_SEC = 10;  // 가장 짧은 기다림
 const helpWait = c => Math.min(60, Math.max(HELP_SEC, 2 * (c.end - c.start)));  // 시범보다 두 배는 기다린다
 const lvName = n => [T("글", "Text"), T("그림", "Picture"), T("소리", "Sound"), T("움직임", "Motion")][n - 1];
