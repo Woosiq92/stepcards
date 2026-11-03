@@ -377,7 +377,7 @@ def base_video(name, layout, span, seg_len):
 # ---- 목소리: 구글 Chirp3-HD(디지털 챔피언 때 고른 Zephyr). 키(~/.gtts_key)가 없으면 맥 기본 음성 ----
 GKEY = Path("~/.gtts_key").expanduser()
 CACHE = ROOT / "demo" / "out" / "tts_cache"  # 같은 문장은 한 번만 만든다(비용)
-RATE = 1.12  # 1.0 이면 두 판 모두 3분 7초: 3분 안으로
+RATE = 1.12 if KO else 1.17  # 1.0 이면 두 판 모두 3분 7초: 3분 안으로. 영어판은 11-03 대본 고친 뒤 1.12 로 181초라 조금 더 빠르게
 
 
 def voice(text):
