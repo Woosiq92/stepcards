@@ -470,7 +470,12 @@
   .cstart .t { font-size:34px; font-weight:800; letter-spacing:-.03em; } .cstart .d { color:#a9b8c6; max-width:540px; }
   .cstart .seg { background:var(--dark2); } .cstart .seg button { color:#a9b8c6; } .cstart .seg button.on { background:var(--accent); color:#fff; box-shadow:none; }
   .cstart .linkbtn { color:#9db5ff; }
-  @media (max-height:860px) { .cstart .glyph { display:none; } .cstart .t { font-size:28px; } }  /* 노트북 한 화면에 시작 단추까지 들어오게(11-03) */
+  /* 시작 화면은 창 높이를 따라 줄어든다: 손을 쓰는 동안 스크롤하지 않게 한 화면에 시작 단추까지(11-03) */
+  .cstart { gap:clamp(6px, 1.8vh, 18px); padding-block:clamp(12px, 3vh, 24px); }
+  .cstart .t { font-size:clamp(22px, 4.6vh, 34px); } .cstart .d { font-size:clamp(13px, 2.2vh, 16px); }
+  .tab .cstart .navb { padding-block:clamp(8px, 2vh, 18px); font-size:clamp(16px, 2.6vh, 20px); max-width:100%; white-space:normal; }
+  @media (max-height:860px) { .cstart .glyph { display:none; } }
+  @media (max-height:480px) { .cstart > .d { display:none; } }
   [hidden] { display:none !important; }
   @media (max-width:720px) {
     header { padding:0 16px; gap:10px; } .logo span:last-child { display:none; } .step { padding:6px 8px; font-size:0; gap:0; } .step .dot { font-size:12px; } .step.on { font-size:13px; gap:6px; padding-right:12px; white-space:nowrap; } .steps { flex-shrink:0; } #uiseg .long { display:none; } #uiseg button { padding:6px 10px; }
@@ -503,7 +508,7 @@
     .tab .hrow { padding:4px 16px; }
     .tab .bar { padding:8px 16px 12px; gap:8px; } .tab .navb { padding:12px 14px; min-width:0; font-size:16px; }
     .tab .mid .dots { display:none; }
-    .cstart { justify-content:flex-start; overflow-y:auto; padding-top:16px; padding-bottom:16px; }
+    .cstart { justify-content:flex-start; overflow-y:auto; padding-top:64px; padding-bottom:16px; }  /* 위쪽 소리·나가기 단추와 안 겹치게 */
   }
 </style>
 </head>
@@ -1833,7 +1838,7 @@ function coach() {
     <div class="imgwrap" id="cwrap" data-label="${T("시범", "Demonstration")}"></div></div>
     <div class="txt" id="ctxt" onclick="speak(true)" title="${T("다시 듣기", "Hear again")}"></div>
     <div class="hrow"><span class="hlabel" id="chlabel">${T("도움", "Help")}</span><span class="hsteps" id="clv"></span>
-      <div class="aimqr" id="caimqr" hidden><img src="/api/runs/${S.run}/qr.svg?to=coach&lang=${ui}&log=${new URLSearchParams(location.search).get("log") === "1" ? 1 : ""}" alt="QR" width="64" height="64"><span>${T("또는 휴대폰을 눈높이로", "Or a phone at eye level")}</span></div>
+      <div class="aimqr" id="caimqr" hidden><img src="/api/runs/${S.run}/qr.svg?to=coach&lang=${ui}&log=${new URLSearchParams(location.search).get("log") === "1" ? 1 : ""}" alt="QR" width="64" height="64"><span>${S.data?.pov === "facing" ? T("좁으면 휴대폰을 세워서 몸 전체를", "Short on space? A phone stood upright fits your whole body") : T("또는 휴대폰을 눈높이로", "Or a phone at eye level")}</span></div>
       ${S.data.stage === "archived" || noDone() ? "" : `<button class="verifybtn" onclick="verifyNow()">${icon("camera")} ${T("확인하기", "Check")}</button>`}</div>
     <div class="bar">
       <button class="navb" id="cprev" onclick="coachFlip(-1)">${T("이전", "Back")}</button>
@@ -2173,7 +2178,7 @@ function coachStart() {
   $(".coachv")?.classList.toggle("follow", !noDone()); judge(null);  // 판단 끔(사람이 정하는 일)이면 카메라를 크게 두지 않는다
   if (!noDone()) aim(true, S.data?.pov === "facing" ? T("이 카드의 동작이 네모 안에 보이게 카메라 앞에 서 주세요", "Stand in front of the camera so this card's action is inside the box") : C.front ? T("이 카드의 동작이 네모 안에 보이게 화면을 뒤로 젖히거나 카메라 앞으로 옮겨 주세요", "Tilt the screen back or move in front of the camera so this card's action is inside the box")
                     : T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box"));  // 처음엔 크게: 손이 보이면 저절로 작아진다
-  $("#caimqr").hidden = !C.front || S.data?.pov === "facing";
+  $("#caimqr").hidden = S.data?.pov === "facing" ? /Android|iPhone|iPad/i.test(navigator.userAgent) : !C.front;  // 춤·운동: 가로 노트북 카메라로는 좁은 방에서 발까지 안 담긴다. 세로로 세운 휴대폰을 권한다(11-03)
   clearTimeout(C.aimTimer); C.aimTimer = setTimeout(() => { if (!C.noView) aim(false); }, 10000);  // 판단이 안 와도 10초 뒤 작게(카드를 오래 가리지 않게)
   C.started = true; C.since = C.cardAt = Date.now(); coachCard(); clog("start", { cur: S.idx + 1, n: S.data.cards.length });
   clearInterval(C.helpTimer);

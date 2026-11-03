@@ -98,6 +98,7 @@ After them come REFERENCE photos from the demonstration video, each showing how 
 Compare the work in the LATEST camera frame with the references: shape, which parts are folded or placed where, how much is done.
 Ignore the camera angle, distance, lighting, background, colour shade and the hands themselves; small differences in neatness are fine.
 The learner may use a similar stand-in (paper for a napkin, another cup or towel): judge the shape and state of the work, not whether it is the same object.
+For a whole-body step (dance, exercise), the camera may cut off the legs or feet in a small room: if the visible body (arms, posture, upper-body movement) is enough to tell the step, still answer match and set in_view true; set in_view false only when the step cannot be told from what is visible.
 Answer only JSON: {{"match": k, "seen": n, "in_view": true/false, "need_ko": "", "need_en": "", "saw_ko": "", "saw_en": ""{live_keys}}}
 - "match": the letter-number k of the reference the latest frame looks most like (0, 1, 2 ...), or -1 if the work is hidden or not in view.
   If the learner is in the middle of a step, answer the reference it still looks like (the one before the change).
