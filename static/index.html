@@ -720,16 +720,16 @@ function faceLoad() {
   return FACE.loading ??= (async () => {
     const { FilesetResolver, FaceDetector } = await import(`${MP}/vision_bundle.mjs`);
     const files = await FilesetResolver.forVisionTasks(`${MP}/wasm`);
-    FACE.det = await FaceDetector.createFromOptions(files, { baseOptions: { modelAssetPath: FACE_MODEL }, runningMode: "IMAGE", minDetectionConfidence: 0.4 });
+    FACE.det = await FaceDetector.createFromOptions(files, { baseOptions: { modelAssetPath: FACE_MODEL }, runningMode: "IMAGE", minDetectionConfidence: 0.3 });  // 11-03 합성 웹캠 141장: 0.4 면 14장 놓침·오검출 1, 0.3 이면 1장 놓침·오검출 3
   })().catch(() => { FACE.failed = true; });  // 못 불러오면(망 막힘) 가리지 않고 보낸다: 따라 하기가 멈추지 않게
 }
 const faceReady = () => S.data?.pov === "facing" || !!FACE.det || FACE.failed;
 function hideFaces(cv) {
   if (!FACE.det || S.data?.pov === "facing") return 0;
   const g = cv.getContext("2d"), sm = document.createElement("canvas"), faces = FACE.det.detect(cv).detections;
-  for (const { boundingBox: b } of faces) {  // 머리카락·턱까지 넉넉히 덮는다
-    const x = Math.max(0, b.originX - b.width * 0.35), y = Math.max(0, b.originY - b.height * 0.6);
-    const w = Math.min(cv.width - x, b.width * 1.7), h = Math.min(cv.height - y, b.height * 1.95);
+  for (const { boundingBox: b } of faces) {  // 머리카락부터 턱까지만: 아래로 넓히면 얼굴 바로 밑 작업물을 덮어 판단이 막혔다(11-03 합성 웹캠, 7번에서 멈춤)
+    const x = Math.max(0, b.originX - b.width * 0.2), y = Math.max(0, b.originY - b.height * 0.45);
+    const w = Math.min(cv.width - x, b.width * 1.4), h = Math.min(cv.height - y, b.originY + b.height * 1.1 - y);
     if (w < 1 || h < 1) continue;
     sm.width = 6; sm.height = Math.max(1, Math.round(6 * h / w));
     sm.getContext("2d").drawImage(cv, x, y, w, h, 0, 0, sm.width, sm.height);
