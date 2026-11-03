@@ -2122,7 +2122,7 @@ function coachEnd(finished, endBy) {
     <button class="navb" onclick="S.idx=0;route()">${T("처음부터 다시", "Start over")}</button>
     <button class="navb" onclick="shareRun()">${T("오늘 한 것 보내기", "Share today's run")}</button>
     ${by[2].length + by[3].length ? `<button class="navb next" onclick="sendStuck()">${T("막힌 카드 고치러 가기", "Fix the cards that were hard")}</button>` : ""}
-    <button class="navb ${by[2].length + by[3].length ? "" : "next"}" onclick="go({run:S.run,view:'use'})">${T("나가기", "Exit")}</button></div>`);  // 막힌 카드가 있으면 그것을 주 단추로
+    <button class="navb ${by[2].length + by[3].length ? "" : "next"}" onclick="go({})">${T("처음 화면으로", "Home")}</button></div>`);  // 끝났으면 묶음 화면이 아니라 처음 화면으로(11-03 사용자). 막힌 카드가 있으면 그것을 주 단추로
   C.sum = { finished: !!finished, upto: S.idx + 1, by };
   if (finished) { const st = runStats(); markPracticed(S.run, { at: Date.now(), auto: st.auto, check: st.check, hand: st.hand }); }
   stopCoach(true);
