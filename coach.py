@@ -66,7 +66,8 @@ Look at the latest frames. Answer only JSON: {{"seen": n, "current_done": true/f
 def view(d):
     """화면에 보여야 할 것: in_view(모르면 None)와, 안 보일 때 무엇을 보이게 할지(짧은 말, 한국어·영어)"""
     iv = d.get("in_view") if isinstance(d.get("in_view"), bool) else None
-    return {"in_view": iv, **{k: (str(d.get(k) or "").strip()[:40] if iv is False else "") for k in ("need_ko", "need_en")}}
+    out = {"in_view": iv, **{k: (str(d.get(k) or "").strip()[:40] if iv is False else "") for k in ("need_ko", "need_en")}}
+    return {**out, **{k: str(d.get(k) or "").strip()[:60] for k in ("saw_ko", "saw_en")}}  # 지금 카메라에 보이는 것: 학습자가 무엇이 진행 중인지 알게(11-03 실사용 요청)
 
 
 def ask(cards, cur, frames, ref=None):
@@ -96,12 +97,14 @@ After them come REFERENCE photos from the demonstration video, each showing how 
 {refs}
 Compare the work in the LATEST camera frame with the references: shape, which parts are folded or placed where, how much is done.
 Ignore the camera angle, distance, lighting, background, colour shade and the hands themselves; small differences in neatness are fine.
-Answer only JSON: {{"match": k, "seen": n, "in_view": true/false, "need_ko": "", "need_en": ""{live_keys}}}
+The learner may use a similar stand-in (paper for a napkin, another cup or towel): judge the shape and state of the work, not whether it is the same object.
+Answer only JSON: {{"match": k, "seen": n, "in_view": true/false, "need_ko": "", "need_en": "", "saw_ko": "", "saw_en": ""{live_keys}}}
 - "match": the letter-number k of the reference the latest frame looks most like (0, 1, 2 ...), or -1 if the work is hidden or not in view.
   If the learner is in the middle of a step, answer the reference it still looks like (the one before the change).
 - "seen": the step number the learner is doing in the latest frame, or 0 if you cannot tell.
-- "in_view": true if the work and the hands needed to judge step {cur} are clearly inside the latest frame; false if cut off, too far, or blurred.
-- "need_ko", "need_en": only when in_view is false, what must come into view, as a short noun phrase in Korean and in English (e.g. "냅킨과 두 손" / "the napkin and both hands"); otherwise empty."""
+- "in_view": true if the work (or its stand-in) needed to judge step {cur} is clearly inside the latest frame, even if held in one hand or up to the camera; false if cut off, too far, or blurred.
+- "need_ko", "need_en": only when in_view is false, what must come into view, as a short noun phrase in Korean and in English (e.g. "냅킨과 두 손" / "the napkin and both hands"); otherwise empty.
+- "saw_ko", "saw_en": what the latest frame shows about the work, in plain words, Korean ending in ~요 (at most 25 characters) and English (at most 8 words), e.g. "흰 종이를 펼쳐 들고 있어요" / "holding up a flat sheet of paper"."""
 
 STATE_LIVE = """
 - "state": "done" if the latest frame matches reference 1 (step {cur} done right), "not_yet" if the work still looks like reference 0,

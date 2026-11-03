@@ -442,7 +442,7 @@
     .coachv.follow .cam .judge { font-size:15px; padding:8px 12px; }
   }
   @media (max-width:640px) { .hrow .aimqr:not([hidden]) { display:none; } }  /* 좁은 화면(휴대폰)은 이미 휴대폰 */
-  .coachv.aim .cam .aimtxt { display:block; position:absolute; left:8px; right:8px; bottom:3%; background:rgba(0,0,0,.62); border-radius:10px; padding:6px 10px !important; text-align:center; color:#fff; font-weight:700; font-size:17px; text-shadow:0 1px 4px #000; padding:0 12px; word-break:keep-all; }
+  .coachv.aim .cam .aimtxt { display:block; white-space:pre-line; position:absolute; left:8px; right:8px; bottom:3%; background:rgba(0,0,0,.62); border-radius:10px; padding:6px 10px !important; text-align:center; color:#fff; font-weight:700; font-size:17px; text-shadow:0 1px 4px #000; padding:0 12px; word-break:keep-all; }
   .coachv .pill { position:absolute; left:8px; top:8px; display:flex; align-items:center; gap:6px; background:rgba(11,16,21,.7); backdrop-filter:blur(8px); font-size:12px; font-weight:600; padding:3px 10px 3px 8px; border-radius:99px; }
   .coachv .pill::before { content:""; width:7px; height:7px; border-radius:50%; background:#ff4d5e; }
   .againtag { position:absolute; top:18px; left:50%; transform:translateX(-50%); background:var(--accent); color:#fff; padding:10px 22px; border-radius:99px; font-weight:800; font-size:19px; z-index:3; box-shadow:0 8px 24px rgba(47,99,244,.45); }
@@ -2083,11 +2083,11 @@ function judge(d, cur, moved) {
   el.className = "judge";
   if (!d) { el.textContent = T("지켜보는 중…", "Watching…"); return; }
   if (moved) { el.classList.add("ok"); el.textContent = T(`${cur}번이 시범과 같아요 → ${S.idx + 1}번 카드`, `Step ${cur} looks like the demonstration → card ${S.idx + 1}`); return; }
-  const m = d.match;
+  const m = d.match, saw = (ui === "en" ? d.saw_en : d.saw_ko) || "", pre = saw ? `${saw} · ` : "";  // 카메라에 무엇이 보였는지 먼저: 무엇이 진행 중인지 알게
   if (m === undefined || m === null) el.textContent = T("지켜보는 중…", "Watching…");  // 이 맥(Glimmer)은 옛 방식이라 사진 비교 값이 없다
-  else if (m < 0 || d.in_view === false) el.textContent = T("손과 물건이 잘 안 보여요", "Hands and object not clearly in view");
-  else if (m === 0) el.textContent = T(`아직 ${cur}번 하기 전 모습이에요`, `Still looks like before step ${cur}`);
-  else { el.classList.add("near"); el.textContent = T(`${cur}번 끝과 비슷해요 · 한 번 더 보는 중`, `Looks like step ${cur} done · checking once more`); }
+  else if (m < 0 || d.in_view === false) el.textContent = pre + T("시범과 맞춰 볼 수 없어요", "can't match it to the demonstration");
+  else if (m === 0) el.textContent = pre + T(`아직 ${cur}번 하기 전 모습이에요`, `still looks like before step ${cur}`);
+  else { el.classList.add("near"); el.textContent = pre + T(`${cur}번 끝과 비슷해요 · 한 번 더 보는 중`, `looks like step ${cur} done · checking once more`); }
 }
 /* 카메라 맞추기: 모델이 손·물건을 못 보면(두 번 연속) 미리보기를 크게 띄우고 점선 네모로 안내, 보이면 다시 작게 */
 function aim(on, text) {
@@ -2100,8 +2100,8 @@ function viewSeen(d) {
   if (d.in_view !== false) return;  // 모름(이 맥 모델이 답을 못 줌 등)은 그대로 둔다
   C.noView = (C.noView || 0) + 1;
   if (C.noView >= 2) {  // 한 번은 잘못 볼 수 있어서 두 번 연속부터. 커진 뒤에도 무엇을 보일지는 새로 받은 말로
-    const need = ui === "en" ? d.need_en : d.need_ko;
-    aim(true, need ? T(`보이게 해 주세요: ${need}`, `Bring into view: ${need}`) : T("이 카드의 동작이 보이게 카메라를 맞춰 주세요", "Point the camera so this card's action is in view"));
+    const need = ui === "en" ? d.need_en : d.need_ko, saw = (ui === "en" ? d.saw_en : d.saw_ko) || "";
+    aim(true, need ? (saw ? T(`지금 보여요: ${saw}\n`, `I see: ${saw}\n`) : "") + T(`보이게 해 주세요: ${need}`, `Bring into view: ${need}`) : T("이 카드의 동작이 보이게 카메라를 맞춰 주세요", "Point the camera so this card's action is in view"));
     if (C.noView === 2) clog("aim", { cur: S.idx + 1, need: d.need_en || "" });
   }
 }
