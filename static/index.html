@@ -1661,7 +1661,7 @@ function use() {
           <ol class="fh-steps">
             <li>${T("안경(또는 태블릿)에 지금 할 카드가 떠요", "The current card shows on the glasses (or a tablet)")}</li>
             <li>${T("막히면 글 → 그림 → 소리 → 움직임 순서로 도움이 늘어요", "If stuck, help grows: text → picture → sound → motion")}</li>
-            <li>${T("카드는 사람이 넘겨요. 사람을 돕는 일이라 기계가 '됐어요'라고 하지 않아요", "A person turns the cards. This work helps a person, so the app never says 'done'")}</li>
+            <li>${S.data.pov === "facing" ? T("카드는 사람이 넘겨요. 몸 전체 동작은 카메라 판단을 아직 검증하지 못했어요", "A person turns the cards. Camera judging for whole-body moves isn't verified yet") : T("카드는 사람이 넘겨요. 사람을 돕는 일이라 기계가 '됐어요'라고 하지 않아요", "A person turns the cards. This work helps a person, so the app never says 'done'")}</li>
           </ol>` : `<h2>${T("안경이나 태블릿 카메라로 따라 하면, 잘 하고 있는지 바로 알려 줘요", "Follow along with glasses or a tablet camera, and know right away you're doing it right")}</h2>
           <ol class="fh-steps">
             <li>${S.data.pov === "facing" ? T("앞 카메라가 몸 전체를 봐요", "The front camera watches the whole body") : T("눈높이 카메라가 손과 물건을 봐요", "An eye-level camera watches the hands and objects")}</li>
@@ -1867,7 +1867,7 @@ function coach() {
       <div class="glyph">${icon("glasses")}</div>
       <div class="t">${T("따라 하기", "Coach mode")}</div>
       ${S.data.reviewed === false ? `<div class="unreviewed">${T("만든 사람이 아직 확인하지 않은 카드예요", "The maker hasn't checked these cards yet")}</div>` : ""}
-      <div class="d">${noDone() ? T("사람을 돕는 일이라 카메라를 켜지 않아요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "This work helps a person, so the camera stays off. Turn cards with Back and Next; help grows when you're stuck.")
+      <div class="d">${noDone() ? (S.data.pov === "facing" ? T("몸 전체 동작(춤·수어)은 카메라 판단을 아직 검증하지 못해 꺼 두었어요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "Camera judging for whole-body moves (dance, signing) isn't verified yet, so it's off. Turn cards with Back and Next; help grows when you're stuck.") : T("사람을 돕는 일이라 카메라를 켜지 않아요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "This work helps a person, so the camera stays off. Turn cards with Back and Next; help grows when you're stuck."))
         : T("카메라가 손과 물건을 보고, 지금 할 카드를 띄워 줘요.<br>언제든 이전·다음 단추로 직접 넘길 수 있어요. 카메라 사진은 저장하지 않아요.",
         "The camera watches hands and objects and shows the card for the current step.<br>Back and Next always work by hand. Camera frames are never stored.")}</div>
       <div class="seg" id="cwhere">
@@ -1919,7 +1919,7 @@ function coach() {
 function coachWhere(where) {
   C.where = where; C.local = where === "mac";
   $("#cwhere").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.getAttribute("onclick").includes(`'${where}'`)));
-  $("#cwhered").hidden = false;
+  $("#cwhered").hidden = noDone();  // 카메라를 안 켜는 카드에 카메라 판단 설명을 띄우지 않는다
   $("#cwhered").innerHTML = { mac: T("공개 가중치 모델이 이 맥에서 판단해요. 카메라 사진이 맥 밖으로 나가지 않아요. 물건 확인(SAM)은 건너뛰어요.", "An open-weight model decides on this Mac. Camera frames never leave it. The object check (SAM) is skipped."),
     device: T("이 기기 안의 작은 모델(MediaPipe)이 1초에 여러 번 시범 영상 장면과 비교해 단계를 따라가요. 비용이 없고 사진이 밖으로 나가지 않아요. 결과 확인(달라요)은 '확인하기'로 해요.", "A small on-device model (MediaPipe) compares the camera with the demonstration several times a second. No cost, nothing leaves the device. Use Check to compare results."),
     api: T("Muse Spark가 카메라 화면을 시범 영상의 단계 사진과 맞춰 봐요.", "Muse Spark compares the camera with photos of each step from the demonstration.") }[where];
