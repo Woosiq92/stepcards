@@ -24,10 +24,11 @@ for s in sorted(SEED.iterdir()) if SEED.is_dir() else []:
     if not s.is_dir():
         continue
     new = not (RUNS / s.name).exists()
-    for f in s.rglob("*"):  # 빠진 파일만 채운다(교사가 고친 cards.json 은 그대로)
+    cj = RUNS / s.name / "cards.json"
+    bump = cj.exists() and json.loads((s / "cards.json").read_text()).get("seed_v") != json.loads(cj.read_text()).get("seed_v")  # 견본 판이 바뀌면 카드와 사진을 모두 새 판으로(11-03: 사진은 이름이 같아 옛것이 남았다)
+    for f in s.rglob("*"):  # 평소엔 빠진 파일만 채운다(교사가 고친 cards.json 은 그대로)
         dst = RUNS / s.name / f.relative_to(s)
-        newer = f.name == "cards.json" and dst.exists() and json.loads(f.read_text()).get("seed_v") != json.loads(dst.read_text()).get("seed_v")  # 견본 판이 바뀌면 카드도 새 판으로
-        if f.is_file() and (not dst.exists() or newer or (f.name == "video.mp4" and dst.stat().st_size != f.stat().st_size)):
+        if f.is_file() and (not dst.exists() or bump or (f.name == "video.mp4" and dst.stat().st_size != f.stat().st_size)):
             (RUNS / s.name / f.relative_to(s)).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(f, RUNS / s.name / f.relative_to(s))
     if new:
