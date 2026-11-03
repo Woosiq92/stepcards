@@ -2308,6 +2308,15 @@ async function coachCamera() {
 function coachWatch() {
   const v = $("#cvid"); v.srcObject = null; v.src = `/api/runs/${S.run}/demo.mp4`; v.muted = true; v.classList.remove("mirror");
   $(".coachv .cam")?.setAttribute("data-label", T("시범 영상 재생 · 카메라 대신", "Demo replay · in place of the camera"));
+  // 단계가 없는 장면(앞 인사·카드 사이 긴 빈 구간·끝)은 건너뛴다: 바지락 견본은 첫 카드가 15초, 카드 사이 30~60초 빈 곳이 있어 보는 사람이 단계를 놓쳤다(11-03 사용자)
+  const cs = [...S.data.cards].sort((a, b) => a.start - b.start), first = cs[0], last = cs.at(-1);
+  v.onloadedmetadata = () => { if (first && first.start > 2) v.currentTime = first.start - 1; };
+  v.ontimeupdate = () => {
+    const t = v.currentTime;
+    if (last && t > last.end + 3 && !v.paused) { v.pause(); v.onended?.(); return; }
+    const k = cs.findIndex(c => c.start > t);
+    if (k > 0 && t > cs[k - 1].end + 2 && cs[k].start - t > 3) v.currentTime = cs[k].start - 1;  // 앞 단계가 끝난 모습은 2초 보여 주고 다음 단계 1초 전으로
+  };
   v.play().catch(() => {}); coachStart(); aim(false);
   v.onended = () => { C.running = false; pill(T("영상이 끝났어요", "Video ended")); setTimeout(() => { if (S.view === "coach" && !$("#csum")) coachEnd(false); }, 1500); };
 }
