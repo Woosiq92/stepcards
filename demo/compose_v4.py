@@ -164,8 +164,15 @@ else:
 
 
 # ---- 그림 재료 ----
-def bg_png():
-    p = TMP / "bg.png"
+def bg_png(light=False):
+    p = TMP / ("bg_light.png" if light else "bg.png")
+    if light and not p.exists():  # 어두운 앱 화면(따라 하기·도움) 장면: 같은 남색 위에 묻혀서(11-03 지적) 앱의 종이색 → 연한 흙색
+        img = Image.new("RGB", (W, H))
+        d = ImageDraw.Draw(img)
+        for y in range(H):
+            k = y / H
+            d.line((0, y, W, y), fill=(int(247 - 4 * k), int(246 - 16 * k), int(242 - 24 * k)))
+        img.save(p)
     if not p.exists():
         img = Image.new("RGB", (W, H))
         d = ImageDraw.Draw(img)
@@ -301,7 +308,7 @@ def framed(src, w, h, x, y, seg_len, mi, si, out, push=0.0, crop=None, focus=Non
 
 def base_video(name, layout, span, seg_len):
     out = TMP / f"{name}_v.mp4"
-    bg = ["-loop", 1, "-t", seg_len, "-i", bg_png()]
+    bg = ["-loop", 1, "-t", seg_len, "-i", bg_png(light=layout in ("duo", "trio"))]
     enc = ["-t", seg_len, *ENC, out]
     if layout == "statement":
         sents = re.findall(r".+?[.!?](?=\s|$)", next(t for n, _, _, _, t in S if n == name))
