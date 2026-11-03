@@ -2243,7 +2243,13 @@ function coachCard(quiet) {
   $("#cnext").onclick = last ? () => coachEnd(true, "manual") : () => coachFlip(1);
 }
 // 2초 안에 넘긴 카드는 '글만 보고 했어요'로 세지 않는다
-function coachFlip(d) { const was = S.idx; if (C.max?.[was] === 1 && Date.now() - C.since < 2000) delete C.max[was]; S.idx = Math.max(0, Math.min(S.data.cards.length - 1, S.idx + d)); if (S.idx !== was) clog("card", { cur: was + 1, to: S.idx + 1, by: "manual" }); C.buf = []; C.prev = 0; C.pm = -1; $("#cagain").hidden = true; coachCard(); }
+function coachFlip(d) { const was = S.idx; if (C.max?.[was] === 1 && Date.now() - C.since < 2000) delete C.max[was]; S.idx = Math.max(0, Math.min(S.data.cards.length - 1, S.idx + d)); if (S.idx !== was) clog("card", { cur: was + 1, to: S.idx + 1, by: "manual" }); C.buf = []; C.prev = 0; C.pm = -1; $("#cagain").hidden = true; coachCard(); if (S.idx !== was) demoSeek(); }
+// 먼저 보기(시범 영상을 카메라 대신) 중 이전·다음을 누르면 영상도 그 카드의 시작으로: 카드만 바뀌고 영상이 그대로 흘러 둘이 어긋나던 것(11-03 사용자)
+function demoSeek() {
+  const v = $("#cvid"), c = S.data.cards[S.idx];
+  if (!v || v.srcObject || !/\/demo\.mp4/.test(v.src || "") || !c) return;
+  v.currentTime = Math.max(0, c.start - 0.5); if (v.paused && C.running) v.play().catch(() => {});
+}
 function watching(d) {  // 학생 화면에는 '지켜보는 중'만. 판단 시간은 교사용으로 마우스를 올리면 보인다
   pill(T(`지켜보는 중${C.local ? " · 이 맥" : ""}`, `Watching${C.local ? " · this Mac" : ""}`));
   const el = $("#cpill"); if (el) el.title = `${d.latency} s`;
