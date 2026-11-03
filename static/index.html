@@ -85,7 +85,7 @@
   .mcopy h2 { font-size:clamp(36px,5vw,64px); font-weight:700; line-height:1.05; letter-spacing:-.025em; margin:14px 0 16px; }
   .mcopy p { font-size:18px; opacity:.9; margin:0 0 28px; max-width:520px; } .mbtns { display:flex; gap:12px; justify-content:flex-start; flex-wrap:wrap; }
   .mstrip { position:absolute; left:max(24px, calc((100vw - 1120px) / 2)); right:max(24px, calc((100vw - 1120px) / 2)); bottom:0; display:flex; align-items:center; gap:20px; flex-wrap:wrap; padding:22px 0 26px; border-top:1px solid rgba(255,255,255,.16); color:#fff; font-size:15px; }
-  .mstrip .mlabel { opacity:.8; } .msteps { display:flex; align-items:center; gap:10px; font-weight:600; }
+  .mstrip .mlabel { opacity:.8; } .msteps { display:flex; align-items:center; gap:10px; font-weight:600; flex-wrap:wrap; }
   .msteps span { display:inline-flex; align-items:center; gap:8px; } .msteps i { width:32px; height:32px; border-radius:50%; background:#fff; color:var(--ink); display:grid; place-items:center; }
   .msteps i .ico { width:18px; height:18px; } .mline { width:22px; height:1px; background:rgba(255,255,255,.4); }
   @media (max-width:860px) { .mstrip { position:relative; left:auto; right:auto; grid-row:2; padding-top:18px; } .mline { display:none; } .mhero { padding-bottom:24px; height:auto; min-height:0; padding-top:72px; } }
@@ -244,6 +244,7 @@
   details.kebab { position:relative; } details.kebab > summary { list-style:none; cursor:pointer; min-width:44px; text-align:center; } details.kebab > summary::-webkit-details-marker { display:none; }
   details.kebab .kmenu { position:absolute; right:0; top:calc(100% + 6px); z-index:20; display:flex; flex-direction:column; gap:6px; background:var(--paper, #fff); border:1px solid var(--line); border-radius:14px; padding:8px; box-shadow:0 12px 32px rgba(0,0,0,.14); min-width:200px; }
   details.kebab .kmenu .btn { justify-content:flex-start; white-space:nowrap; }
+  @media (max-width:640px) { .toolbar details.kebab .kmenu { position:fixed; left:16px; right:16px; top:auto; } .toolbar details.kebab .kmenu .btn { white-space:normal; } }
   .toolbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; position:sticky; top:var(--hh); background:rgba(247,246,242,.92); backdrop-filter:blur(12px); padding:14px 0; z-index:5; margin-top:-14px; }
   .chip { display:inline-flex; align-items:center; gap:4px; padding:6px 12px; border-radius:999px; font-size:13px; font-weight:700; border:none; }
   .chip.ok { background:var(--ok-soft); color:var(--ok); } .chip.bad { background:var(--bad-soft); color:var(--bad); }
@@ -273,6 +274,7 @@
   textarea.say:focus { outline:none; border-color:var(--accent); background:#fff; box-shadow:var(--focus); }
   textarea.say.sub { font-size:15px; font-weight:500; color:var(--muted); letter-spacing:0; }
   textarea.say::placeholder { color:var(--muted); }
+  textarea.say { box-sizing:border-box; max-width:100%; } .row textarea.say:first-of-type { padding-right:56px; }  /* 카드 ⋯ 단추가 첫 줄 끝 글자를 덮지 않게(11-03) */
   .meta { color:var(--muted); font-size:13px; padding:4px 10px; }
   .row .issue { margin:8px 10px 0; }
   /* 처음 화면 탭·카드 라이브러리 */
@@ -447,7 +449,11 @@
     .tab.coachv.follow .imgwrap { flex:1 1 0; min-height:0; max-width:none; align-items:center; }
     .coachv.follow .cam .judge { font-size:13px; padding:6px 10px; }
   }
-  @media (max-width:640px) { .hrow .aimqr:not([hidden]) { display:none; } }  /* 좁은 화면(휴대폰)은 이미 휴대폰 */
+  @media (max-width:640px) { .hrow .aimqr:not([hidden]) { display:none; } }
+  /* 11-03 겹침 점검: 좁은 휴대폰에서 시범 3D 가 칸 아래 문장을 덮음 · 도움 단추 글자가 넘침 · 낮은 화면에서 상태 알약이 '카메라' 이름표를 덮음 */
+  @media (max-width:640px) { .tab.coachv.follow .cstage .imgwrap { overflow:hidden; } .tab.coachv.follow .cstage .imgwrap canvas.fold3d { width:min(100%, calc(133cqh - 48px)); }
+    .tab .navb.helpb { white-space:normal; line-height:1.15; } }
+  @media (max-height:760px) { .tab.coachv.follow .cam::before { display:none; } }  /* 좁은 화면(휴대폰)은 이미 휴대폰 */
   .coachv.aim .cam .aimtxt { display:block; white-space:pre-line; position:absolute; left:8px; right:8px; bottom:3%; background:rgba(0,0,0,.62); border-radius:10px; padding:6px 10px !important; text-align:center; color:#fff; font-weight:700; font-size:17px; text-shadow:0 1px 4px #000; padding:0 12px; word-break:keep-all; }
   .coachv .pill { position:absolute; left:8px; top:8px; display:flex; align-items:center; gap:6px; background:rgba(11,16,21,.7); backdrop-filter:blur(8px); font-size:12px; font-weight:600; padding:3px 10px 3px 8px; border-radius:99px; }
   .coachv .pill::before { content:""; width:7px; height:7px; border-radius:50%; background:#ff4d5e; }
@@ -500,8 +506,8 @@
     header { padding:0 16px; gap:10px; } .logo span:last-child { display:none; } .step { padding:6px 8px; font-size:0; gap:0; } .step .dot { font-size:12px; } .step.on { font-size:13px; gap:6px; padding-right:12px; white-space:nowrap; } .steps { flex-shrink:0; } #uiseg .long { display:none; } #uiseg button { padding:6px 10px; }
     .coachv .cam { width:130px; }
     main { padding:20px 16px 48px; }
-    .row { grid-template-columns:1fr; } .row .n { position:absolute; top:26px; left:26px; z-index:2; } .row .picbar { padding:0 46px 0 44px; }  /* 번호(왼쪽 위)·⋯(오른쪽 위)와 안 겹치게 */
-    .htabs { flex-wrap:nowrap; gap:6px; } .htabs button { padding:10px 14px; font-size:15px; white-space:nowrap; }
+    .row { grid-template-columns:minmax(0,1fr); } .row > * { min-width:0; } .row .n { position:absolute; top:26px; left:26px; z-index:2; } .row .picbar { padding:0 46px 0 44px; }  /* 번호(왼쪽 위)·⋯(오른쪽 위)와 안 겹치게 */
+    .htabs { flex-wrap:nowrap; gap:6px; justify-content:flex-start; overflow-x:auto; padding:0 16px; scrollbar-width:none; } .htabs button { padding:10px 12px; font-size:14px; white-space:nowrap; flex-shrink:0; }
     .tab .navb { padding:14px 18px; min-width:0; font-size:17px; white-space:nowrap; }
     .tab .mid { flex:1; min-width:0; } .dots i { flex:1; max-width:22px; min-width:4px; } .dots { flex-wrap:nowrap; }
     .coachv .cam { width:120px; top:12px; left:12px; border-radius:12px; } .coachv .cam video { min-height:68px; }
