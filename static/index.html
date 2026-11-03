@@ -10,7 +10,7 @@
 <style>
   :root {
     /* 로직크래프트 색(logiccraft.co.kr global.css): 남색 글자, 브랜드 파랑, 흙색 강조, 종이색 바탕 */
-    --bg:#f7f6f2; --paper:#fff; --raised:#f1efe8; --ink:#11183a; --ink2:#34406b; --muted:#5f6888; --line:#e7e6df; --line2:#d9d8cf;
+    --bg:#f7f6f2; --paper:#fff; --raised:#f1efe8; --ink:#11183a; --ink2:#34406b; --muted:#5f6888; --line:#e7e6df; --line2:#d9d8cf; --field:#7d849c;
     --accent:#2f63f4; --accent-h:#1f49c4; --accent-soft:#eef2ff; --accent-ink:#1f49c4; --clay:#cf8350; --clay-soft:#f3e6da; --clay-ink:#8f5226;
     --bad:#c4122f; --bad-soft:#fdecef; --ok:#0a7a35; --ok-soft:#e6f4eb; --warn:#8a5600; --warn-soft:#fff3d9;
     --dark:#0b1015; --dark2:#1a222a; --dark3:#2a343e;
@@ -22,6 +22,7 @@
     --hh:64px;
   }
   * { box-sizing:border-box; }
+  body { overflow-wrap:break-word; }  /* 긴 영어 단어·주소가 칸을 뚫지 않게 */
   body { margin:0; font-family:"SF Pro Text",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Segoe UI",Roboto,sans-serif;
          background:var(--bg); color:var(--ink); word-break:keep-all; line-height:1.5; -webkit-font-smoothing:antialiased; letter-spacing:-.005em; }
   button { font:inherit; cursor:pointer; color:inherit; }
@@ -39,7 +40,7 @@
   #uiseg .short, .step .short { display:none; } #uiseg .long, #uiseg .short { pointer-events:none; }
   @media (max-width:720px) { body.home #steps { display:none; } }
   @media (max-width:720px) { #uiseg .short, .step .short { display:inline; } .step .long { display:none; } #uiseg button, .step { min-width:44px; min-height:44px; } }
-  .f3speed, .fh-rec input[type=checkbox] { min-height:40px; } .fh-rec input[type=checkbox] { width:22px; height:22px; accent-color:var(--accent); }
+  .f3speed, .fh-rec input[type=checkbox] { min-height:44px; } .tab .exit, #chelpseg button { min-height:44px; } .livetoggle input[type=checkbox] { width:22px; height:22px; accent-color:var(--accent); } .fh-rec input[type=checkbox] { width:22px; height:22px; accent-color:var(--accent); }
   .step { display:flex; align-items:center; gap:8px; padding:7px 14px 7px 8px; border-radius:999px; border:none; background:none; color:var(--muted); font-size:14px; font-weight:600; transition:background .15s, color .15s; }
   .step .dot { width:22px; height:22px; border-radius:50%; display:grid; place-items:center; background:var(--line); color:var(--ink2); font-size:12px; font-weight:700; }
   .step:hover:not(:disabled):not(.on) { color:var(--ink); }
@@ -97,7 +98,7 @@
   .ladder { position:absolute; left:50%; bottom:16px; transform:translateX(-50%); display:flex; gap:6px; background:rgba(11,16,21,.6); backdrop-filter:blur(10px); padding:6px; border-radius:999px; }
   .ladder span { padding:6px 14px; border-radius:999px; font-size:14px; font-weight:700; color:#a9b8c6; animation:lad 8s infinite; animation-delay:calc(var(--i) * 2s); }
   @keyframes lad { 0%, 24% { background:var(--accent); color:#fff; } 25%, 100% { background:transparent; color:#a9b8c6; } }
-  @media (prefers-reduced-motion: reduce) { .ladder span { animation:none; } }
+  @media (prefers-reduced-motion: reduce) { .ladder span { animation:none; } *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; } }
   .mpair { display:grid; grid-template-columns:1fr 1fr; gap:16px; width:min(820px,100%); } .mpair figure { margin:0; position:relative; }
   .mpair img { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:24px; box-shadow:var(--sh-2); } .mpair figcaption { margin-top:8px; color:var(--muted); font-size:14px; }
   .okbadge { position:absolute; top:14px; right:14px; display:inline-flex; align-items:center; gap:6px; background:var(--ok); color:#fff; padding:8px 14px; border-radius:999px; font-size:15px; }
@@ -157,9 +158,9 @@
   #records { width:100%; }
   .others { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:14px 0; border-top:1px solid var(--line); } .others .btn { padding:6px 12px; font-size:13px; }
   .xbox { border:1px solid var(--line); border-radius:14px; padding:14px; margin:6px 0 14px; } .xbox p { margin:10px 0; }
-  .xask { display:flex; flex-wrap:wrap; gap:8px; align-items:center; } .xask input { padding:7px 10px; border-radius:8px; border:1px solid var(--line); min-width:200px; font:inherit; }
+  .xask { display:flex; flex-wrap:wrap; gap:8px; align-items:center; } .xask input { padding:7px 10px; border-radius:8px; border:1px solid var(--field); min-width:200px; font:inherit; }
   .xtab { width:100%; border-collapse:collapse; font-size:14px; } .xtab td, .xtab th { padding:6px; border-top:1px solid var(--line); text-align:left; vertical-align:top; word-break:keep-all; }
-  .xtab input { width:100%; padding:5px 8px; border-radius:6px; border:1px solid var(--line); font:inherit; } .xtab tr.warn td:first-child { color:#d4572a; font-weight:700; }
+  .xtab input { width:100%; padding:5px 8px; border-radius:6px; border:1px solid var(--field); font:inherit; } .xtab tr.warn td:first-child { color:#d4572a; font-weight:700; }
   .xw { color:#d4572a; font-size:12px; margin-top:3px; } .xbtns { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
   @media (max-width:640px) { .xtab th:nth-child(2), .xtab td:nth-child(2) { display:none; } }
   .others .langrow { margin-left:auto; display:inline-flex; align-items:center; gap:8px; }
@@ -196,7 +197,7 @@
   .admintable th, .admintable td { padding:8px 10px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; } .admintable td:first-child { white-space:normal; }
   .admintable .btn { padding:4px 10px; font-size:12px; margin-right:4px; }
   .ask { display:flex; align-items:center; gap:10px; background:var(--paper); border-radius:999px; padding:6px 6px 6px 14px; box-shadow:var(--sh-1); margin:0 0 10px; }
-  .ask .ci { color:var(--accent); display:grid; } .ask input { flex:1; min-width:0; border:none; font:inherit; font-size:15px; background:transparent; color:var(--ink); } .ask input:focus { outline:none; }
+  .ask .ci { color:var(--accent); display:grid; } .ask input { flex:1; min-width:0; border:none; font:inherit; font-size:16px; background:transparent; color:var(--ink); } .ask input:focus { outline:none; }
   .askbox { background:var(--paper); border-radius:var(--r); padding:14px 18px; box-shadow:var(--sh-1); margin:0 0 12px; display:grid; gap:8px; }
   .askrow { display:flex; gap:10px; align-items:flex-start; } .askrow .n { width:26px; height:26px; font-size:12px; flex:none; } .askrow s { color:var(--muted); }
   .askbtns { display:flex; gap:8px; }
@@ -267,7 +268,7 @@
   textarea.say:hover { background:var(--raised); }
   textarea.say:focus { outline:none; border-color:var(--accent); background:#fff; box-shadow:var(--focus); }
   textarea.say.sub { font-size:15px; font-weight:500; color:var(--muted); letter-spacing:0; }
-  textarea.say::placeholder { color:#a9b5c0; }
+  textarea.say::placeholder { color:var(--muted); }
   .meta { color:var(--muted); font-size:13px; padding:4px 10px; }
   .row .issue { margin:8px 10px 0; }
   /* 처음 화면 탭·카드 라이브러리 */
@@ -278,7 +279,7 @@
   .htabs .ico { width:18px; height:18px; }
   .lib { max-width:1180px; margin:0 auto; padding:8px 20px 24px; }
   .libtop { display:flex; align-items:center; gap:16px; flex-wrap:wrap; justify-content:space-between; } .libtop h2 { margin:0; }
-  .libtop .lq { flex:0 1 320px; padding:10px 14px; border:1px solid var(--line); border-radius:12px; font:inherit; }
+  .libtop .lq { flex:0 1 320px; padding:10px 14px; border:1px solid var(--field); border-radius:12px; font:inherit; }
   .libchips b { font-weight:600; color:var(--muted); margin-left:2px; } .libchips button.on b { color:#cfd6ff; }
   .libh { margin:22px 0 10px; } .lib .jobsrc { margin:-4px 0 12px; }
   .libgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:16px; }
@@ -297,7 +298,7 @@
   .folders .fold span { color:var(--muted); font-variant-numeric:tabular-nums; } .folders .fold.on { background:var(--accent); color:#fff; } .folders .fold.on span { color:#dfe7ff; }
   .folders .fren { background:none; border:0; color:var(--muted); cursor:pointer; padding:6px; border-radius:8px; } .folders .fren:hover { background:var(--line); }
   #fedit, #pnew { display:flex; gap:6px; } .fname { flex:1; min-width:0; padding:8px 10px; border:1px solid var(--line); border-radius:10px; font:inherit; }
-  .pastbar { display:flex; gap:8px; flex-wrap:wrap; } .pastbar .pq { flex:1; min-width:160px; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font:inherit; }
+  .pastbar { display:flex; gap:8px; flex-wrap:wrap; } .pastbar .pq { flex:1; min-width:160px; padding:9px 12px; border:1px solid var(--field); border-radius:10px; font:inherit; }
   .pastbar .psort { padding:9px 10px; border:1px solid var(--line); border-radius:10px; font:inherit; background:#fff; }
   .pchips { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; } .pchips button { border:1px solid var(--line); background:#fff; border-radius:999px; padding:6px 12px; font:inherit; font-size:14px; cursor:pointer; } .pchips button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
   .pickbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; background:#eef2ff; border-radius:12px; padding:8px 12px; margin-bottom:10px; } .pickbar select { padding:7px 8px; border-radius:8px; border:1px solid var(--line); font:inherit; }
@@ -472,7 +473,8 @@
     header { padding:0 16px; gap:10px; } .logo span:last-child { display:none; } .step { padding:6px 8px; font-size:0; gap:0; } .step .dot { font-size:12px; } .step.on { font-size:13px; gap:6px; padding-right:12px; white-space:nowrap; } .steps { flex-shrink:0; } #uiseg .long { display:none; } #uiseg button { padding:6px 10px; }
     .coachv .cam { width:130px; }
     main { padding:20px 16px 48px; }
-    .row { grid-template-columns:1fr; } .row .n { position:absolute; top:26px; left:26px; z-index:2; }
+    .row { grid-template-columns:1fr; } .row .n { position:absolute; top:26px; left:26px; z-index:2; } .row .picbar { padding:0 46px 0 44px; }  /* 번호(왼쪽 위)·⋯(오른쪽 위)와 안 겹치게 */
+    .htabs { flex-wrap:nowrap; gap:6px; } .htabs button { padding:10px 14px; font-size:15px; white-space:nowrap; }
     .tab .navb { padding:14px 18px; min-width:0; font-size:17px; white-space:nowrap; }
     .tab .mid { flex:1; min-width:0; } .dots i { flex:1; max-width:22px; min-width:4px; } .dots { flex-wrap:nowrap; }
     .coachv .cam { width:120px; top:12px; left:12px; border-radius:12px; } .coachv .cam video { min-height:68px; }
@@ -641,6 +643,9 @@ function text(c) {
   return esc(c.ko);
 }
 function setLang(v) { lang = v; try { localStorage.setItem("lang", v); } catch {} ({ use, tablet })[S.view]?.(); }
+// 망이 끊기면 알린다(요청마다 실패 알림이 따로 뜨기 전에 원인을 먼저)
+addEventListener("offline", () => toast(T("인터넷 연결이 끊겼어요. 다시 이어지면 계속돼요.", "You're offline. It will continue when the connection is back.")));
+addEventListener("online", () => toast(T("다시 연결됐어요.", "Back online.")));
 function toast(msg, label, act) {
   document.querySelector(".toast")?.remove();
   const t = document.createElement("div");
@@ -814,7 +819,7 @@ async function home() {
         <input type="file" accept="video/*" id="file" hidden>
         <div class="plus">${icon("plus")}</div>
         <div class="big">${T("영상을 여기에 끌어다 놓거나, 눌러서 고르세요", "Drop a video here, or click to choose one")}</div>
-        <div class="muted">${T("손과 물건이 잘 보이게 · 학생이 나오는 영상은 넣지 마세요", "Hands and objects clearly visible · no videos of students")}</div>
+        <div class="muted">${T("손과 물건이 잘 보이게 · 배우는 사람 얼굴이 나오는 영상은 넣지 마세요", "Hands and objects clearly visible · no videos that show a learner's face")}</div>
         <span class="btn primary">${T("영상 고르기", "Choose a video")}</span>
         <span class="seg makewhere" id="mkwhere" hidden onclick="event.preventDefault();event.stopPropagation()">
           <button class="on" onclick="makeWhere(false)">${T("Meta API", "Meta API")}</button><button onclick="makeWhere(true)">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button></span>
@@ -854,7 +859,7 @@ const libKicker = r => r.use === "special" ? T("특수교육 직무 훈련", "Sp
 function libCard(r) {
   const tags = [r.mode === "alone" ? T("혼자 하기", "On your own") : T("같이 하기", "With a helper"), r.no_done ? T("사람이 정함", "A person decides") : T("카메라가 넘김", "Camera turns cards"), r.fold3d ? "3D" : ""].filter(Boolean);
   return `<article class="libcard">
-    <a href="#run=${r.id}&view=use" class="libimg"><img src="/runs/${r.id}/${r.thumb}" alt=""></a>
+    <a href="#run=${r.id}&view=use" class="libimg" aria-label="${esc(runTitle(r).replace(/ \((견본|sample)\)$/, ""))}"><img src="/runs/${r.id}/${r.thumb}" alt=""></a>
     <div class="libbody"><span class="kicker">${libKicker(r)}</span><a href="#run=${r.id}&view=use"><strong>${esc(runTitle(r).replace(/ \((견본|sample)\)$/, ""))}</strong></a>
       <span class="muted">${T(`카드 ${r.count}장`, `${r.count} cards`)}</span>
       <span class="ltags">${tags.map(t => `<span>${t}</span>`).join("")}</span>
@@ -1148,7 +1153,7 @@ function edit() {
     <div id="stuck">${stuckHtml()}</div>
     <form class="ask" onsubmit="askAgent(event)">
       <span class="ci">${icon("draw")}</span>
-      <input id="askin" maxlength="300" placeholder="${T("Muse Spark에게 부탁하기 (예: 글을 잘 못 읽는 학생용으로 더 쉽게)", "Ask Muse Spark (e.g. simpler words for a learner who reads little)")}" aria-label="${T("Muse Spark에게 부탁하기", "Ask Muse Spark")}">
+      <input id="askin" maxlength="300" placeholder="${T("Muse Spark에게 부탁하기 (예: 글을 잘 못 읽는 사람도 알기 쉽게)", "Ask Muse Spark (e.g. simpler words for a learner who reads little)")}" aria-label="${T("Muse Spark에게 부탁하기", "Ask Muse Spark")}">
       <button class="btn primary">${T("부탁하기", "Ask")}</button>
     </form>
     <div id="askres"></div>
@@ -1612,7 +1617,7 @@ function use() {
         <button class="btn" onclick="printWhat('cards')">${icon("print")} ${T(`카드 인쇄 (${pages}쪽)`, `Print cards (${pages} p)`)}</button>
         <button class="btn" onclick="printWhat('record')">${icon("print")} ${T("기록지 인쇄", "Print record sheet")}</button>
         <button class="btn" onclick="go({run:S.run,view:'tablet'})">${icon("tablet")} ${T("태블릿으로 보기", "Tablet view")}</button>
-        <button class="btn" onclick="shareLink('tablet')">${icon("share")} ${T("학생 기기로 링크", "Link for a learner device")}</button>
+        <button class="btn" onclick="shareLink('tablet')">${icon("share")} ${T("배우는 사람 기기로 링크", "Link for a learner device")}</button>
         <button class="btn" onclick="shareCards(this)">${icon("share")} ${navigator.canShare ? T("이미지로 보내기", "Send as images") : T("이미지로 저장", "Save as image")}</button>
         <a class="btn" href="/api/runs/${S.run}/export.zip" download>${icon("share")} ${T("백업(.zip)", "Backup (.zip)")}</a>
         <button class="btn" onclick="openX()">${icon("plus")} ${T("다른 언어 추가", "Add a language")}</button>
@@ -1795,7 +1800,7 @@ function coach() {
       </div>
       <div class="d" id="cwhered" hidden></div>
       <div class="pairbox"><img src="/api/runs/${S.run}/qr.svg?to=glasses&lang=${lang}&s=${C.pair}" alt="" width="96" height="96">
-        <span>${T("안경 연결", "Glasses link")} · <b>${C.pair}</b><br><span class="d">${T("이 화면 전용 코드라, 같은 카드를 다른 학생이 써도 섞이지 않아요.", "This screen's own code, so other learners on the same cards don't mix.")}</span></span></div>
+        <span>${T("안경 연결", "Glasses link")} · <b>${C.pair}</b><br><span class="d">${T("이 화면 전용 코드라, 같은 카드를 다른 사람이 써도 섞이지 않아요.", "This screen's own code, so other learners on the same cards don't mix.")}</span></span></div>
       <label class="livetoggle" ${noDone() ? "hidden" : ""}><input type="checkbox" ${C.live ? "checked" : ""} onchange="setLive(this.checked)"> ${T("따라 하는 동안 계속 확인하기 (단계 결과를 기준 사진과 비교)", "Keep checking while following (compare each step's result with its reference)")}</label>
       <div class="seg" id="chelpseg">${[[false, T("카드 다 보여 주기", "Show the whole card")], [true, T("필요할 때만 도움", "Help only when needed")]].map(([v, l]) =>
         `<button class="${C.help === v ? "on" : ""}" aria-pressed="${!!(C.help === v)}" onclick="setHelp(${v})">${l}</button>`).join("")}</div>
