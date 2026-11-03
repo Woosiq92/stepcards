@@ -1311,7 +1311,7 @@ async function askAgent(e) {
   S.ask = d;
   box.innerHTML = `<div class="askbox"><b>${esc(d.note || T("고칠 안", "Proposed changes"))}</b>
     <span class="muted">${T(`바뀌는 카드 ${d.changes.length}장 · 검사 ${d.checks}번 · $${d.cost}`, `${d.changes.length} cards change · checker run ${d.checks}× · $${d.cost}`)}</span>
-    ${d.changes.map(c => `<div class="askrow"><span class="n">${S.data.cards.findIndex(x => x.n === c.n) + 1}</span><div><s>${esc(c.ko_before)}</s><br><b>${esc(c.ko)}</b><span class="muted"> · ${esc(c.en)}</span></div></div>`).join("")}
+    ${d.changes.map(c => `<div class="askrow"><span class="n">${S.data.cards.findIndex(x => x.n === c.n) + 1}</span><div>${ui === "en" ? `<s>${esc(c.en_before)}</s><br><b>${esc(c.en)}</b><span class="muted"> · ${esc(c.ko)}</span>` : `<s>${esc(c.ko_before)}</s><br><b>${esc(c.ko)}</b><span class="muted"> · ${esc(c.en)}</span>`}</div></div>`).join("")}
     ${d.problems.length ? `<div class="issue">${T("적용하면 검사에 걸리는 곳이 있어요:", "Applying this leaves issues:")} ${esc(d.problems.map(m => problemText(m, true)).join(" / "))}</div>` : ""}
     <div class="askbtns">${d.changes.length ? `<button class="btn primary" onclick="applyAgent()">${T("적용", "Apply")}</button>` : ""}<button class="btn" onclick="$('#askres').innerHTML=''">${T("닫기", "Close")}</button></div></div>`;
 }

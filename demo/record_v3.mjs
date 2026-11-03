@@ -58,14 +58,16 @@ async function shots(page, name) {
 async function rec(page, name) {
   const dir = OUT + name + "/"; rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true });
   const cdp = await page.createCDPSession(), frames = [], start = Date.now() / 1000;
+  let paused = 0, cut = 0;  // pause(): 기다리는 동안 버리고 그만큼 시각을 당긴다(영상에서 잘린 시간은 자막으로 밝힌다)
   cdp.on("Page.screencastFrame", f => {
-    const k = frames.length; frames.push(f.metadata.timestamp);
+    if (paused) { cdp.send("Page.screencastFrameAck", { sessionId: f.sessionId }).catch(() => {}); return; }
+    const k = frames.length; frames.push(f.metadata.timestamp - cut);
     writeFileSync(dir + `f${String(k).padStart(5, "0")}.jpg`, Buffer.from(f.data, "base64"));
     cdp.send("Page.screencastFrameAck", { sessionId: f.sessionId }).catch(() => {});
   });
   await cdp.send("Page.startScreencast", { format: "jpeg", quality: 90, everyNthFrame: 2, maxWidth: 3840, maxHeight: 2400 });
-  return { async stop() {
-    const end = Date.now() / 1000;
+  return { pause() { paused = Date.now() / 1000; }, resume() { cut += Date.now() / 1000 - paused; paused = 0; }, async stop() {
+    const end = Date.now() / 1000 - cut;
     await cdp.send("Page.stopScreencast");
     const lines = ["ffconcat version 1.0"];
     frames.forEach((t, k) => {
@@ -166,6 +168,28 @@ if (scene === "edit") {
   mark("passed"); await wait(2000);
   const view = async label => { await clickText(p, `${row} .seg.mini button`, label); mark(label); await wait(3000); };
   await view(tx("Photo", "사진")); await view(tx("Motion", "움직임")); await view("3D"); await wait(2500);
+  await recr.stop();
+}
+
+if (scene === "agent") {
+  // Muse Spark에게 부탁하기: 부탁 → (기다림은 잘라 냄) → 고칠 안과 검사 횟수 → 적용
+  const p = await open(`/?ui=${L}#run=${RUN}&view=edit`, 1440, 900);
+  await wait(1000);
+  await p.evaluate(() => document.querySelector("#askin").scrollIntoView({ block: "center" })); await wait(500);
+  const recr = await rec(p, "agent");
+  mark("rec"); await wait(1500);
+  await p.click("#askin"); await wait(300);
+  await p.type("#askin", tx("Simpler words for a learner who reads little", "글을 잘 못 읽는 사람도 알기 쉽게"), { delay: 55 }); await wait(600);
+  await p.click("form.ask button"); mark("asked"); await wait(1500);
+  recr.pause(); const tw = Date.now();
+  await p.waitForSelector("#askres .askbox .askrow, #askres .askbox .btn", { timeout: 180000 });
+  await wait(300); recr.resume(); mark(`answer after ${((Date.now() - tw) / 1000 + 1.5).toFixed(1)}s`);
+  const info = await p.evaluate(() => ({ changes: S.ask?.changes?.length, checks: S.ask?.checks, cost: S.ask?.cost, problems: S.ask?.problems?.length, note: S.ask?.note }));
+  marks.push({ t: 0, what: "agent", ...info, wait_s: +((Date.now() - tw) / 1000 + 1.5).toFixed(1) });
+  await wait(3000);
+  await p.evaluate(() => document.querySelector("#askres").scrollIntoView({ block: "start", behavior: "smooth" })); await wait(4000);
+  await p.evaluate(() => document.querySelector("#askres .askbtns").scrollIntoView({ block: "center", behavior: "smooth" })); await wait(2500);
+  if (info.changes) { await p.click("#askres .askbtns .btn.primary"); mark("applied"); await wait(3000); }
   await recr.stop();
 }
 
