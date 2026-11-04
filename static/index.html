@@ -896,10 +896,7 @@ async function home() {
         <p>${T("일하는 모습을 찍은 영상을 넣으면 동작마다 사진 카드가 한 장씩 생겨요. 따라 하는 동안 카메라가 보고, 단계가 끝나면 다음 카드를 띄워요.", "Add a video of someone doing the task. You get one picture card per action. While someone follows along, the camera watches and shows the next card when a step is done.")}</p>
         <div class="mbtns">${has(N) ? `<a class="pill" href="#run=${N}&view=coach&go=watch">${icon("video")} ${T("1분 만에 작동 보기 · 카메라 없이", "See it work · 1 min, no camera")}</a>` : ""}<a class="pill${has(N) ? " ghost" : ""}" href="#" onclick="event.preventDefault();homeTab('mine');document.getElementById('start').scrollIntoView({behavior:'smooth'})">${T("내 영상으로 만들기", "Make cards from a video")}</a></div>
       </div>
-      <div class="mstrip"><div class="mrow"><span class="mlabel">${T("이렇게 돼요", "How it works")}</span>
-        <span class="msteps">${[["video", T("1 영상 넣기", "1 Add a video")], ["tablet", T("2 단계 카드가 생겨요", "2 Step cards are made")], ["camera", T("3 따라 하면 카메라가 보고 카드를 넘겨요", "3 Do each step, and the camera turns the card")]]
-          .map(([ic, t]) => `<span><i>${icon(ic)}</i>${t}</span>`).join('<b class="mline"></b>')}</span></div>
-        <div class="mrow"><span class="mlabel">${T("막히면 도움이 한 단계씩", "Stuck? Help steps up")}</span>
+      <div class="mstrip"><div class="mrow"><span class="mlabel">${T("막히면 도움이 한 단계씩", "Stuck? Help steps up")}</span>
         <span class="msteps">${[1, 2, 3, 4].map(l => `<span><i>${helpIcon(l)}</i>${lvName(l)}</span>`).join('<b class="mline"></b>')}</span></div></div>
       ${has(L) ? `<button class="mpause" onclick="const v=this.parentElement.querySelector('video');v.paused?v.play():v.pause();this.innerHTML=v.paused?'▶':'❚❚'" aria-label="${T("영상 멈추기", "Pause video")}">❚❚</button>` : ""}
     </section>
