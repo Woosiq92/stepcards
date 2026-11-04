@@ -569,7 +569,7 @@
     .libgrid { grid-template-columns:1fr 1fr; gap:12px; } .libcard { background:#111; border-color:#333; color:#fff; }
     .libcard .kicker, .libcard .muted, .libcard .ltags, .libcard .lacts { display:none; } .libcard strong { color:#fff; font-size:20px; }
     .libcard .glgo { display:inline-flex; margin-top:8px; min-height:48px; font-size:18px; }
-    .libcard .btn.primary:focus-visible, .mbtns .pill:focus-visible { outline:3px solid #fff; outline-offset:4px; }
+    .libcard .btn.primary:focus, .mbtns .pill:focus, #uiseg button:focus { outline:3px solid #fff; outline-offset:4px; }
   }  /* Meta Ray-Ban Display 시뮬레이터(크롬 확장)는 창 크기는 그대로 두고 html에 mdcs-active를 붙여 body만 600x600으로 줄인다: 화면 크기 규칙이 안 켜져서 같은 규칙을 이 클래스에도 건다 */
   html.mdcs-active body.homepage,html.mdcs-active body.homepage main { background:#000; }
   html.mdcs-active body.homepage header { background:#000; border-color:#222; } html.mdcs-active body.homepage #uiseg { background:#1a1a1a; } html.mdcs-active body.homepage #uiseg button { color:#aaa; } html.mdcs-active body.homepage #uiseg button.on { background:#333; color:#fff; } html.mdcs-active body.homepage #steps { display:none; }
@@ -579,7 +579,7 @@
   html.mdcs-active .libgrid { grid-template-columns:1fr 1fr; gap:12px; } html.mdcs-active .libcard { background:#111; border-color:#333; color:#fff; }
   html.mdcs-active .libcard .kicker,html.mdcs-active .libcard .muted,html.mdcs-active .libcard .ltags,html.mdcs-active .libcard .lacts { display:none; } html.mdcs-active .libcard strong { color:#fff; font-size:20px; }
   html.mdcs-active .libcard .glgo { display:inline-flex; margin-top:8px; min-height:48px; font-size:18px; }
-  html.mdcs-active .libcard .btn.primary:focus-visible,html.mdcs-active .mbtns .pill:focus-visible { outline:3px solid #fff; outline-offset:4px; }
+  html.mdcs-active .libcard .btn.primary:focus,html.mdcs-active .mbtns .pill:focus,html.mdcs-active #uiseg button:focus { outline:3px solid #fff; outline-offset:4px; }
   html.mdcs-active body:not(#_) { overflow-y:auto !important; } html.mdcs-active #steps { display:none; } html.mdcs-active .mhero.full { grid-template-columns:minmax(0,1fr); height:auto; min-height:0; padding:28px 24px 8px; } html.mdcs-active main { padding:16px; } html.mdcs-active .full { width:auto; margin-left:-16px; margin-right:-16px; } html.mdcs-active .mhero .mcopy h2 { font-size:40px; }
 </style>
 </head>
@@ -976,6 +976,7 @@ async function home() {
     })()}`;
   S.mine = mine; if (mine.length) pastList();
   S.lib = runs.filter(r => r.use && r.done); libList(); homeTab(HT());
+  if (onGlasses()) [100, 800].forEach(t => setTimeout(() => { if (!document.activeElement || document.activeElement === document.body) $(".mbtns a.pill:not(.addv)")?.focus(); }, t));  // 첫 화면이 한 번 더 그려져도(역할 확인 뒤) 초점이 남게
   const drop = $("#drop"), file = $("#file");
   file.onchange = () => file.files[0] && upload(file.files[0]);
   drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
@@ -1869,6 +1870,28 @@ async function liveBoard() {
 function ackCall(s) { fetch(`/api/runs/${S.run}/call`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ s, ack: true }) }).then(liveBoard).catch(() => {}); }
 let AC = null;
 addEventListener("pointerdown", () => { try { AC ??= new AudioContext(); AC.resume(); } catch {} }, { capture: true });
+/* 안경(시뮬레이터 mdcs-active 또는 작은 정사각 화면) 첫 화면: 입력은 방향키·Enter뿐인데 일반 페이지는 브라우저가 초점을 옮겨 주지 않는다(Meta 문서).
+   보이는 단추 가운데 그 방향으로 가장 가까운 것으로 초점을 옮기고 화면을 따라 내린다(11-04 사용자: 목록에서 아무것도 할 수 없었다) */
+const onGlasses = () => document.documentElement.classList.contains("mdcs-active") || matchMedia("(max-width:700px) and (max-height:700px) and (min-aspect-ratio:4/5)").matches;
+addEventListener("keydown", e => {
+  if (S.view !== "home" || !onGlasses() || !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+  const all = [...document.querySelectorAll("#main a.pill, #main a.glgo, #uiseg button")].filter(el => { const r = el.getBoundingClientRect(), c = getComputedStyle(el); return r.width && r.height && c.display !== "none" && c.visibility !== "hidden"; });
+  if (!all.length) return;
+  e.preventDefault();
+  const cur = all.includes(document.activeElement) ? document.activeElement : null;
+  if (!cur) { const f0 = all.find(el => el.closest("#main")) || all[0]; f0.focus(); f0.scrollIntoView({ block: "center" }); return; }
+  const c = cur.getBoundingClientRect(), cx = c.left + c.width / 2, cy = c.top + c.height / 2;
+  const dir = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[e.key];
+  let best = null, bd = Infinity;
+  for (const el of all) {
+    if (el === cur) continue;
+    const r = el.getBoundingClientRect(), dx = r.left + r.width / 2 - cx, dy = r.top + r.height / 2 - cy, along = dx * dir[0] + dy * dir[1];
+    if (along <= 4) continue;
+    const d = along + Math.abs(dx * dir[1] + dy * dir[0]) * 2;  // 그 방향으로 멀리 갈수록, 옆으로 비낄수록 멀다
+    if (d < bd) { bd = d; best = el; }
+  }
+  if (best) { best.focus(); best.scrollIntoView({ block: "center", behavior: "smooth" }); }
+});
 function beep(n = 2) {
   try { const a = AC ??= new AudioContext(); a.resume();
     for (let k = 0; k < n; k++) { const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + k * 0.3; o.frequency.value = 880; g.gain.value = 0.25; o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 0.18); } } catch {}

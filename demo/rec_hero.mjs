@@ -8,7 +8,7 @@ await p.addStyleTag({ content: ".coachv .exit, .coachv .wcap, .coachv .bar, .coa
 if (process.env.GLASSES) {  // 안경 화면(600x600)을 오른쪽 아래에 작게: 같은 짝 코드로 따라 하기 화면을 따라간다. 실제 기기가 아니라 시뮬레이터에서만 확인했다고 적는다
   await p.evaluate((ui) => {
     const box = document.createElement("div"); box.id = "glassinset";
-    box.innerHTML = `<div class="gl">${ui === "en" ? "Glasses view (Meta Ray-Ban Display simulator)" : "안경 화면 (Meta Ray-Ban Display 시뮬레이터)"}</div><div class="gf"><iframe src="/glasses?run=8e1456e529ca&lang=${ui}&m=${ui}&s=${C.pair}"></iframe></div>`;
+    box.innerHTML = `<div class="gl">${ui === "en" ? "Glasses view · simulator" : "안경 화면 · 시뮬레이터"}</div><div class="gf"><iframe src="/glasses?run=8e1456e529ca&lang=${ui}&m=${ui}&s=${C.pair}"></iframe></div>`;
     document.querySelector(".coachv").appendChild(box);
   }, UI);
   await p.addStyleTag({ content: `.coachv { padding-right:440px !important; } #glassinset { position:fixed; right:18px; top:50%; transform:translateY(-50%); z-index:50; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
@@ -16,6 +16,22 @@ if (process.env.GLASSES) {  // 안경 화면(600x600)을 오른쪽 아래에 작
     #glassinset .gf { width:400px; height:400px; border-radius:14px; overflow:hidden; border:2px solid #3a4580; background:#000; box-shadow:0 12px 30px rgba(0,0,0,.5); }
     #glassinset iframe { width:600px; height:600px; border:0; transform:scale(.6667); transform-origin:0 0; }` });
   await w(2);
+  // 세 칸 높이 맞추기(11-04 사용자: 크기가 안 맞는다): 카드 칸 높이를 재서 시범 영상·안경 화면을 같은 높이·같은 줄에 둔다
+  await p.addStyleTag({ content: ".coachv .cstage { align-items:center !important; } .coachv .cam .judge { height:52px !important; overflow:hidden; box-sizing:border-box; } #glassinset .gl { white-space:nowrap; width:auto !important; }" });
+  for (let k = 0; k < 3; k++) {
+    await p.evaluate(() => {
+      const cv = document.querySelector("#cwrap canvas, #cwrap img, #cwrap video"), H = Math.round(cv.getBoundingClientRect().height);
+      const box = document.getElementById("glassinset"), gf = box.querySelector(".gf"), fr = box.querySelector("iframe");
+      document.querySelector(".coachv").style.setProperty("padding-right", (H + 48) + "px", "important");
+      const cam = document.querySelector(".coachv .cam video"), jb = document.querySelector(".coachv .cam .judge");
+      cam.style.height = (H - jb.offsetHeight) + "px"; cam.style.objectFit = "cover";
+      const top = cv.getBoundingClientRect().top, camBox = document.querySelector(".coachv .cam");
+      camBox.style.marginTop = ((parseFloat(camBox.style.marginTop) || 0) + top - camBox.getBoundingClientRect().top) + "px";  // 시범 영상 칸 윗선을 카드 윗선에
+      box.style.top = (top - 30) + "px"; box.style.transform = "none"; gf.style.width = gf.style.height = H + "px"; fr.style.transform = `scale(${H / 600})`;
+    });
+    await w(0.8);
+  }
+  console.log("panes", JSON.stringify(await p.evaluate(() => [".coachv .cam", "#cwrap canvas, #cwrap img", "#glassinset .gf"].map(q => { const r = document.querySelector(q).getBoundingClientRect(); return [Math.round(r.top), Math.round(r.height)]; }))));
 }
 const t0 = Date.now(), list = []; let n = 0, last = 0;
 while (Date.now() - t0 < Number(process.env.SECS || 32) * 1000) {
