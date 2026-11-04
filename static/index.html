@@ -1933,7 +1933,7 @@ function coach() {
       <div class="glyph">${icon("glasses")}</div>
       <div class="t">${T("따라 하기", "Coach mode")}</div>
       ${S.data.reviewed === false ? `<div class="unreviewed">${T("만든 사람이 아직 확인하지 않은 카드예요", "The maker hasn't checked these cards yet")}</div>` : ""}
-      <div class="d">${noDone() ? (S.data.pov === "facing" ? T("몸 전체 동작(춤·수어)은 카메라 판단을 아직 검증하지 못해 꺼 두었어요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "Camera judging for whole-body moves (dance, signing) isn't verified yet, so it's off. Turn cards with Back and Next; help grows when you're stuck.") : T("사람을 돕는 일이라 카메라를 켜지 않아요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "This work helps a person, so the camera stays off. Turn cards with Back and Next; help grows when you're stuck."))
+      <div class="d">${noDone() ? (S.data.drawn ? T("시범이 실제 손으로 하는 영상이 아니라 설명서 그림이라, 카메라로 맞춰 볼 수 없어요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "The demonstration is a drawn manual, not real hands, so the camera can't compare against it. Turn cards with Back and Next; help grows when you're stuck.") : S.data.pov === "facing" ? T("몸 전체 동작(춤·수어)은 카메라 판단을 아직 검증하지 못해 꺼 두었어요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "Camera judging for whole-body moves (dance, signing) isn't verified yet, so it's off. Turn cards with Back and Next; help grows when you're stuck.") : T("사람을 돕는 일이라 카메라를 켜지 않아요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "This work helps a person, so the camera stays off. Turn cards with Back and Next; help grows when you're stuck."))
         : T("카메라가 손과 물건을 보고, 지금 할 카드를 띄워 줘요. 이전·다음으로 직접 넘길 수도 있어요.",
         "The camera watches hands and objects and shows the card for the current step. Back and Next always work by hand.")}</div>
       ${S.data.sample && !noDone() ? `<ol class="csteps">
@@ -2390,15 +2390,24 @@ function coachWatch() {
   const v = $("#cvid"); v.srcObject = null; v.src = `/api/runs/${S.run}/demo.mp4`; v.muted = true; v.classList.remove("mirror");
   $(".coachv .cam")?.setAttribute("data-label", T("시범 영상 재생 · 카메라 대신", "Demo replay · in place of the camera"));
   $(".coachv")?.classList.add("watch");
-  // 단계가 없는 장면(앞 인사·카드 사이 긴 빈 구간·끝)은 건너뛴다: 바지락 견본은 첫 카드가 15초, 카드 사이 30~60초 빈 곳이 있어 보는 사람이 단계를 놓쳤다(11-03 사용자)
-  const cs = [...S.data.cards].sort((a, b) => a.start - b.start), first = cs[0], last = cs.at(-1);
-  v.onloadedmetadata = () => { if (first && first.start > 2) v.currentTime = first.start - 1; };
-  v.ontimeupdate = () => {
-    const t = v.currentTime;
-    if (last && t > last.end + 3 && !v.paused) { v.pause(); v.onended?.(); return; }
-    const k = cs.findIndex(c => c.start > t);
-    if (k > 0 && t > cs[k - 1].end + 2 && cs[k].start - t > 3) v.currentTime = cs[k].start - 1;  // 앞 단계가 끝난 모습은 2초 보여 주고 다음 단계 1초 전으로
-  };
+  // 카드 한 장의 구간만 틀고, 그 단계가 끝난 모습에서 멈춰 카메라 판단을 기다린다. 판단이 카드를 넘기면 다음 카드 구간으로.
+  // 영상을 끝까지 그냥 흘리면 5~6초짜리 단계(서랍장)는 판단(3~10초)보다 빨리 지나가 카드가 1에 머문 채 영상만 앞서갔다(11-04 사용자).
+  // 앞 인사·카드 사이 빈 구간은 이것으로 저절로 건너뛴다(다음 카드 1초 전으로 옮긴다)
+  const cs = S.data.cards;
+  v.onloadedmetadata = () => { const c = cs[S.idx]; if (c && c.start > 2) v.currentTime = c.start - 1; };
+  v.ontimeupdate = null; C.watchIdx = S.idx; C.holdAt = 0;
+  clearInterval(C.watchTimer);
+  C.watchTimer = setInterval(() => {
+    if (S.view !== "coach" || !$("#cvid") || $("#csum")) { clearInterval(C.watchTimer); return; }
+    const c = cs[S.idx]; if (!c || !C.running) return;
+    if (C.watchIdx !== S.idx) {  // 카드가 바뀌었다(판단 또는 이전·다음): 그 카드 구간 앞으로 옮겨 다시 튼다
+      C.watchIdx = S.idx; C.holdAt = 0;
+      if (v.currentTime < c.start - 1.5 || v.currentTime > c.end + 1) v.currentTime = Math.max(0, c.start - 1);
+      v.play().catch(() => {}); return;
+    }
+    if (!v.paused && v.currentTime > c.end + 0.5) { v.pause(); C.holdAt = Date.now(); pill(T("이 단계가 끝난 모습에서 멈춰 판단을 기다려요", "Paused at the end of this step · waiting for the decision")); }
+    else if (C.holdAt && Date.now() - C.holdAt > 15000) { C.holdAt = 0; pill(T("카메라가 이 단계의 끝을 못 알아봤어요 · 다음으로 넘길 수 있어요", "The camera didn't recognise this step's end · press Next to move on")); }
+  }, 300);
   v.play().catch(() => {}); coachStart(); aim(false);
   v.onended = () => { C.running = false; pill(T("영상이 끝났어요", "Video ended")); setTimeout(() => { if (S.view === "coach" && !$("#csum")) coachEnd(false); }, 1500); };
 }

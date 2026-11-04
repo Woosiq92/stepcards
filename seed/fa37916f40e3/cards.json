@@ -322,5 +322,7 @@
  ],
  "title": "침대 옆 서랍장 조립 (견본)",
  "mode": "alone",
- "seed_v": 1
+ "seed_v": 2,
+ "no_done": true,
+ "drawn": true
 }
