@@ -25,6 +25,8 @@
   .bar button { flex:1; min-height:88px; font:inherit; font-size:28px; font-weight:700; color:#fff; background:#30333A; border:4px solid transparent; border-radius:9999px; transform:scale(.94); transition:transform .1s; }
   .bar button:focus { outline:none; border-color:#fff; background:#2694FE; box-shadow:0 0 0 4px rgba(255,255,255,.35); transform:scale(1); }  /* 초점은 색과 크기로 */
   .bar button:disabled { opacity:.5; }
+  .xb { flex:none; width:64px; height:48px; font:inherit; font-size:24px; font-weight:700; color:#fff; background:#30333A; border:3px solid transparent; border-radius:9999px; }
+  .xb:focus { outline:none; border-color:#fff; background:#2694FE; }  /* 나가기: ↑ 로 온다 */
   .msg { margin:auto; font-size:32px; line-height:40px; font-weight:700; color:#fff; text-align:center; }
   .ask { position:fixed; inset:0; background:#000; display:flex; flex-direction:column; justify-content:center; gap:24px; padding:24px; }
   [hidden] { display:none !important; }
@@ -51,13 +53,13 @@ function draw(again) {
   const c = cards[cur.i], n = cards.length, had = document.activeElement?.id;
   if (cur.fin) {  // 끝 화면에서도 안경만으로 처음부터 다시 할 수 있게
     document.getElementById("m").innerHTML = `<div class="msg" style="font-size:44px;line-height:56px">✓<br>${K ? "All steps done" : "다 했어요"}</div>
-      <div class="bar"><button id="f" onclick="act(restart)">${K ? "Start over ↺" : "처음으로 ↺"}</button></div>`;
+      <div class="bar"><button id="x" onclick="act(leave)">${K ? "Card list" : "카드 목록"}</button><button id="f" onclick="act(restart)">${K ? "Start over ↺" : "처음으로 ↺"}</button></div>`;
     if (shown !== "fin") { shown = "fin"; lockUntil = Date.now() + 1000; setTimeout(() => document.getElementById("f")?.focus(), 1000); }  // 빨리 여러 번 집어도 바로 처음으로 가지 않게
     else document.getElementById("f").focus();
     return;
   }
   document.getElementById("m").innerHTML = `
-    <div class="top"><span>${cur.i + 1} / ${n}</span>${n > 12 ? "" : `<div class="dots">${cards.map((_, j) => `<i class="${j === cur.i ? "on" : j < cur.i ? "done" : ""}"></i>`).join("")}</div>`}${n > 12 ? '<span style="flex:1"></span>' : ""}<span class="hl" aria-label="${K ? "Help level" : "도움 단계"} ${cur.lv || 1}">${[1, 2, 3, 4].map(l => `<b class="${l <= (cur.lv || 1) ? "on" : ""}"></b>`).join("")}</span></div>
+    <div class="top"><button id="x" class="xb" onclick="act(leave)" aria-label="${K ? "Exit to card list" : "카드 목록으로 나가기"}">✕</button><span>${cur.i + 1} / ${n}</span>${n > 12 ? "" : `<div class="dots">${cards.map((_, j) => `<i class="${j === cur.i ? "on" : j < cur.i ? "done" : ""}"></i>`).join("")}</div>`}${n > 12 ? '<span style="flex:1"></span>' : ""}<span class="hl" aria-label="${K ? "Help level" : "도움 단계"} ${cur.lv || 1}">${[1, 2, 3, 4].map(l => `<b class="${l <= (cur.lv || 1) ? "on" : ""}"></b>`).join("")}</span></div>
     ${cur.ack && Date.now() / 1000 - cur.ack < 20 ? `<div class="again">${K ? "Help is on the way" : "도와주러 오고 있어요"}</div>`
       : again ? `<div class="again">${K ? "Start with this card" : "이 카드부터 해요"}</div>` : ""}
     <div class="pic">${cur.lv === 1 ? `<div class="msg">${K ? "Need help? Press Help" : "도움이 필요하면 '도움'을 눌러요"}</div>` : (cur.lv === 4 || (!cur.lv && c.view === "clip")) && !arch ? `<video src="/api/runs/${run}/clip/${c.n}.mp4?g=1&t=${c.frame_t ?? c.rep}" class="lit" autoplay muted loop playsinline></video>`
@@ -67,7 +69,7 @@ function draw(again) {
       ${(cur.lv || 1) < (arch ? 3 : 4) ? `<button id="h" onclick="act(help)">${K ? "Help" : "도움"}</button>`
         : alone ? `<button id="h" onclick="act(markStuck)" ${marked.has(c.n) ? "disabled" : ""}>${marked.has(c.n) ? (K ? "Sent" : "알렸어요") : (K ? "Stuck" : "막혔어요")}</button>`
         : `<button id="h" onclick="act(callMaker)" ${cur.call ? "disabled" : ""}>${cur.call ? (K ? "Called" : "불렀어요") : (K ? "Call" : "도와줘요")}</button>`}
-      ${arch || noDone ? "" : `<button id="v" onclick="act(check)">${K ? "Check" : "확인"}</button>`}
+      ${arch || noDone || !pair ? "" : `<button id="v" onclick="act(check)">${K ? "Check" : "확인"}</button>`}
       ${cur.i < n - 1 ? `<button id="f" onclick="act(() => flip(1))">${K ? "Next ▶" : "다음 ▶"}</button>` : `<button id="f" onclick="act(finish)">${K ? "Done ✓" : "다 했어요 ✓"}</button>`}</div>`;
   if (shown !== `${cur.i}|${cur.fin}`) { shown = `${cur.i}|${cur.fin}`; lockUntil = Date.now() + 600; }
   const keep = document.getElementById(had);
@@ -87,16 +89,20 @@ addEventListener("popstate", () => {
   box.querySelector("#stay").focus();
 });
 // 초점이 화면 밖으로 나가면(시뮬레이터 단추 등) 화살표·Enter로 다시 데려온다. ←→ 는 이전·다음 단추로 초점만 옮긴다
-document.addEventListener("keydown", e => {
-  const b = document.getElementById("b"), f = document.getElementById("f");
-  if (!b) return;
-  const h = document.getElementById("h"), v = document.getElementById("v");
-  const pick = e.key === "ArrowLeft" ? b : e.key === "ArrowRight" ? f : e.key === "ArrowUp" ? (h || v) : e.key === "ArrowDown" ? v : null;
-  if (pick && !pick.disabled) { pick.focus(); e.preventDefault(); return; }
-  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"].includes(e.key) && ![b, f, h, v].includes(document.activeElement)) {
-    (f.disabled ? b : f).focus(); e.preventDefault();
-  }
+document.addEventListener("keydown", e => {  // ←→ 는 단추 줄을 차례로, ↑ 는 나가기(✕), ↓ 는 다시 단추 줄로. 초점이 밖에 있으면 '다음'으로 데려온다
+  if (document.querySelector(".ask")) return;
+  const row = ["b", "h", "v", "f"].map(id => document.getElementById(id)).filter(x => x && !x.disabled), x = document.getElementById("x");
+  if (!row.length || !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"].includes(e.key)) return;
+  const a = document.activeElement, k = row.indexOf(a), home = row.at(-1);
+  let to = null;
+  if (e.key === "ArrowUp" && x && a !== x) to = x;
+  else if (e.key === "ArrowDown" && a === x) to = home;
+  else if (k >= 0 && e.key === "ArrowLeft") to = row[Math.max(0, k - 1)];
+  else if (k >= 0 && e.key === "ArrowRight") to = row[Math.min(row.length - 1, k + 1)];
+  else if (k < 0 && a !== x) to = home;
+  if (to) { to.focus(); e.preventDefault(); }
 });
+function leave() { location.href = `/?ui=${K ? "en" : "ko"}`; }  // 안경 첫 화면(카드 목록)으로
 // 확인: 안경에는 카메라가 없어 따라 하기 화면(휴대폰)이 찍어서 확인하고, 결과 한 줄을 돌려준다
 let shownRes = undefined, pending = 0;
 async function check() {
@@ -142,7 +148,7 @@ async function poll() {
   try {
     const r = await fetch(`/api/runs/${run}/now?s=${pair}`); if (!r.ok) throw new Error(r.status);
     const d = await r.json();
-    fails = 0; net(pair ? "" : (K ? "Not paired · open from the phone's QR" : "연결 코드 없음 · 휴대폰 QR로 열어요"));
+    fails = 0; net("");  // 연결 코드 없이 열면(안경 첫 화면에서) 안경만으로 넘기는 모드: 경고 대신 '확인'만 뺀다(11-04 사용자)
     if (shownRes === undefined) shownRes = d.vres ? d.vres.id : null;  // 열 때 남아 있던 옛 결과는 띄우지 않는다
     if (pending && Date.now() - pending > 9000) {  // 휴대폰이 답하지 않으면(따라 하기 화면이 안 열려 있음)
       pending = 0;
