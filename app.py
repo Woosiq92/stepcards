@@ -57,12 +57,12 @@ APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정
 if not APP_KEY and any(k.startswith("RAILWAY_") for k in os.environ):  # 공개 배포(Railway)에서 키가 비면 전면 개방된다: 조용히 열지 말고 기동 거부(11-04 보안 검수)
     raise SystemExit("APP_KEY 가 비어 있습니다: 공개 배포에서는 전면 개방을 막기 위해 기동하지 않습니다. 환경변수 APP_KEY 를 설정하세요.")
 JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 수 있지만 하루 한도가 있다(제출 설명에 적는 키)
-JUDGE_LIMITS = {"upload": 15, "illustrate": 60, "agent": 20, "translate": 10, "step": 400, "compare": 400, "coach": 3000, "frame": 60, "retry": 15, "verify": 600}  # 하루 횟수, 심사위원 전원 합계(키가 하나라 사람을 못 가른다). 따라 하기 3000번 ≈ 2시간·약 $9. 전체는 비용 상한이 막는다
+JUDGE_LIMITS = {"upload": 15, "illustrate": 60, "agent": 20, "translate": 10, "step": 400, "compare": 400, "coach": 3000, "frame": 60, "retry": 15, "verify": 600, "setup": 300}  # 하루 횟수, 심사위원 전원 합계(키가 하나라 사람을 못 가른다). 따라 하기 3000번 ≈ 2시간·약 $9. 전체는 비용 상한이 막는다
 JUDGE_USE = {"day": "", "n": {}}
 PUBLIC_LIMITS = {"coach": int(os.environ.get("PUBLIC_COACH_SET", 900)), "verify": int(os.environ.get("PUBLIC_VERIFY_SET", 300)), "records": 2000, "log": 2000}  # 키 없는 학습자 기기: 카드 묶음마다 하루(판단 약 $0.003·확인 약 $0.005 → 묶음당 하루 최대 약 $4)
 PUBLIC_USE = {"day": "", "n": {}}
 PUBLIC_TOTAL = {"coach": int(os.environ.get("PUBLIC_COACH_DAY", 3000)), "verify": int(os.environ.get("PUBLIC_VERIFY_DAY", 900))}  # 환경 변수로 바꿀 수 있다(코드 수정 없이 한 반 규모·심사 기간에 맞추게)  # 키 없는 기기 전체 하루 합계(견본 11개를 돌아가며 써도 하루 약 $14 안: 상한 $140 을 심사위원 몫으로 남긴다)
-PAID_PATHS = ("/upload", "/retry", "/illustrate", "/agent", "/coach", "/verify", "/translate", "/step", "/compare", "/frame")  # Meta 를 부르는 요청
+PAID_PATHS = ("/upload", "/retry", "/illustrate", "/agent", "/coach", "/verify", "/translate", "/step", "/compare", "/frame", "/setup")  # Meta 를 부르는 요청
 TEACHERS = dict(x.strip().split(":", 1) for x in os.environ.get("TEACHER_KEYS", "").split(",") if ":" in x)  # 교사별 키 "이름:키,이름:키"
 NOW_PATH = re.compile(r"/api/runs/\w+/(now|call|mark)$")  # 안경은 키(쿠키)가 없다: 지금 카드 맞추기와 '도와줘요'·'여기서 막혔어요'는 키 없이
 MARKS = {}  # 혼자 하기 '여기서 막혔어요': 카드 묶음별 1분 안 횟수(장난 방지)
@@ -1181,11 +1181,12 @@ def card_before(run_id: str, n: int):
 
 
 @app.get("/api/runs/{run_id}/cards/{n}/after.jpg")
-def card_after(run_id: str, n: int, t: int | None = None):
-    """완료 기준 사진(시범 영상에서 그 단계가 끝난 순간). t 를 주면 그 시각(고치기 화면이 저장 전에 미리 보여 줌)"""
+def card_after(run_id: str, n: int, request: Request, t: int | None = None):
+    """완료 기준 사진(시범 영상에서 그 단계가 끝난 순간). t 를 주면 그 시각(고치기 화면이 저장 전에 미리 보여 줌).
+    임의 t 는 키 있는 요청만: 키 없이 t 를 훑어 ffmpeg·디스크를 긁지 못하게(11-04 보안 검수). 키 없으면 카드의 기본 완료시각으로."""
     d = run_dir(run_id)
     card = card_by_n(d, n)
-    if t is not None:
+    if t is not None and has_key(request):
         card = {**card, "done_t": max(0, min(t, int(read(d, "cards.json").get("duration") or t)))}
     return FileResponse(inside(d, str(verify.reference(d, card, "after").relative_to(d))))
 
