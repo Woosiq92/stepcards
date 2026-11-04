@@ -8,6 +8,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 KO = os.environ.get("DEMO_LANG") == "ko"
+HUMOR = os.environ.get("HUMOR") == "1"  # 유머판: 도입을 밈 형식 장면(demo/meme.py)으로
 V3 = ROOT / "demo" / "out" / "v6"  # 11-04 판: 먼저 보기(영상+카드) · 학습 기록(카드 없이) 장면
 TMP = V3 / "tmp6"
 TMP.mkdir(parents=True, exist_ok=True)
@@ -65,8 +66,20 @@ video_min = round(int(re.search(r"영상 (\d+)초", next(e["msg"] for e in prog 
 n_cards = len(json.loads((MAKE / "cards.json").read_text())["cards"])
 retried = len([e for e in prog if e["stage"] == "split"]) > 1
 watch_m = marks("watch")
-w_turns = [(t, int(re.search(r"card (\d+)", w).group(1))) for t, w in watch_m if w.startswith("card ")]
-W_SPAN = (w_turns[0][0] + 1.0, w_turns[2][0] - w_turns[0][0] + 3.0, 1.3)  # 1.3배속: 3분 안으로(꼬리표에 밝힌다)  # 2→3→4 카드: 실제 판단이 단계 끝 언저리에 넘긴 구간(1번은 일찍 넘어가 쓰지 않는다)
+# 넘김마다 (녹화 시각, 새 카드, 영상 시각) · 끝난 카드의 끝과의 차. 단계 끝 언저리(-2.5~+4초)에서 넘어간 것만 쓴다
+# 11-04: 소개와 따라 하기가 같은 3→4 넘김을 두 번 보여 줬다 → 따라 하기 = 첫 녹화(watch_take1)의 연달아 좋은 두 넘김, 소개 = 둘째 녹화(watch)의 다른 카드 넘김
+w_ends = {c["n"]: c["end"] for c in json.loads((ROOT / "runs" / "8e1456e529ca" / "cards.json").read_text())["cards"]}
+def turns(scene):
+    return [(t, int(re.search(r"card (\d+)", w).group(1)), float(re.search(r"at video ([\d.]+)s", w).group(1))) for t, w in marks(scene) if w.startswith("card ")]
+def good(ts):
+    return [k for k, (t, n, vt) in enumerate(ts) if -2.5 <= vt - w_ends[n - 1] <= 4]
+t1, t2 = turns("watch_take1"), turns("watch")
+g1, g2 = good(t1), good(t2)
+fi = next(k for k in g1 if k + 1 in g1)
+W_SPAN = (t1[fi][0] - 7.0, t1[fi + 1][0] - t1[fi][0] + 10.0, 1.3)  # 1.3배속: 3분 안으로(꼬리표에 밝힌다)
+ri = min((k for k in g2 if t2[k][1] > 2), key=lambda k: abs(t2[k][2] - w_ends[t2[k][1] - 1]))  # 첫 카드는 빼고 단계 끝에 가장 가까운 넘김
+R_SPAN = (t2[ri][0] - 7.5, 11, 1)
+print("따라 하기(take1)", [(n, round(vt - w_ends[n - 1], 1)) for _, n, vt in t1[fi:fi + 2]], "소개(take2)", t2[ri][1], round(t2[ri][2] - w_ends[t2[ri][1] - 1], 1))
 learn_m = marks("learn")
 l_start = at("learn", "run 2 start")
 l_end = at("learn", "end screen")
@@ -87,7 +100,7 @@ if not KO:
         ("p_reel", "gen:reel", None, "Learning from a Reel · generated scene", "Learning a dance from a Reel means pause, rewind, pause, rewind."),
         ("p_job", "gen:job", None, "Job training · generated scene", "Job coaches still make picture cards by hand, screenshot after screenshot, for every task."),
         ("p_sum", "statement", None, None, "Watching once isn't enough. Writing it all down takes hours."),
-        ("reveal", "span:watch", (w_turns[2][0] - 7.5, 11, 1), "Demo video used as the camera · live decisions",
+        ("reveal", "span:watch", R_SPAN, "Demo video used as the camera · live decisions",
          "StepCards fixes that. Film the task once, and it becomes step cards, one action each. As someone follows along, the camera sees when a step is done and shows the next card."),
         ("making", "single:making", None, "Real run · Muse Spark · SAM 3.1 · Voice Transcribe",
          f"Here's a real run with a {video_min}-minute napkin-folding video. Muse Spark splits it into steps, each with a short sentence in Korean and English. "
@@ -98,7 +111,7 @@ if not KO:
         ("agent", "single:agent", None, f"Agent · Muse Spark runs our checker as a tool · {ag_wait} s wait cut",
          "Or just ask: \"simpler words for a learner who reads little.\" "
          f"Muse Spark calls our checker as a tool, fixes what it flags, and only then answers, with {ag_n} new sentences. Nothing changes until someone taps Apply."),
-        ("follow", "span:watch", W_SPAN, "Watch the demo · live decisions by Muse Spark · 1.3x",
+        ("follow", "span:watch_take1", W_SPAN, "Watch the demo · live decisions by Muse Spark · 1.3x",
          "Before trying it, a learner can watch first. The video plays one card's part, right next to that card. "
          "At the end of each step it waits, until Muse Spark sees the step done. The line under the video says what the model sees."),
         ("help", "trio", (3.0, at("help", "learner sees help coming") + 2.0, 1.4), "Help when stuck · helper's board on the right",
@@ -116,6 +129,16 @@ if not KO:
          "We haven't yet tested it with real learners, or with a different person in front of a live camera."),
         ("close", "close", None, None, "Show it once. Then they've got it. StepCards."),
     ]
+    if HUMOR:  # 도입 30초(hook~p_sum)를 밈 셋 + 직업 훈련 한 줄로. 웃음은 단계를 건너뛰는 튜토리얼에게만, 배우는 사람에게는 아니다
+        k = next(i for i, x in enumerate(S) if x[0] == "reveal")
+        S = [("m_owl", "file:meme/owl.mp4", None, "Generated images · meme format",
+              "Every tutorial ever. Step one: fold the napkin in half. Step two: fold the rest of the swan. Mine came out as a bow tie."),
+             ("m_reel", "file:meme/reel.mp4", None, "Generated image",
+              "Learning a dance from a Reel? Pause, rewind. Pause, rewind. Rewind number forty-seven."),
+             ("m_screw", "file:meme/screw.mp4", None, "Generated image",
+              "The drawer is done. So where does this screw go?"),
+             ("p_job", "gen:job", None, "Job training · generated scene",
+              "Funny, until it's your job. Job coaches still make picture cards by hand, screenshot after screenshot.")] + S[k:]
     GLASS, CLOSE = "Ray-Ban Display view · simulated", ["Show it once.", "Then they've got it."]
     CLOSE_SUB = ["Built with Meta models · Muse Spark · SAM 3.1 · Voice Transcribe · Muse Image · Muse Glimmer",
                  "Not a Meta product · made by LogicCraft", "Opening scenes are images generated on this Mac (Z-Image Turbo) · demo videos CC BY · voice by Google Chirp 3 HD"]
@@ -349,6 +372,9 @@ def base_video(name, layout, span, seg_len):
         sh("ffmpeg", "-v", "error", "-y", "-ss", t, "-i", ROOT / "runs" / rid / "video.mp4", "-an", "-vf",
            f"{top}scale={W * 2}:{H * 2}:force_original_aspect_ratio=increase:flags=lanczos,crop={W * 2}:{H * 2},fps={FPS},{z},tpad=stop_mode=clone:stop_duration={seg_len}", *enc)
         return out
+    if layout.startswith("file:"):  # 미리 만든 장면 영상(밈): 그대로, 모자라면 마지막 그림 유지
+        sh("ffmpeg", "-v", "error", "-y", "-i", ROOT / "demo" / "gen" / layout[5:], "-an", "-vf", f"fps={FPS},tpad=stop_mode=clone:stop_duration={seg_len}", *enc)
+        return out
     if layout.startswith("span:") or layout == "learn":  # 앱 화면 하나의 한 구간(span) · 학습 장면은 시작 5초 → 빨리 감기 → 끝 화면 멈춤
         rec = layout.split(":")[1] if layout != "learn" else "learn"
         src = mp4(rec)
@@ -462,6 +488,6 @@ for k in range(1, len(parts)):
     off += lens[k - 1] - XF
     vf.append(f"{lv}[{k}:v]xfade=transition=fade:duration={XF}:offset={off:.3f}[v{k}]"); lv = f"[v{k}]"
     af.append(f"{la}[{k}:a]acrossfade=d={XF}[a{k}]"); la = f"[a{k}]"
-final = V3 / "stepcards_demo_v6_en.mp4"
+final = V3 / ("stepcards_demo_v6_humor_en.mp4" if HUMOR else "stepcards_demo_v6_en.mp4")
 sh(*cmd, "-filter_complex", ";".join(vf + af), "-map", lv, "-map", la, *ENC, "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", final)
 print(f"완성: {final} · {duration(final):.1f}s")
