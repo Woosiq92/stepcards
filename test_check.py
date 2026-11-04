@@ -135,3 +135,12 @@ def test_two_actions_false_positives():
         assert check([step(0, 5, en=en), step(6, 10)], 20) == ([], []), en
     for ko in ["영상을 보고 따라 하세요.", "신발을 신고 나가세요."]:  # 보고·신고는 동사로 쓰인 때 잡는다
         assert any("동작이 둘" in x for x in check([step(0, 5, ko=ko), step(6, 10)], 20)[0]), ko
+
+
+def test_footage_drawn_only_when_model_says_so():
+    from pipeline import footage
+    assert footage('{"steps":[],"footage":"drawn"}') == "drawn"
+    assert footage('```json\n{"steps":[],"footage":"drawn"}\n```') == "drawn"
+    assert footage('{"steps":[],"footage":"real"}') == "real"
+    assert footage('{"steps":[]}') == "real"  # 없으면 카메라 판단을 끄지 않는다
+    assert footage("not json") == "real"

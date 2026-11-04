@@ -49,7 +49,8 @@ Rules:
   When on-screen text names the sign or move, begin "ko" and "en" with that name and a colon (e.g. "죄송하다: 이마에 댄 손을 앞으로 내리세요." /
   "Sorry: hand from forehead down and forward."). Say exactly where the hands start (forehead, eyes, cheek, mouth, chin, chest, shoulder)
   and which way they move; check every frame of the step, not only one. "object" and "look" may be empty for these.
-Return only JSON: {{"steps":[{{"start":0,"end":0,"rep":0,"ko":"","en":"","object":"","look":""}}]}}"""
+- "footage" is "drawn" when the frames are drawings, diagrams, animation or slides (for example an animated assembly manual) instead of a camera recording of real people and objects; otherwise "real".
+Return only JSON: {{"steps":[{{"start":0,"end":0,"rep":0,"ko":"","en":"","object":"","look":""}}],"footage":"real"}}"""
 
 
 def digest(video):
@@ -88,6 +89,15 @@ def data_url(path):
 def parse_json(text):
     text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```")
     return json.loads(text)["steps"]
+
+
+def footage(text):
+    """시범이 실제 촬영인지 그림(설명서 애니메이션 등)인지. 모르면 real: 카메라 판단을 함부로 끄지 않는다"""
+    try:
+        text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```")
+        return "drawn" if json.loads(text).get("footage") == "drawn" else "real"
+    except (ValueError, AttributeError):
+        return "real"
 
 
 # ① 영상 길이 + 1초 사진
@@ -227,7 +237,7 @@ def split_steps(run, duration, frames, speech=(), look=False, every=1, local=Fal
                         "that step's ko and en sentence (e.g. \"우유 100ml를 부으세요.\", \"Pour 100ml of milk.\"):\n" + lines})
     content.append({"type": "input_text", "text": PROMPT.format(duration=duration)})
 
-    feedback, steps, problems, warnings = None, None, [], []
+    feedback, steps, problems, warnings, kind = None, None, [], [], "real"
     for attempt in range(1 + MAX_RETRY):
         ask = content if feedback is None else content + [{"type": "input_text", "text": feedback}]
         t0 = time.time()
@@ -235,6 +245,7 @@ def split_steps(run, duration, frames, speech=(), look=False, every=1, local=Fal
         run.path(f"steps_try{attempt + 1}.txt").write_text(text)
         try:
             steps = parse_json(text)
+            kind = footage(text)
             problems, warnings = check(steps, duration)
         except (ValueError, KeyError, TypeError) as e:
             steps, problems, warnings = None, [f"JSON 형식이 아닙니다: {e}"], []
@@ -247,7 +258,7 @@ def split_steps(run, duration, frames, speech=(), look=False, every=1, local=Fal
     status = "ok" if not problems else "needs_review"
     if status == "needs_review":
         run.log("split", "다시 시도해도 남은 문제가 있어 사람 확인 필요로 표시")
-    return {"status": status, "problems": problems, "warnings": warnings, "steps": steps or []}
+    return {"status": status, "problems": problems, "warnings": warnings, "steps": steps or [], "footage": kind}
 
 
 # ④ 대표 사진 + SAM 강조(손과 겹치는 물건 상자를 고름)
@@ -391,7 +402,9 @@ def build(run, fresh, look=False, local=False):
         cards = highlight(run, result["steps"], local)
         tmp = cards_file.with_name(f".{threading.get_ident()}_cards.json")  # 반쯤 쓴 파일을 읽지 않게
         tmp.write_text(json.dumps({"duration": duration, "status": result["status"], "problems": result["problems"],
-                                   "warnings": result["warnings"], "cards": cards}, ensure_ascii=False, indent=1))
+                                   "warnings": result["warnings"], "cards": cards,
+                                   # 그림 시범(설명서 애니메이션 등)은 학습자의 실제 물건과 맞춰 볼 수 없다: 카메라 판단을 끄고 사람이 넘긴다(11-04 서랍장 견본)
+                                   **({"drawn": True, "no_done": True} if result.get("footage") == "drawn" else {})}, ensure_ascii=False, indent=1))
         os.replace(tmp, cards_file)
     run.path("audio.wav").unlink(missing_ok=True)  # 받아쓰기(speech.json)가 끝나면 다시 쓰지 않는다(묶음 크기의 약 20%)
     run.log("done", "완료")  # 서버 폴더 경로는 진행 화면에 내보내지 않는다
