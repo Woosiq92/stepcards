@@ -81,6 +81,11 @@ ri = min((k for k in g2 if t2[k][1] > 2), key=lambda k: abs(t2[k][2] - w_ends[t2
 R_SPAN = (t2[ri][0] - 7.5, 11, 1)
 print("따라 하기(take1)", [(n, round(vt - w_ends[n - 1], 1)) for _, n, vt in t1[fi:fi + 2]], "소개(take2)", t2[ri][1], round(t2[ri][2] - w_ends[t2[ri][1] - 1], 1))
 learn_m = marks("learn")
+# 11-04: 냅킨이 여섯 장면 내내 나와 '냅킨에서만 되나' 싶었다 → 도움·학습 장면은 라테 견본(한글 자막 없는 실제 촬영)
+LATTE = "807dcf4d2be2"
+HELP_SRC = ROOT / "runs" / LATTE / "video.mp4"
+HELP_T = json.loads((ROOT / "runs" / LATTE / "cards.json").read_text())["cards"][8]["start"]  # 도움 장면 = 9번 카드
+l_n = len(json.loads((ROOT / "runs" / "8e1456e529ca" / "cards.json").read_text())["cards"])  # 학습 장면은 냅킨(라테 2회차는 19장 중 4장만 카메라 확인 → learn_latte 로 보관)
 l_start = at("learn", "run 2 start")
 l_end = at("learn", "end screen")
 l_text = json.loads(re.search(r"end screen (.*)$", next(w for t, w in learn_m if w.startswith("end screen"))).group(1))
@@ -113,13 +118,13 @@ if not KO:
          f"Muse Spark calls our checker as a tool, fixes what it flags, and only then answers, with {ag_n} new sentences. Nothing changes until someone taps Apply."),
         ("follow", "span:watch_take1", W_SPAN, "Watch the demo · live decisions by Muse Spark · 1.3x",
          "Before trying it, a learner can watch first. The video plays one card's part, right next to that card. "
-         "At the end of each step it waits, until Muse Spark sees the step done. The line under the video says what the model sees."),
+         "At the end of each step it waits, until Muse Spark sees the step done."),
         ("help", "trio", (3.0, at("help", "learner sees help coming") + 2.0, 1.4), "Help when stuck · helper's board on the right",
-         "Stuck? Help grows one step at a time: a picture, the sentence read aloud, then a short clip. "
+         "Now, an iced latte. Stuck? Help grows one step at a time: a picture, the sentence read aloud, then a short clip. "
          "\"Ask for help\" puts the card on the helper's board. No scores, and no video is kept."),
         ("learn", "learn", None, "Second run · cards hidden · demo video used as the camera",
          "Finishing once doesn't mean they've learned it. So every run is saved, and the next one gives less help. "
-         f"In step three the cards stay hidden, and the camera still checks each step. Here, {nb} of 12 steps were done with no card. "
+         f"In step three the cards stay hidden, and the camera still checks each step. Here, {nb} of {l_n} steps were done with no card. "
          "Three full runs like that, and the set says: can do it alone."),
         ("breadth", "single:breadth", None, "Same app · CC BY demo videos",
          "Openly licensed videos also became cards for a cafe drink, a stew, a cabinet, a dance, and disability job training. "
@@ -417,11 +422,11 @@ def base_video(name, layout, span, seg_len):
     else:  # trio: 왼쪽 학습자(둥근 창), 오른쪽 위 안경 착용 시야(배경 = 7번 단계의 시범 장면), 오른쪽 아래 선생님 현황판(둥근 창)
         w, h, x, y = 1120, 700, 56, 150
         tw, th, tx, ty = 640, 202, 1236, 540  # 현황판 위쪽(지금 따라 하는 중 · 도와줘요 · 갈게요)만 잘라 크게
-        fc = (f"{sim_panel(2, 4, 73, trim, ln, sp, seg_len)};[panel]scale=464:352[pb];"
+        fc = (f"{sim_panel(2, 4, HELP_T, trim, ln, sp, seg_len)};[panel]scale=464:352[pb];"
               + framed(trim(1), w, h, x, y, seg_len, 6, 7, 0).replace("[BG0]", "[0:v]") + "[o1];"
               + framed(trim(3), tw, th, tx, ty, seg_len, 8, 9, 1, push=0.0, crop=(0, 0, 1, 0.5)).replace("[BG1]", "[o1]") + "[o2];"
               f"[o2][pb]overlay=1324:118[o3];[o3][10:v]overlay=1324:62")
-        sh("ffmpeg", "-v", "error", "-y", *bg, "-i", mp4("help"), "-i", mp4("help_glasses"), "-i", mp4("help_teacher"), "-i", napkin, "-loop", 1, "-t", seg_len, "-i", gframe,
+        sh("ffmpeg", "-v", "error", "-y", *bg, "-i", mp4("help"), "-i", mp4("help_glasses"), "-i", mp4("help_teacher"), "-i", HELP_SRC, "-loop", 1, "-t", seg_len, "-i", gframe,
            "-loop", 1, "-t", seg_len, "-i", mask_png(w, h), "-loop", 1, "-t", seg_len, "-i", shadow_png(w, h),
            "-loop", 1, "-t", seg_len, "-i", mask_png(tw, th), "-loop", 1, "-t", seg_len, "-i", shadow_png(tw, th), "-i", pill_png(GLASS, "glass"), "-filter_complex", fc, *enc)
     return out
