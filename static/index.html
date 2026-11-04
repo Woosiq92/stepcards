@@ -1966,7 +1966,7 @@ function coach() {
       </details>
     </div>
   </div>`;
-  C.started = false; C.shown = -1; C.max = {}; C.sup = {}; C.bare = false; C.watching = false; C.manual = false; C.syncN = 0; C.againSaid = -1; setVoice(C.voice); setHelp(C.help);
+  C.help = false; C.started = false; C.shown = -1; C.max = {}; C.sup = {}; C.bare = false; C.watching = false; C.manual = false; C.syncN = 0; C.againSaid = -1; setVoice(C.voice); setHelp(C.help);
   if (S.data?.pov !== "facing") faceLoad();  // 얼굴 가리기 모델을 시작 화면에서 미리 받아 둔다: 카메라를 켜면 바로 보낼 수 있게
   C.hold = true; coachCard();  // 지난 위치를 읽기 전에 1번 카드로 덮어쓰지 않게 안경 알림을 잠시 멈춘다
   fetch(`/api/runs/${S.run}/now?s=${C.pair}`).then(r => r.json()).then(d => {  // 지난번에 중간에 멈췄으면 그 카드부터 이어 하기
@@ -2086,12 +2086,12 @@ function glassesSync(again) {
 /* 필요할 때만 도움(촉구 위계): 1 글 → 2 그림·사진 → 3 소리 → 4 움직임.
    카드가 바뀌면 1부터, 10초 동안 넘어가지 않으면 한 칸 올린다. 학생·교사가 '도움'을 눌러도 올라간다.
    카드마다 몇 단계까지 갔는지는 화면에만 보여 주고 저장하지 않는다 */
-C.help = (() => { try { return localStorage.getItem("help") === "on"; } catch { return false; } })();
+C.help = false;  // 따라 하기는 언제나 카드 전체(그림+문장)로 시작한다. '필요할 때만 도움'은 그 화면에서 고를 때만, 저장하지 않는다(11-04 사용자: 예전에 고른 값이 남아 카드 그림이 안 나왔다)
 const HELP_SEC = 10;  // 가장 짧은 기다림
 const helpWait = c => Math.min(60, Math.max(HELP_SEC, 2 * (c.end - c.start)));  // 시범보다 두 배는 기다린다
 const lvName = n => [T("글", "Text"), T("그림", "Picture"), T("소리", "Sound"), T("움직임", "Motion")][n - 1];
 function setHelp(on) {
-  C.help = on; try { localStorage.setItem("help", on ? "on" : "off"); } catch {}
+  C.help = on;
   $("#chelpseg")?.querySelectorAll("button").forEach((b, i) => b.classList.toggle("on", i === +on));
   const d = $("#chelpd");
   if (d) d.innerHTML = on ? T("처음엔 글만 보여요. 시범 영상에서 그 단계가 걸린 시간의 두 배(10~60초) 동안 넘어가지 않으면 그림 → 소리 → 움직임 순으로 도움이 늘어요.", "Starts with text only. If a step takes more than twice as long as in the demonstration (10–60 s), help grows: picture → sound → motion.") + "<br>" + T("글을 읽기 어려운 사람에게는 '카드 다 보여 주기'가 맞아요.", "For someone who can't read the text yet, choose 'Show the full card'.")
