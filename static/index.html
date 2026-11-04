@@ -490,6 +490,10 @@
   .cstart .glyph .ico { width:36px; height:36px; color:#fff; stroke-width:1.7; }
   .csteps { list-style:none; padding:0; margin:0; display:grid; gap:12px; width:min(540px, 100%); }
   .csteps li { display:flex; gap:12px; align-items:flex-start; background:#18222c; border:1px solid #2a3846; border-radius:16px; padding:14px 16px; text-align:left; }
+  .csteps li.locked { opacity:.62; } .csteps li.locked .cnum { background:#3a4756; }
+  @media (max-height:860px) { .csteps { gap:8px; } .csteps li { padding:10px 14px; } .csteps li > div { gap:3px; font-size:14px; } .csteps b { font-size:16px; }
+    .csteps .navb { min-height:44px; padding:8px 18px; font-size:15px; } .csteps li.locked span:not(.cnum) { display:none; } }
+  @media (max-height:700px) { #cstart .cintro { display:none; } }  /* 아주 낮은 휴대폰(SE): 단계 설명이 같은 말을 해서 머리 문장은 뺀다 */  /* 3단계가 늘 보이게 되면서(잠금 포함) 낮은 화면에서 넘쳤다: 여백을 줄이고 잠긴 칸은 제목만 */
   .csteps .cnum { flex:none; width:28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; display:grid; place-items:center; font-weight:800; }
   .csteps li > div { display:grid; gap:6px; flex:1; color:#a9b8c6; } .csteps b { color:#fff; font-size:17px; } .csteps .navb { justify-self:start; margin-top:4px; }
   .csettings { width:min(540px, 100%); } .csettings summary { cursor:pointer; color:#9db5ff; font-size:14px; min-height:44px; display:flex; align-items:center; justify-content:center; }
@@ -1936,7 +1940,7 @@ function coach() {
       <div class="glyph">${icon("glasses")}</div>
       <div class="t">${T("따라 하기", "Coach mode")}</div>
       ${S.data.reviewed === false ? `<div class="unreviewed">${T("만든 사람이 아직 확인하지 않은 카드예요", "The maker hasn't checked these cards yet")}</div>` : ""}
-      <div class="d">${noDone() ? (S.data.drawn ? T("시범이 실제 손으로 하는 영상이 아니라 설명서 그림이라, 카메라로 맞춰 볼 수 없어요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "The demonstration is a drawn manual, not real hands, so the camera can't compare against it. Turn cards with Back and Next; help grows when you're stuck.") : S.data.pov === "facing" ? T("몸 전체 동작(춤·수어)은 카메라 판단을 아직 검증하지 못해 꺼 두었어요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "Camera judging for whole-body moves (dance, signing) isn't verified yet, so it's off. Turn cards with Back and Next; help grows when you're stuck.") : T("사람을 돕는 일이라 카메라를 켜지 않아요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "This work helps a person, so the camera stays off. Turn cards with Back and Next; help grows when you're stuck."))
+      <div class="d cintro">${noDone() ? (S.data.drawn ? T("시범이 실제 손으로 하는 영상이 아니라 설명서 그림이라, 카메라로 맞춰 볼 수 없어요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "The demonstration is a drawn manual, not real hands, so the camera can't compare against it. Turn cards with Back and Next; help grows when you're stuck.") : S.data.pov === "facing" ? T("몸 전체 동작(춤·수어)은 카메라 판단을 아직 검증하지 못해 꺼 두었어요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "Camera judging for whole-body moves (dance, signing) isn't verified yet, so it's off. Turn cards with Back and Next; help grows when you're stuck.") : T("사람을 돕는 일이라 카메라를 켜지 않아요. 카드는 이전·다음으로 넘기고, 막히면 도움이 늘어나요.", "This work helps a person, so the camera stays off. Turn cards with Back and Next; help grows when you're stuck."))
         : T("카메라가 손과 물건을 보고, 지금 할 카드를 띄워 줘요. 이전·다음으로 직접 넘길 수도 있어요.",
         "The camera watches hands and objects and shows the card for the current step. Back and Next always work by hand.")}</div>
       ${S.data.sample && !noDone() ? `<ol class="csteps">
@@ -2154,7 +2158,9 @@ function stepCompare(prev) {
   return `<div class="d">${less.length ? T(`지난번(${d})보다 도움이 줄어든 카드: ${less.join(", ")}`, `Less help than last time (${d}): card${less.length > 1 ? "s" : ""} ${less.join(", ")}`) : ""}${less.length && more.length ? " · " : ""}${more.length ? T(`늘어난 카드: ${more.join(", ")}`, `more help: card${more.length > 1 ? "s" : ""} ${more.join(", ")}`) : ""}</div>`;
 }
 // 3단계는 2단계를 끝까지 한 번 해 본 뒤에만(기록이 있어야 줄었는지 볼 수 있다)
-const bareLi = () => !stepHist(S.run).some(h => h.fin) ? "" : `<li><span class="cnum">3</span><div><b>${T("카드 없이 해 보기", "Without cards")}</b><span>${T("카드를 가리고 해 봐요. 막히면 카드를 열 수 있어요. 3번 이어서 끝까지 하면 '혼자 할 수 있어요'.", "Cards stay hidden; open one if you're stuck. Three full runs in a row means you can do it alone.")}</span>
+const bareLi = () => !stepHist(S.run).some(h => h.fin)  // 2단계를 끝까지 한 번 해야 열린다(기록이 있어야 줄었는지 본다). 잠긴 채로도 보여 준다: 처음 온 사람(심사위원)이 3단계가 있는 줄 몰랐다(11-04 사용자)
+  ? `<li class="locked"><span class="cnum">3</span><div><b>${T("카드 없이 해 보기 · 2단계 뒤에 열려요", "Without cards · unlocks after step 2")}</b><span>${T("2단계를 한 번 끝까지 하면 열려요. 카드를 가리고, 카메라는 그대로 확인해요.", "Unlocks after one full run of step 2. Cards stay hidden while the camera keeps checking.")}</span></div></li>`
+  : `<li><span class="cnum">3</span><div><b>${T("카드 없이 해 보기", "Without cards")}</b><span>${T("카드를 가리고 해 봐요. 막히면 카드를 열 수 있어요. 3번 이어서 끝까지 하면 '혼자 할 수 있어요'.", "Cards stay hidden; open one if you're stuck. Three full runs in a row means you can do it alone.")}</span>
           <button class="navb" onclick="C.bare = true; coachCamera()">${icon("camera")} ${T("카드 없이 시작", "Start without cards")}</button></div></li>`;
 function runStats() {
   const mv = (C.moves || []).filter(m => m.to > m.cur), how = {};
