@@ -434,6 +434,7 @@
   .tab.coachv.follow .cam video { width:100%; flex:1 1 auto; min-height:0; object-fit:contain; }
   .tab.coachv.follow .imgwrap { flex:1 1 0; max-width:760px; padding:0; align-self:stretch; align-items:flex-end; }
   .tab.coachv.follow.lv1 .imgwrap { display:none; }
+  .tab.coachv.follow.watch .imgwrap, .coachv.watch #caimqr { display:none; }  /* 작동 보기: 카메라 자리가 이미 시범 영상이라 오른쪽 시범을 또 띄우면 같은 화면이 둘(11-04 사용자) */
   /* 두 칸이 다 냅킨 영상일 때(움직임 도움) 어느 쪽이 내 카메라인지 */
   .tab.coachv.follow .cam::before, .tab.coachv.follow:not(.lv1) .imgwrap::before { content:attr(data-label); position:absolute; top:8px; left:8px; z-index:3; background:rgba(17,24,58,.82); color:#fff; font-size:13px; font-weight:700; padding:3px 10px; border-radius:999px; }
   .tab.coachv.follow .imgwrap { flex-direction:column; justify-content:flex-end; align-items:center; gap:6px; }  /* 꼬리표가 그림 바로 위에 */
@@ -2335,6 +2336,7 @@ async function coachCamera() {
 function coachWatch() {
   const v = $("#cvid"); v.srcObject = null; v.src = `/api/runs/${S.run}/demo.mp4`; v.muted = true; v.classList.remove("mirror");
   $(".coachv .cam")?.setAttribute("data-label", T("시범 영상 재생 · 카메라 대신", "Demo replay · in place of the camera"));
+  $(".coachv")?.classList.add("watch"); $(".coachv .cam")?.removeAttribute("title");
   // 단계가 없는 장면(앞 인사·카드 사이 긴 빈 구간·끝)은 건너뛴다: 바지락 견본은 첫 카드가 15초, 카드 사이 30~60초 빈 곳이 있어 보는 사람이 단계를 놓쳤다(11-03 사용자)
   const cs = [...S.data.cards].sort((a, b) => a.start - b.start), first = cs[0], last = cs.at(-1);
   v.onloadedmetadata = () => { if (first && first.start > 2) v.currentTime = first.start - 1; };
