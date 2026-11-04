@@ -563,7 +563,7 @@
   @media (max-width:700px) and (max-height:700px) and (min-aspect-ratio:4/5) {
     body.homepage, body.homepage main { background:#000; }
     body.homepage header { background:#000; border-color:#222; } body.homepage #uiseg { background:#1a1a1a; } body.homepage #uiseg button { color:#aaa; } body.homepage #uiseg button.on { background:#333; color:#fff; } body.homepage #steps { display:none; }
-    .mhero { background:#000; padding-top:28px; } .mhero .mcopy p, .mhero .mshot, .mhero .mstrip, .mbtns .pill.ghost { display:none; }
+    .mhero { background:#000; padding-top:28px; } .mhero .mcopy p, .mhero .mshot, .mhero .mstrip, .mbtns .pill.addv { display:none; } #hlib { display:block !important; }
     .htabs, .libtop .lq, .libnote, .libchips, .libh, .jobsrc, .mstory, #hmine, #hdone { display:none !important; }
     .lib { color:#fff; } .libtop h2 { color:#fff; }
     .libgrid { grid-template-columns:1fr 1fr; gap:12px; } .libcard { background:#111; border-color:#333; color:#fff; }
@@ -573,7 +573,7 @@
   }  /* Meta Ray-Ban Display 시뮬레이터(크롬 확장)는 창 크기는 그대로 두고 html에 mdcs-active를 붙여 body만 600x600으로 줄인다: 화면 크기 규칙이 안 켜져서 같은 규칙을 이 클래스에도 건다 */
   html.mdcs-active body.homepage,html.mdcs-active body.homepage main { background:#000; }
   html.mdcs-active body.homepage header { background:#000; border-color:#222; } html.mdcs-active body.homepage #uiseg { background:#1a1a1a; } html.mdcs-active body.homepage #uiseg button { color:#aaa; } html.mdcs-active body.homepage #uiseg button.on { background:#333; color:#fff; } html.mdcs-active body.homepage #steps { display:none; }
-  html.mdcs-active .mhero { background:#000; padding-top:28px; } html.mdcs-active .mhero .mcopy p,html.mdcs-active .mhero .mshot,html.mdcs-active .mhero .mstrip,html.mdcs-active .mbtns .pill.ghost { display:none; }
+  html.mdcs-active .mhero { background:#000; padding-top:28px; } html.mdcs-active .mhero .mcopy p,html.mdcs-active .mhero .mshot,html.mdcs-active .mhero .mstrip,html.mdcs-active .mbtns .pill.addv { display:none; } html.mdcs-active #hlib { display:block !important; }
   html.mdcs-active .htabs,html.mdcs-active .libtop .lq,html.mdcs-active .libnote,html.mdcs-active .libchips,html.mdcs-active .libh,html.mdcs-active .jobsrc,html.mdcs-active .mstory,html.mdcs-active #hmine,html.mdcs-active #hdone { display:none !important; }
   html.mdcs-active .lib { color:#fff; } html.mdcs-active .libtop h2 { color:#fff; }
   html.mdcs-active .libgrid { grid-template-columns:1fr 1fr; gap:12px; } html.mdcs-active .libcard { background:#111; border-color:#333; color:#fff; }
@@ -911,18 +911,18 @@ async function home() {
   let runs = await (await fetch(`/api/runs?ui=${ui}`)).json();
   if (S.view !== "home") return;  // 목록이 늦게 와서 그사이 고른 화면을 덮지 않게
   const pr = practiced(), done = runs.filter(r => r.done && pr[r.id]);  // 끝까지 따라 한 카드 묶음은 '연습한 카드'로(이 기기 기준)
-  runs = runs.filter(r => !pr[r.id]);
+  const every = runs; runs = runs.filter(r => !pr[r.id]);  // every: 연습해서 목록에서 빠진 견본도 '작동 보기' 단추는 남게(11-04 시뮬레이터에서 단추가 사라졌다)
   const mine = runs.filter(r => !r.use);  // 지난 카드 묶음 = 내가 올린 것만(견본은 위 칸들에 이미 있다). 키가 없으면 비어서 칸·관리자 링크가 숨는다
   $("#main").innerHTML = `
     ${(() => {  // 첫 화면은 이야기 순서로: 큰 영상 한 장면 → 도움 → 확인 → 시작하기 → 쓰임새 → 판단 위치
-      const has = id => runs.some(r => r.id === id && r.done), L = "807dcf4d2be2", N = "8e1456e529ca";
+      const has = id => every.some(r => r.id === id && r.done), L = "807dcf4d2be2", N = "8e1456e529ca";
       const name = r => esc(runTitle(r).replace(/ \((견본|sample)\)$/, ""));
       return `
     <section class="mhero full">
       <div class="mcopy">
         <h2><span>${T("영상 하나 넣으면,", "Add one video.")}</span><span>${T("단계마다 카드 한 장", "Get one card per step.")}</span></h2>
         <p>${T("따라 하면 Meta의 Muse Spark가 카메라로 보고 카드를 넘겨요. 발달장애인 직업훈련을 위해 시작했어요.", "Follow along, and Meta's Muse Spark turns the card when the camera sees a step done. Built first for job training of people with developmental disabilities.")}</p>
-        <div class="mbtns">${has(N) ? `<a class="pill" href="#run=${N}&view=coach&go=watch">${icon("video")} ${T("1분 만에 작동 보기 · 카메라 없이", "See it work · 1 min, no camera")}</a>` : ""}<a class="pill${has(N) ? " ghost" : ""}" href="#" onclick="event.preventDefault();homeTab('mine');document.getElementById('start').scrollIntoView({behavior:'smooth'})">${icon("plus")} ${T("내 영상 넣기", "Add your video")}</a></div>
+        <div class="mbtns">${has(N) ? `<a class="pill" href="#run=${N}&view=coach&go=watch">${icon("video")} ${T("1분 만에 작동 보기 · 카메라 없이", "See it work · 1 min, no camera")}</a>` : ""}<a class="pill addv${has(N) ? " ghost" : ""}" href="#" onclick="event.preventDefault();homeTab('mine');document.getElementById('start').scrollIntoView({behavior:'smooth'})">${icon("plus")} ${T("내 영상 넣기", "Add your video")}</a></div>
       </div>
       <figure class="mshot"><video src="/static/hero_${ui === "en" ? "en" : "ko"}.mp4" poster="/static/hero_${ui === "en" ? "en" : "ko"}.jpg" autoplay muted loop playsinline aria-label="${T("앱 화면: 시범 영상을 카메라 대신 틀면 Muse Spark가 단계를 보고 카드를 넘긴다", "App screen: the demo video plays in place of a camera and Muse Spark turns the cards as steps finish")}"></video>
         <button class="mpause" onclick="const v=this.parentElement.querySelector('video');v.paused?v.play():v.pause();this.innerHTML=v.paused?'▶':'❚❚'" aria-label="${T("영상 멈추기", "Pause video")}">❚❚</button>
