@@ -434,7 +434,7 @@
   .tab.coachv.follow .cam video { width:100%; flex:1 1 auto; min-height:0; object-fit:contain; }
   .tab.coachv.follow .imgwrap { flex:1 1 0; max-width:760px; padding:0; align-self:stretch; align-items:flex-end; }
   .tab.coachv.follow.lv1 .imgwrap { display:none; }
-  .tab.coachv.follow.watch .imgwrap, .coachv.watch #caimqr { display:none; }
+  .coachv.watch #caimqr { display:none; }  /* 작동 보기: 카메라를 쓰지 않는다. 오른쪽 칸은 같은 영상이 아니라 카드(사진+번호)를 띄운다(11-04 사용자) */
   .hrow .aimqr.hot:not([hidden]) { box-shadow:0 0 0 3px var(--accent); }  /* 발까지 안 보일 때 휴대폰 길을 눈에 띄게 */  /* 작동 보기: 카메라 자리가 이미 시범 영상이라 오른쪽 시범을 또 띄우면 같은 화면이 둘(11-04 사용자) */
   /* 두 칸이 다 냅킨 영상일 때(움직임 도움) 어느 쪽이 내 카메라인지 */
   .tab.coachv.follow .cam::before, .tab.coachv.follow:not(.lv1) .imgwrap::before { content:attr(data-label); position:absolute; top:8px; left:8px; z-index:3; background:rgba(17,24,58,.82); color:#fff; font-size:13px; font-weight:700; padding:3px 10px; border-radius:999px; }
@@ -1959,7 +1959,7 @@ function coach() {
       </details>
     </div>
   </div>`;
-  C.started = false; C.shown = -1; C.max = {}; C.sup = {}; C.bare = false; C.manual = false; C.syncN = 0; C.againSaid = -1; setVoice(C.voice); setHelp(C.help);
+  C.started = false; C.shown = -1; C.max = {}; C.sup = {}; C.bare = false; C.watching = false; C.manual = false; C.syncN = 0; C.againSaid = -1; setVoice(C.voice); setHelp(C.help);
   if (S.data?.pov !== "facing") faceLoad();  // 얼굴 가리기 모델을 시작 화면에서 미리 받아 둔다: 카메라를 켜면 바로 보낼 수 있게
   C.hold = true; coachCard();  // 지난 위치를 읽기 전에 1번 카드로 덮어쓰지 않게 안경 알림을 잠시 멈춘다
   fetch(`/api/runs/${S.run}/now?s=${C.pair}`).then(r => r.json()).then(d => {  // 지난번에 중간에 멈췄으면 그 카드부터 이어 하기
@@ -2285,12 +2285,14 @@ function coachCard(quiet) {
   const hide = bareHidden();
   glassesSync(false);
   if (!quiet && (!C.help || C.lv >= 3)) speak();
-  $("#cwrap").innerHTML = hide ? `<button class="helpbtn" onclick="peekCard()">${icon("plus")}${T("막히면 카드 보기", "Stuck? Show the card")}</button>` : helpMedia(c);
+  $("#cwrap").innerHTML = hide ? `<button class="helpbtn" onclick="peekCard()">${icon("plus")}${T("막히면 카드 보기", "Stuck? Show the card")}</button>`
+    : C.watching ? media(c.view === "clip" ? { ...c, view: c.ill ? "ill" : "photo" } : c) : helpMedia(c);  // 작동 보기: 왼쪽 영상이 그 카드 구간을 트는 동안 오른쪽엔 카드 그대로(움직이는 영상은 왼쪽에 이미 있다)
+  $("#cwrap").dataset.label = C.watching ? T(`카드 ${S.idx + 1}`, `Card ${S.idx + 1}`) : T("시범", "Demonstration");
   $("#clv").hidden = $("#chlabel").hidden = !C.help || hide;  // 시안: 켜진 도움(채움)만큼 아이콘 4개
   $("#clv").innerHTML = [1, 2, 3, 4].slice(0, maxLv()).map(l => `<i class="${l <= C.lv ? "on" : ""}" title="${lvName(l)}" aria-label="${lvName(l)}${l <= C.lv ? " ✓" : ""}">${helpIcon(l)}</i>`).join("");
   callBtn();
   $("#ctxt").innerHTML = hide ? T("카드 없이 해 봐요", "Try it without the card") : text(c);
-  $(".coachv")?.classList.toggle("lv1", !hide && !!C.help && C.lv === 1);  // 글만 단계: 그림 칸이 비어 있으니 따라 하는 동안엔 카메라가 가운데를 쓴다
+  $(".coachv")?.classList.toggle("lv1", !hide && !C.watching && !!C.help && C.lv === 1);  // 글만 단계: 그림 칸이 비어 있으니 따라 하는 동안엔 카메라가 가운데를 쓴다
   $("#cmid").innerHTML = `<span class="tnum"><b>${S.idx + 1}</b> / ${cs.length}</span>${dashesHtml(cs.length, S.idx)}`;
   $("#cprev").disabled = !S.idx;
   const last = S.idx === cs.length - 1;
@@ -2389,7 +2391,7 @@ async function coachCamera() {
 function coachWatch() {
   const v = $("#cvid"); v.srcObject = null; v.src = `/api/runs/${S.run}/demo.mp4`; v.muted = true; v.classList.remove("mirror");
   $(".coachv .cam")?.setAttribute("data-label", T("시범 영상 재생 · 카메라 대신", "Demo replay · in place of the camera"));
-  $(".coachv")?.classList.add("watch");
+  $(".coachv")?.classList.add("watch"); C.watching = true;
   // 카드 한 장의 구간만 틀고, 그 단계가 끝난 모습에서 멈춰 카메라 판단을 기다린다. 판단이 카드를 넘기면 다음 카드 구간으로.
   // 영상을 끝까지 그냥 흘리면 5~6초짜리 단계(서랍장)는 판단(3~10초)보다 빨리 지나가 카드가 1에 머문 채 영상만 앞서갔다(11-04 사용자).
   // 앞 인사·카드 사이 빈 구간은 이것으로 저절로 건너뛴다(다음 카드 1초 전으로 옮긴다)
