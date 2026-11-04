@@ -102,6 +102,7 @@ document.addEventListener("keydown", e => {  // ←→ 는 단추 줄을 차례�
   else if (k < 0 && a !== x) to = home;
   if (to) { to.focus(); e.preventDefault(); }
 });
+document.addEventListener("keydown", e => { if (e.key === "Enter" && !e.isTrusted) { const a = document.activeElement; if (a && a.tagName === "BUTTON" && !a.disabled) { e.preventDefault(); a.click(); } } });  // 시뮬레이터 선택 단추(스크립트 Enter)는 브라우저가 눌러 주지 않는다
 function leave() { location.href = `/?ui=${K ? "en" : "ko"}`; }  // 안경 첫 화면(카드 목록)으로
 // 확인: 안경에는 카메라가 없어 따라 하기 화면(휴대폰)이 찍어서 확인하고, 결과 한 줄을 돌려준다
 let shownRes = undefined, pending = 0;

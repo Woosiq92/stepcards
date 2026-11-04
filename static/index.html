@@ -561,6 +561,12 @@
   }
   /* 안경(Ray-Ban Display 600x600 같은 작은 정사각 화면): 쓸 수 없는 것(올리기·검색·분류)과 긴 글을 빼고, 검은 바탕(투명하게 비친다)에 제목·작동 보기·카드 목록만(11-04 사용자) */
   @media (max-width:700px) and (max-height:700px) and (min-aspect-ratio:4/5) {
+    .cstart .cintro, #csum > .d { display:none !important; }  /* 안경: 글을 줄인다 */
+    .mhero .mcopy h2 { font-size:28px !important; margin:4px 0 12px; } .mhero { padding-top:16px !important; } .mbtns .pill { font-size:15px; padding:10px 18px; }
+    .libtop h2 { font-size:20px; margin:0; } .libgrid { gap:10px !important; } .libimg img { aspect-ratio:16/9 !important; height:auto; } .libbody { padding:8px 10px 10px !important; gap:4px !important; } .libcard strong { font-size:15px !important; line-height:1.3; } .libcard .glgo { min-height:40px !important; font-size:15px !important; padding:6px 12px; margin-top:4px !important; }
+    .tab.coachv, .coachv .cstart { background:#000 !important; }
+    .coachv .wcap, .coachv .verifybtn, .coachv #caimqr, .cstart .csettings, .cstart .csteps li:nth-child(n+2), #csum [data-k=step2], #csum [data-k=made], #csum [data-k=bare], #csum [data-k=share], #csum .sumdetail { display:none !important; }  /* 안경: 카메라가 필요하거나 데스크톱용인 것 */
+    .coachv button:focus, .coachv a:focus, .coachv summary:focus { outline:3px solid #fff !important; outline-offset:3px; }
     body.homepage, body.homepage main { background:#000; }
     body.homepage header { background:#000; border-color:#222; } body.homepage #uiseg { background:#1a1a1a; } body.homepage #uiseg button { color:#aaa; } body.homepage #uiseg button.on { background:#333; color:#fff; } body.homepage #steps { display:none; }
     .mhero { background:#000; padding-top:28px; } .mhero .mcopy p, .mhero .mshot, .mhero .mstrip, .mbtns .pill.addv { display:none; } #hlib { display:block !important; }
@@ -580,6 +586,12 @@
   html.mdcs-active .libcard .kicker,html.mdcs-active .libcard .muted,html.mdcs-active .libcard .ltags,html.mdcs-active .libcard .lacts { display:none; } html.mdcs-active .libcard strong { color:#fff; font-size:20px; }
   html.mdcs-active .libcard .glgo { display:inline-flex; margin-top:8px; min-height:48px; font-size:18px; }
   html.mdcs-active .libcard .btn.primary:focus,html.mdcs-active .mbtns .pill:focus,html.mdcs-active #uiseg button:focus { outline:3px solid #fff; outline-offset:4px; }
+  html.mdcs-active .tab.coachv,html.mdcs-active .coachv .cstart { background:#000 !important; }
+  html.mdcs-active .coachv .wcap,html.mdcs-active .coachv .verifybtn,html.mdcs-active .coachv #caimqr,html.mdcs-active .cstart .csettings,html.mdcs-active .cstart .csteps li:nth-child(n+2),html.mdcs-active #csum [data-k=step2],html.mdcs-active #csum [data-k=made],html.mdcs-active #csum [data-k=bare],html.mdcs-active #csum [data-k=share],html.mdcs-active #csum .sumdetail { display:none !important; }
+  html.mdcs-active .coachv button:focus,html.mdcs-active .coachv a:focus,html.mdcs-active .coachv summary:focus { outline:3px solid #fff !important; outline-offset:3px; }
+  html.mdcs-active .cstart .cintro,html.mdcs-active #csum > .d { display:none !important; }
+  html.mdcs-active .mhero .mcopy h2 { font-size:28px !important; margin:4px 0 12px; } html.mdcs-active .mhero { padding-top:16px !important; } html.mdcs-active .mbtns .pill { font-size:15px; padding:10px 18px; }
+  html.mdcs-active .libtop h2 { font-size:20px; margin:0; } html.mdcs-active .libgrid { gap:10px !important; } html.mdcs-active .libimg img { aspect-ratio:16/9 !important; height:auto; } html.mdcs-active .libbody { padding:8px 10px 10px !important; gap:4px !important; } html.mdcs-active .libcard strong { font-size:15px !important; line-height:1.3; } html.mdcs-active .libcard .glgo { min-height:40px !important; font-size:15px !important; padding:6px 12px; margin-top:4px !important; }
   html.mdcs-active body:not(#_) { overflow-y:auto !important; } html.mdcs-active #steps { display:none; } html.mdcs-active .mhero.full { grid-template-columns:minmax(0,1fr); height:auto; min-height:0; padding:28px 24px 8px; } html.mdcs-active main { padding:16px; } html.mdcs-active .full { width:auto; margin-left:-16px; margin-right:-16px; } html.mdcs-active .mhero .mcopy h2 { font-size:40px; }
 </style>
 </head>
@@ -698,6 +710,7 @@ async function routeView() {
   }
   if (`${S.run}|${S.view}` !== was) scrollTo(0, 0);  // 다른 화면으로 가면 맨 위부터
   if (["edit", "use", "tablet", "coach"].includes(S.view) && !S.data) S.view = "making";
+  if (run && ["use", "edit", "tablet", "making"].includes(S.view) && onGlasses()) { location.replace(`/glasses?run=${run}&lang=${ui}&m=${ui}`); return; }  // 안경: 넓은 화면용 페이지는 쓸 수 없다
   document.body.classList.toggle("tabmode", S.view === "tablet" || S.view === "coach");
   document.body.classList.toggle("homepage", S.view === "home");  // 첫 화면은 흰 바탕(이야기형)
   document.documentElement.lang = ui;
@@ -976,7 +989,7 @@ async function home() {
     })()}`;
   S.mine = mine; if (mine.length) pastList();
   S.lib = runs.filter(r => r.use && r.done); libList(); homeTab(HT());
-  if (onGlasses()) [100, 800].forEach(t => setTimeout(() => { if (!document.activeElement || document.activeElement === document.body) $(".mbtns a.pill:not(.addv)")?.focus(); }, t));  // 첫 화면이 한 번 더 그려져도(역할 확인 뒤) 초점이 남게
+  if (onGlasses()) [100, 800].forEach(t => setTimeout(() => { if (!document.activeElement?.closest?.("#main")) $(".mbtns a.pill:not(.addv)")?.focus(); }, t));  // 첫 화면이 한 번 더 그려져도(역할 확인 뒤) 초점이 남게
   const drop = $("#drop"), file = $("#file");
   file.onchange = () => file.files[0] && upload(file.files[0]);
   drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
@@ -1872,14 +1885,18 @@ let AC = null;
 addEventListener("pointerdown", () => { try { AC ??= new AudioContext(); AC.resume(); } catch {} }, { capture: true });
 /* 안경(시뮬레이터 mdcs-active 또는 작은 정사각 화면) 첫 화면: 입력은 방향키·Enter뿐인데 일반 페이지는 브라우저가 초점을 옮겨 주지 않는다(Meta 문서).
    보이는 단추 가운데 그 방향으로 가장 가까운 것으로 초점을 옮기고 화면을 따라 내린다(11-04 사용자: 목록에서 아무것도 할 수 없었다) */
-const onGlasses = () => document.documentElement.classList.contains("mdcs-active") || matchMedia("(max-width:700px) and (max-height:700px) and (min-aspect-ratio:4/5)").matches;
+function onGlasses() { return document.documentElement.classList.contains("mdcs-active") || matchMedia("(max-width:700px) and (max-height:700px) and (min-aspect-ratio:4/5)").matches; }
+/* 시뮬레이터의 선택 단추는 스크립트로 만든 Enter(isTrusted=false)를 초점 요소에 보낸다: 브라우저가 눌러 주지 않으니 직접 누른다(11-04 사용자: 이동이 안 됨) */
+addEventListener("keydown", e => { if (e.key === "Enter" && !e.isTrusted && onGlasses()) { const a = document.activeElement; e.preventDefault();
+  if (a && a !== document.body && a.offsetParent && a.matches("a[href], button, summary")) a.click();
+  else ($(".mbtns a.pill:not(.addv)") || $("#cstart:not([hidden]) .navb.next") || $("#cnext"))?.focus(); } });  // 초점이 사라졌으면(화면을 다시 그린 뒤) 첫 단추로 데려온다
 addEventListener("keydown", e => {
-  if (S.view !== "home" || !onGlasses() || !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
-  const all = [...document.querySelectorAll("#main a.pill, #main a.glgo, #uiseg button")].filter(el => { const r = el.getBoundingClientRect(), c = getComputedStyle(el); return r.width && r.height && c.display !== "none" && c.visibility !== "hidden"; });
+  if (!onGlasses() || $("#vbox") || !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+  const all = [...document.querySelectorAll("#main a[href], #main button, #main summary, #uiseg button")].filter(el => !el.disabled && !el.matches(".libimg, .libbody > a") && !el.closest("[hidden], #cwrap, .coachv .cam, #cpose") && (() => { const ov = [...document.querySelectorAll("#csum, #cstart")].find(o => !o.hidden); return !ov || ov.contains(el) || el.matches(".exit"); })())  /* 시작·끝 화면이 덮고 있으면 그 안 단추와 나가기만 */.filter(el => { const r = el.getBoundingClientRect(), c = getComputedStyle(el); return r.width && r.height && c.display !== "none" && c.visibility !== "hidden"; });
   if (!all.length) return;
   e.preventDefault();
-  const cur = all.includes(document.activeElement) ? document.activeElement : null;
-  if (!cur) { const f0 = all.find(el => el.closest("#main")) || all[0]; f0.focus(); f0.scrollIntoView({ block: "center" }); return; }
+  const cur = all.includes(document.activeElement) && document.activeElement.offsetParent ? document.activeElement : null;
+  if (!cur) { const f0 = all.find(el => el.matches(".navb.next, .mbtns a.pill")) || all.find(el => el.closest("#main")) || all[0]; f0.focus(); f0.scrollIntoView({ block: "center" }); return; }
   const c = cur.getBoundingClientRect(), cx = c.left + c.width / 2, cy = c.top + c.height / 2;
   const dir = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[e.key];
   let best = null, bd = Infinity;
@@ -2044,6 +2061,7 @@ function coach() {
     history.replaceState(null, "", location.href.replace(/&go=watch/, ""));  // '처음부터 다시'가 또 자동 시작하지 않게
     if (S.data.sample && !noDone()) setTimeout(() => { if ($("#cstart")) coachWatch(); }, 0);
   }
+  if (onGlasses()) setTimeout(() => { if ($("#cstart") && !$("#cstart").hidden) $("#cstart .navb.next")?.focus(); else $("#cnext")?.focus(); }, 150);  // 안경: 첫 초점
   C.hold = true; coachCard();  // 지난 위치를 읽기 전에 1번 카드로 덮어쓰지 않게 안경 알림을 잠시 멈춘다
   fetch(`/api/runs/${S.run}/now?s=${C.pair}`).then(r => r.json()).then(d => {  // 지난번에 중간에 멈췄으면 그 카드부터 이어 하기
     const n = S.data.cards.length;
@@ -2193,6 +2211,7 @@ function coachExit() {
     setTimeout(() => { C.exitArm = false; $(".coachv")?.classList.remove("exiting"); if (b && old) b.innerHTML = old; }, 3000); return;
   }
   C.exitArm = false;
+  if (onGlasses()) return go({});  // 안경: 카드 목록(첫 화면)으로
   if ($("#csum") || !(C.help && Object.keys(C.max || {}).length)) return go({ run: S.run, view: "use" });
   coachEnd(false);
 }
@@ -2284,7 +2303,7 @@ function coachEnd(finished, endBy) {
         share: demo ? null : [`shareRun()`, T("결과 보내기", "Share run")],
         stuck: stuck ? [`sendStuck()`, T("막힌 카드 고치러 가기", "Fix the cards that were hard")] : null,
         home: [`go({})`, T("처음 화면", "Home")] };
-      const btn = (k, cls) => `<button class="navb ${cls}" onclick="${b[k][0]}">${b[k][1]}</button>`;
+      const btn = (k, cls) => `<button class="navb ${cls}" data-k="${k}" onclick="${b[k][0]}">${b[k][1]}</button>`;
       return btn(main, "next") + `<div class="sumacts">${Object.keys(b).filter(k => k !== main && b[k]).map(k => btn(k, "")).join("")}</div>`;
     })()}
     <details class="sumdetail"><summary>${T("결과 자세히 · 도와주는 분께", "Details · for the helper")}</summary><div class="sumbody">
@@ -2294,6 +2313,7 @@ function coachEnd(finished, endBy) {
     ${runResult()}
     </div></details></div>`);  // 끝났으면 묶음 화면이 아니라 처음 화면으로(11-03 사용자). 막힌 카드가 있으면 그것을 주 단추로
   C.sum = { finished: !!finished, upto: S.idx + 1, by };
+  if (onGlasses()) setTimeout(() => [...document.querySelectorAll("#csum .navb")].find(b => b.offsetParent)?.focus(), 150);
   if (finished) { const st = runStats(); markPracticed(S.run, { ...practiced()[S.run], at: Date.now(), auto: st.auto, check: st.check, hand: st.hand, ...(hs.streak >= 3 ? { alone: Date.now() } : {}) }); }
   stopCoach(true);
   if (finished && C.voice && window.speechSynthesis) speechSynthesis.speak(utter(T("다 했어요.", "All steps done."), ui === "en" ? "en-US" : "ko-KR"));  // 멈춘 뒤에 읽어야 끊기지 않는다
@@ -2801,7 +2821,7 @@ function dotsHtml(n, idx) {  // 카드가 많으면 점이 넘쳐서 숫자만
 function flip(d) { if (Date.now() - (S.flipAt || 0) < 600) return; S.flipAt = Date.now(); stopVoice(); S.idx = Math.max(0, Math.min(S.data.cards.length - 1, S.idx + d)); tablet(); }
 document.addEventListener("keydown", e => {
   if ($("#vbox")) { if (e.key === "Escape") closeVerify(); return; }
-  if (S.view === "coach") { if ($("#csum")) return; if (e.key === "ArrowRight") coachFlip(1); if (e.key === "ArrowLeft") coachFlip(-1); if (e.key === "Escape") coachExit(); return; }
+  if (S.view === "coach") { if ($("#csum") || onGlasses()) return; if (e.key === "ArrowRight") coachFlip(1);  /* 안경: 방향키는 단추 사이 초점 이동(아래 처리) */ if (e.key === "ArrowLeft") coachFlip(-1); if (e.key === "Escape") coachExit(); return; }
   if (S.view !== "tablet") return;
   if (e.key === "ArrowRight" || e.key === " ") flip(1);
   if (e.key === "ArrowLeft") flip(-1);
