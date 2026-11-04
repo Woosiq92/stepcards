@@ -570,7 +570,18 @@
     .libcard .kicker, .libcard .muted, .libcard .ltags, .libcard .lacts { display:none; } .libcard strong { color:#fff; font-size:20px; }
     .libcard .glgo { display:inline-flex; margin-top:8px; min-height:48px; font-size:18px; }
     .libcard .btn.primary:focus-visible, .mbtns .pill:focus-visible { outline:3px solid #fff; outline-offset:4px; }
-  }</style>
+  }  /* Meta Ray-Ban Display 시뮬레이터(크롬 확장)는 창 크기는 그대로 두고 html에 mdcs-active를 붙여 body만 600x600으로 줄인다: 화면 크기 규칙이 안 켜져서 같은 규칙을 이 클래스에도 건다 */
+  html.mdcs-active body.homepage,html.mdcs-active body.homepage main { background:#000; }
+  html.mdcs-active body.homepage header { background:#000; border-color:#222; } html.mdcs-active body.homepage #uiseg { background:#1a1a1a; } html.mdcs-active body.homepage #uiseg button { color:#aaa; } html.mdcs-active body.homepage #uiseg button.on { background:#333; color:#fff; } html.mdcs-active body.homepage #steps { display:none; }
+  html.mdcs-active .mhero { background:#000; padding-top:28px; } html.mdcs-active .mhero .mcopy p,html.mdcs-active .mhero .mshot,html.mdcs-active .mhero .mstrip,html.mdcs-active .mbtns .pill.ghost { display:none; }
+  html.mdcs-active .htabs,html.mdcs-active .libtop .lq,html.mdcs-active .libnote,html.mdcs-active .libchips,html.mdcs-active .libh,html.mdcs-active .jobsrc,html.mdcs-active .mstory,html.mdcs-active #hmine,html.mdcs-active #hdone { display:none !important; }
+  html.mdcs-active .lib { color:#fff; } html.mdcs-active .libtop h2 { color:#fff; }
+  html.mdcs-active .libgrid { grid-template-columns:1fr 1fr; gap:12px; } html.mdcs-active .libcard { background:#111; border-color:#333; color:#fff; }
+  html.mdcs-active .libcard .kicker,html.mdcs-active .libcard .muted,html.mdcs-active .libcard .ltags,html.mdcs-active .libcard .lacts { display:none; } html.mdcs-active .libcard strong { color:#fff; font-size:20px; }
+  html.mdcs-active .libcard .glgo { display:inline-flex; margin-top:8px; min-height:48px; font-size:18px; }
+  html.mdcs-active .libcard .btn.primary:focus-visible,html.mdcs-active .mbtns .pill:focus-visible { outline:3px solid #fff; outline-offset:4px; }
+  html.mdcs-active body:not(#_) { overflow-y:auto !important; } html.mdcs-active #steps { display:none; } html.mdcs-active .mhero.full { grid-template-columns:minmax(0,1fr); height:auto; min-height:0; padding:28px 24px 8px; } html.mdcs-active main { padding:16px; } html.mdcs-active .full { width:auto; margin-left:-16px; margin-right:-16px; } html.mdcs-active .mhero .mcopy h2 { font-size:40px; }
+</style>
 </head>
 <body>
 <header>
