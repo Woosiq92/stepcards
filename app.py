@@ -332,6 +332,8 @@ def index():
 @app.get("/static/{name}")
 def static_js(name: str):
     """3D 접기 카드 스크립트만 내보낸다(리포의 다른 파일은 열지 않는다)"""
+    if name in ("hero_en.mp4", "hero_ko.mp4", "hero_en.jpg", "hero_ko.jpg"):  # 처음 화면의 앱 화면 녹화
+        return FileResponse(ROOT / "static" / name, media_type="video/mp4" if name.endswith(".mp4") else "image/jpeg")
     if name not in ("fold.js", "fold3d.js"):
         raise HTTPException(404)
     return FileResponse(ROOT / "static" / name, media_type="text/javascript")

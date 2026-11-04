@@ -79,8 +79,9 @@
   .pill { display:inline-flex; align-items:center; gap:6px; background:var(--accent); color:#fff; border-radius:100px; padding:12px 22px; font-size:16px; font-weight:700; }
   .pill:hover { background:var(--accent-h); text-decoration:none; } .pill.ghost { background:rgba(255,255,255,.16); backdrop-filter:blur(8px); } .pill.ghost:hover { background:rgba(255,255,255,.26); }
   .mhero { position:relative; height:min(78vh,720px); min-height:520px; margin-top:-32px; display:grid; align-items:center; overflow:hidden; background:var(--ink); padding:0 max(24px, calc((100vw - 1120px) / 2)) 96px; }
-  .mbg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:saturate(1.05); }
-  .mshade { position:absolute; inset:0; background:linear-gradient(90deg, rgba(17,24,58,.94) 0%, rgba(17,24,58,.78) 42%, rgba(17,24,58,.35) 100%); }
+  .mhero { background:radial-gradient(90% 120% at 80% 30%, #26306b 0%, #11183a 60%); grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); column-gap:48px; }  /* 흐린 배경 영상 대신 실제 앱 화면(11-04 사용자: 심사위원이 바로 알게) */
+  .mshot { position:relative; margin:0; grid-column:2; grid-row:1; } .mshot video { display:block; width:100%; aspect-ratio:5/3; border-radius:16px; box-shadow:0 30px 70px rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12); background:#11183a; }
+  .mshot figcaption { color:#c7d0f0; font-size:14px; margin-top:10px; line-height:1.4; } .mshot .mpause { right:12px; top:12px; width:40px; height:40px; font-size:12px; }
   .mcopy { position:relative; text-align:left; color:#fff; max-width:600px; display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
   .mcopy h2 { font-size:clamp(36px,5vw,64px); font-weight:700; line-height:1.05; letter-spacing:-.025em; margin:14px 0 16px; }
   .mcopy p { font-size:18px; opacity:.9; margin:0 0 28px; max-width:520px; } .mbtns { display:flex; gap:12px; justify-content:flex-start; flex-wrap:wrap; }
@@ -88,7 +89,7 @@
   .mstrip .mlabel { opacity:.8; min-width:150px; } .mstrip { flex-direction:column; align-items:stretch; gap:12px; } .mrow { display:flex; align-items:center; gap:20px; flex-wrap:wrap; } .msteps { display:flex; align-items:center; gap:10px; font-weight:600; flex-wrap:wrap; }
   .msteps span { display:inline-flex; align-items:center; gap:8px; } .msteps i { width:32px; height:32px; border-radius:50%; background:#fff; color:var(--ink); display:grid; place-items:center; }
   .msteps i .ico { width:18px; height:18px; } .mline { width:22px; height:1px; background:rgba(255,255,255,.4); }
-  @media (max-width:860px) { .mstrip { position:relative; left:auto; right:auto; grid-row:2; padding-top:18px; } .mline { display:none; } .mhero { padding-bottom:24px; height:auto; min-height:0; padding-top:72px; } }
+  @media (max-width:860px) { .mstrip { position:relative; left:auto; right:auto; grid-row:3; padding-top:18px; } .mline { display:none; } .mhero { padding-bottom:24px; height:auto; min-height:0; padding-top:72px; grid-template-columns:minmax(0,1fr); } .mshot { grid-column:1; grid-row:2; margin-top:24px; } }
   .mpause { position:absolute; right:24px; top:24px; width:52px; height:52px; border-radius:50%; border:2px solid rgba(255,255,255,.6); background:rgba(11,16,21,.35); color:#fff; font-size:14px; }
   .mstory { padding:96px 20px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:18px; }
   .mstory.dark { background:#000; color:#fff; } .mstory h2 { font-size:clamp(30px,4vw,48px); font-weight:500; letter-spacing:-.02em; margin:0; }
@@ -888,17 +889,16 @@ async function home() {
       const name = r => esc(runTitle(r).replace(/ \((견본|sample)\)$/, ""));
       return `
     <section class="mhero full">
-      ${has(L) ? `<video class="mbg" src="/api/runs/${L}/clip/9.mp4" poster="/runs/${L}/cards/09.jpg" autoplay muted loop playsinline aria-hidden="true"></video>` : ""}
-      <div class="mshade"></div>
       <div class="mcopy">
-        <span class="mpov">${icon("glasses")} <span class="long">${T("하는 사람의 눈높이에서 찍은 시범 (안경 시점 재연)", "Filmed at the doer's eye level, as smart glasses would see it")}</span><span class="short">${T("눈높이에서 찍은 시범", "Filmed at eye level")}</span></span>
         <h2>${T("영상 하나 넣으면, 따라 하는 카드가 돼요", "Add one video. Get step cards anyone can follow.")}</h2>
         <p>${T("발달장애인 직업훈련을 위해 만들었어요. Meta의 Muse Spark가 카메라로 보고, 단계가 끝나면 다음 카드를 띄워요.", "For job training of people with developmental disabilities. Meta's Muse Spark watches the camera and shows the next card when a step is done.")}</p>
         <div class="mbtns">${has(N) ? `<a class="pill" href="#run=${N}&view=coach&go=watch">${icon("video")} ${T("1분 만에 작동 보기 · 카메라 없이", "See it work · 1 min, no camera")}</a>` : ""}<a class="pill${has(N) ? " ghost" : ""}" href="#" onclick="event.preventDefault();homeTab('mine');document.getElementById('start').scrollIntoView({behavior:'smooth'})">${T("내 영상으로 만들기", "Make cards from a video")}</a></div>
       </div>
+      <figure class="mshot"><video src="/static/hero_${ui === "en" ? "en" : "ko"}.mp4" poster="/static/hero_${ui === "en" ? "en" : "ko"}.jpg" autoplay muted loop playsinline aria-label="${T("앱 화면: 시범 영상을 카메라 대신 틀면 Muse Spark가 단계를 보고 카드를 넘긴다", "App screen: the demo video plays in place of a camera and Muse Spark turns the cards as steps finish")}"></video>
+        <button class="mpause" onclick="const v=this.parentElement.querySelector('video');v.paused?v.play():v.pause();this.innerHTML=v.paused?'▶':'❚❚'" aria-label="${T("영상 멈추기", "Pause video")}">❚❚</button>
+        <figcaption>${T("실제 앱 화면 · 왼쪽 시범 영상이 카메라 대신 돌고, 단계가 끝나면 오른쪽 카드가 넘어가요", "The real app · the demo video on the left stands in for a camera; the card on the right turns when a step is done")}</figcaption></figure>
       <div class="mstrip"><div class="mrow"><span class="mlabel">${T("막히면 도움이 한 단계씩", "Stuck? Help steps up")}</span>
         <span class="msteps">${[1, 2, 3, 4].map(l => `<span><i>${helpIcon(l)}</i>${lvName(l)}</span>`).join('<b class="mline"></b>')}</span></div></div>
-      ${has(L) ? `<button class="mpause" onclick="const v=this.parentElement.querySelector('video');v.paused?v.play():v.pause();this.innerHTML=v.paused?'▶':'❚❚'" aria-label="${T("영상 멈추기", "Pause video")}">❚❚</button>` : ""}
     </section>
 
     <nav class="htabs" role="tablist">
