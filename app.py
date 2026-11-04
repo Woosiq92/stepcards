@@ -59,9 +59,9 @@ if not APP_KEY and any(k.startswith("RAILWAY_") for k in os.environ):  # 공개 
 JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 수 있지만 하루 한도가 있다(제출 설명에 적는 키)
 JUDGE_LIMITS = {"upload": 15, "illustrate": 60, "agent": 20, "translate": 10, "step": 400, "compare": 400, "coach": 3000, "frame": 60, "retry": 15, "verify": 600, "setup": 300}  # 하루 횟수, 심사위원 전원 합계(키가 하나라 사람을 못 가른다). 따라 하기 3000번 ≈ 2시간·약 $9. 전체는 비용 상한이 막는다
 JUDGE_USE = {"day": "", "n": {}}
-PUBLIC_LIMITS = {"coach": int(os.environ.get("PUBLIC_COACH_SET", 900)), "verify": int(os.environ.get("PUBLIC_VERIFY_SET", 300)), "records": 2000, "log": 2000}  # 키 없는 학습자 기기: 카드 묶음마다 하루(판단 약 $0.003·확인 약 $0.005 → 묶음당 하루 최대 약 $4)
+PUBLIC_LIMITS = {"coach": int(os.environ.get("PUBLIC_COACH_SET", 900)), "verify": int(os.environ.get("PUBLIC_VERIFY_SET", 300)), "records": 2000, "log": 2000, "setup": int(os.environ.get("PUBLIC_SETUP_SET", 300))}  # setup: 키 없는 심사위원이 "직접 해 보기"를 누르면 카메라 자리 확인에서 키 입력창이 떴다(11-04 검수)  # 키 없는 학습자 기기: 카드 묶음마다 하루(판단 약 $0.003·확인 약 $0.005 → 묶음당 하루 최대 약 $4)
 PUBLIC_USE = {"day": "", "n": {}}
-PUBLIC_TOTAL = {"coach": int(os.environ.get("PUBLIC_COACH_DAY", 3000)), "verify": int(os.environ.get("PUBLIC_VERIFY_DAY", 900))}  # 환경 변수로 바꿀 수 있다(코드 수정 없이 한 반 규모·심사 기간에 맞추게)  # 키 없는 기기 전체 하루 합계(견본 11개를 돌아가며 써도 하루 약 $14 안: 상한 $140 을 심사위원 몫으로 남긴다)
+PUBLIC_TOTAL = {"coach": int(os.environ.get("PUBLIC_COACH_DAY", 3000)), "verify": int(os.environ.get("PUBLIC_VERIFY_DAY", 900)), "setup": int(os.environ.get("PUBLIC_SETUP_DAY", 900))}  # 환경 변수로 바꿀 수 있다(코드 수정 없이 한 반 규모·심사 기간에 맞추게)  # 키 없는 기기 전체 하루 합계(견본 11개를 돌아가며 써도 하루 약 $14 안: 상한 $140 을 심사위원 몫으로 남긴다)
 PAID_PATHS = ("/upload", "/retry", "/illustrate", "/agent", "/coach", "/verify", "/translate", "/step", "/compare", "/frame", "/setup")  # Meta 를 부르는 요청
 TEACHERS = dict(x.strip().split(":", 1) for x in os.environ.get("TEACHER_KEYS", "").split(",") if ":" in x)  # 교사별 키 "이름:키,이름:키"
 NOW_PATH = re.compile(r"/api/runs/\w+/(now|call|mark)$")  # 안경은 키(쿠키)가 없다: 지금 카드 맞추기와 '도와줘요'·'여기서 막혔어요'는 키 없이

@@ -964,7 +964,7 @@ async function home() {
       <div class="mcopy">
         <h2><span>${T("영상 하나 넣으면,", "Add one video.")}</span><span>${T("단계마다 카드 한 장", "Get one card per step.")}</span></h2>
         <p>${T("따라 하면 Meta의 Muse Spark가 카메라로 보고 카드를 넘겨요. 발달장애인 직업훈련을 위해 시작했어요.", "Follow along, and Meta's Muse Spark turns the card when the camera sees a step done. Built first for job training of people with developmental disabilities.")}</p>
-        <div class="mbtns">${has(N) ? `<a class="pill" href="#run=${N}&view=coach&go=watch">${icon("video")} ${T("1분 만에 작동 보기 · 카메라 없이", "See it work · 1 min, no camera")}</a>` : ""}<a class="pill addv${has(N) ? " ghost" : ""}" href="#" onclick="event.preventDefault();homeTab('mine');document.getElementById('start').scrollIntoView({behavior:'smooth'})">${icon("plus")} ${T("내 영상 넣기", "Add your video")}</a></div>
+        <div class="mbtns">${has(N) ? `<a class="pill" href="#run=${N}&view=coach&go=watch">${icon("video")} ${T("작동 보기 · 카메라 없이", "See it work · no camera")}</a>` : ""}<a class="pill addv${has(N) ? " ghost" : ""}" href="#" onclick="event.preventDefault();homeTab('mine');document.getElementById('start').scrollIntoView({behavior:'smooth'})">${icon("plus")} ${T("내 영상 넣기", "Add your video")}</a></div>
       </div>
       <figure class="mshot"><video src="/static/hero_${ui === "en" ? "en" : "ko"}.mp4" poster="/static/hero_${ui === "en" ? "en" : "ko"}.jpg" autoplay muted loop playsinline aria-label="${T("앱 화면: 시범 영상을 카메라 대신 틀면 Muse Spark가 단계를 보고 카드를 넘긴다", "App screen: the demo video plays in place of a camera and Muse Spark turns the cards as steps finish")}"></video>
         <button class="mpause" onclick="const v=this.parentElement.querySelector('video');v.paused?v.play():v.pause();this.innerHTML=v.paused?'▶':'❚❚'" aria-label="${T("영상 멈추기", "Pause video")}">❚❚</button>
@@ -1210,6 +1210,8 @@ function makeWhere(local) {
 /* 카메라로 바로 찍기(11-04 사용자): 휴대폰은 뒤 카메라, 노트북은 웹캠. 멈추면 그대로 올려 카드를 만든다. 10분이면 저절로 멈춘다 */
 const REC = {};
 async function recOpen() {
+  const me = await rawFetch("/api/me").then(r => r.json()).catch(() => ({}));  // 다 찍은 뒤에 키를 묻지 않게, 카메라를 켜기 전에
+  if (me.role === null && !(await askKey())) return;
   try { REC.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: true }); }
   catch { try { REC.stream = await navigator.mediaDevices.getUserMedia({ video: true }); } catch { return toast(T("카메라를 켤 수 없어요. 브라우저의 카메라 권한을 확인해 주세요.", "Can't turn on the camera. Check the browser's camera permission.")); } }
   const box = document.createElement("div"); box.id = "recbox";
@@ -1927,7 +1929,7 @@ async function liveBoard() {
   if (S.view !== "use") return clearInterval(S.livePoll);
   if (alone()) { const b = $("#liveboard"); if (b) b.innerHTML = ""; return; }  // 혼자 하기: 올 사람이 없으니 현황판도 없다(막힌 카드는 고치기 화면에)
   let list = [];
-  try { const r = await fetch(`/api/runs/${S.run}/live`); if (r.ok) list = await r.json(); } catch {}
+  if (S.role) try { const r = await rawFetch(`/api/runs/${S.run}/live`); if (r.ok) list = await r.json(); } catch {}  // 키 없는 사람은 현황판을 못 본다(401 오류를 남기지 않게)
   const b = $("#liveboard"); if (!b) return;
   const n = S.data.cards.length, called = list.filter(x => x.call);
   if (called.length > (S.calledN || 0)) beep();  // 새 부름이 오면 짧게 소리
@@ -2271,6 +2273,7 @@ function coachExit() {
   }
   C.exitArm = false;
   if (onGlasses()) return go({});  // 안경: 카드 목록(첫 화면)으로
+  if (C.watching && !$("#csum")) return coachEnd(false);  // 작동 보기를 중간에 나가도 방금 본 것을 설명하는 끝 화면과 2단계 단추를 보게(11-04 검수: 대부분 일찍 나간다)
   if ($("#csum") || !(C.help && Object.keys(C.max || {}).length)) return go({ run: S.run, view: "use" });
   coachEnd(false);
 }
