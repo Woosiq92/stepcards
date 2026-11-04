@@ -272,6 +272,8 @@
   textarea.say { width:100%; border:1.5px solid transparent; border-radius:var(--r-s); padding:6px 10px; font:inherit; font-size:22px; font-weight:700; letter-spacing:-.02em; line-height:1.35; resize:none; background:transparent; color:var(--ink); overflow:hidden; transition:background .15s, border-color .15s; }
   textarea.say:hover { background:var(--raised); }
   textarea.say:focus { outline:none; border-color:var(--accent); background:#fff; box-shadow:var(--focus); }
+  .sublang { display:block; margin-top:10px; font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.02em; }
+  details.sublang summary { cursor:pointer; list-style:revert; }
   textarea.say.sub { font-size:15px; font-weight:500; color:var(--muted); letter-spacing:0; }
   textarea.say::placeholder { color:var(--muted); }
   textarea.say { box-sizing:border-box; max-width:100%; } .row textarea.say:first-of-type { padding-right:56px; }  /* 카드 ⋯ 단추가 첫 줄 끝 글자를 덮지 않게(11-03) */
@@ -1301,8 +1303,9 @@ function rowHtml(c, i, iss = []) {
     </div>
     <div>
       ${(k => ui === "en" ? k.reverse().join("") : k.join(""))([  // 화면 언어의 문장을 크게 위에, 다른 언어는 작게 아래에
-        `<textarea class="say ${ui === "en" ? "sub" : ""}" rows="1" lang="ko" placeholder="${T("동작 하나를 짧게 써 주세요 (예: 우유를 부으세요.)", "Korean sentence, one action (e.g. 우유를 부으세요.)")}" oninput="typed(${i},'ko',this)">${esc(c.ko)}</textarea>`,
-        `<textarea class="say ${ui === "en" ? "" : "sub"}" rows="1" lang="en" placeholder="${T("영어 문장", "English sentence, one action (e.g. Pour the milk.)")}" oninput="typed(${i},'en',this)">${esc(c.en)}</textarea>`])}
+        // 다른 언어 문장에는 이름표: 영어 화면에서 한글 줄이 잘못 섞인 것처럼 보였다(11-04 사용자)
+        (ta => ui === "en" ? `<details class="sublang"><summary>Korean version</summary>${ta}</details>` : ta)(`<textarea class="say ${ui === "en" ? "sub" : ""}" rows="1" lang="ko" placeholder="${T("동작 하나를 짧게 써 주세요 (예: 우유를 부으세요.)", "Korean sentence, one action (e.g. 우유를 부으세요.)")}" oninput="typed(${i},'ko',this)">${esc(c.ko)}</textarea>`),  // 영어 화면에서는 접어 둔다(한글이 보이지 않게, 11-04 사용자)
+        `${ui === "en" ? "" : `<span class="sublang">영어 문장</span>`}<textarea class="say ${ui === "en" ? "" : "sub"}" rows="1" lang="en" placeholder="${T("영어 문장", "English sentence, one action (e.g. Pour the milk.)")}" oninput="typed(${i},'en',this)">${esc(c.en)}</textarea>`])}
       <div class="meta">${T("영상", "Video")} ${fmt(c.start)} ~ ${fmt(c.end)}</div>
       <div id="iss${i}">${iss.map(x => `<div class="issue">${esc(x)}</div>`).join("")}</div><div id="rn${i}">${notesHtml(c)}</div>
       <div class="actions"><details class="kebab"><summary class="btn" aria-label="${T("카드 동작", "Card actions")}">⋯</summary><div class="kmenu">
@@ -1439,7 +1442,7 @@ async function askAgentRun(q, box) {
   S.ask = d;
   box.innerHTML = `<div class="askbox"><b>${esc(d.note || T("고칠 안", "Proposed changes"))}</b>
     <span class="muted">${S.role === "teacher" ? T(`바뀌는 카드 ${d.changes.length}장`, `${d.changes.length} cards change`) : T(`바뀌는 카드 ${d.changes.length}장 · 검사 ${d.checks}번 · $${d.cost}`, `${d.changes.length} cards change · checker run ${d.checks}× · $${d.cost}`)}</span>
-    ${d.changes.map(c => `<div class="askrow"><span class="n">${S.data.cards.findIndex(x => x.n === c.n) + 1}</span><div>${ui === "en" ? `<s>${esc(c.en_before)}</s><br><b>${esc(c.en)}</b><span class="muted"> · ${esc(c.ko)}</span>` : `<s>${esc(c.ko_before)}</s><br><b>${esc(c.ko)}</b><span class="muted"> · ${esc(c.en)}</span>`}</div></div>`).join("")}
+    ${d.changes.map(c => `<div class="askrow"><span class="n">${S.data.cards.findIndex(x => x.n === c.n) + 1}</span><div>${ui === "en" ? `<s>${esc(c.en_before)}</s><br><b>${esc(c.en)}</b>` : `<s>${esc(c.ko_before)}</s><br><b>${esc(c.ko)}</b><span class="muted"> · ${esc(c.en)}</span>`}</div></div>`).join("")}
     ${d.problems.length ? `<div class="issue">${T("적용하면 검사에 걸리는 곳이 있어요:", "Applying this leaves issues:")} ${esc(d.problems.map(m => problemText(m, true)).join(" / "))}</div>` : ""}
     <div class="askbtns">${d.changes.length ? `<button class="btn primary" onclick="applyAgent()">${T("적용", "Apply")}</button>` : ""}<button class="btn" onclick="$('#askres').innerHTML=''">${T("닫기", "Close")}</button></div></div>`;
 }
