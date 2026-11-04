@@ -9,6 +9,7 @@ __pycache__/
 *.mp4
 .git/
 !seed/*/video.mp4
+!static/hero_*.mp4
 state.json
 spend.json
 *.tmp
