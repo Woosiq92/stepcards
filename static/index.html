@@ -2343,10 +2343,11 @@ async function setupCheck(v) {
   try { const r = await fetch(`/api/runs/${S.run}/setup`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ frame: cv.toDataURL("image/jpeg", 0.7), cur: S.idx + 1 }) }); if (r.ok) d = await r.json(); } catch {}
   C.setupBusy = false;
   if (!C.running || sess !== C.sess) return;
-  if (!d || d.ok || C.setupN >= 6) {
+  if (!d || d.ok || C.setupN >= 3) {
     C.setupOk = true; $(".coachv")?.classList.remove("ghosting"); aim(false); C.since = Date.now();
     pill(d && !d.ok ? T("자리를 다 못 맞췄지만 지켜볼게요", "Watching, though the camera isn't quite set up") : T("자리 좋아요 · 지켜보는 중", "Camera set · watching")); return;
   }
+  if (C.setupN > 1 && $(".coachv")?.classList.contains("ghosting")) return;  // 안내는 처음 받은 문장 하나로: 확인할 때마다 모델이 다른 말을 해 4초마다 바뀌었다(11-04)
   const g = $("#cghost"); if (g) { g.src = `/api/runs/${S.run}/cards/${S.data.cards[S.idx].n}/before.jpg`; g.style.height = `${v.clientHeight}px`; }
   $(".coachv")?.classList.add("ghosting");
   aim(true, T(`카메라 자리부터 맞춰요\n${d.move_ko || "시범처럼 작업하는 곳이 보이게 해 주세요"}`, `Set up the camera first\n${d.move_en || "Show the work area like the demonstration"}`));
@@ -2463,7 +2464,7 @@ function coachStart() {
     if (document.hidden) { C.buf = []; return; }
     if (faceBlocked(v)) { pill(T("얼굴 가리기를 불러오지 못해 자동 넘김을 멈췄어요 · 이전·다음 단추로 넘겨 주세요", "Face blur could not load, so auto-advance is off · use Back and Next")); C.faceWait = true; return; }
     if (v.srcObject && !faceReady()) { pill(T("얼굴 가리기 준비 중…", "Preparing face blur…")); C.faceWait = true; return; }  // 카메라 사진은 얼굴 가리기가 준비된 뒤부터 보낸다(시범 영상 재생은 그대로)
-    if (v.srcObject && !C.setupOk && !noDone()) { if (!C.setupBusy && Date.now() - (C.setupAt || 0) > 3500) setupCheck(v); return; }  // 자리 잡기가 끝나야 판단을 보낸다(11-03 설계 4)
+    if (v.srcObject && !C.setupOk && !noDone() && !C.setupBusy && Date.now() - (C.setupAt || 0) > 5000) setupCheck(v);  // 자리 잡기는 옆에서 돕기만: 판단을 막으면 노트북에서 시작까지 30초가 걸렸다(11-04 첫 사용 시험)
     if (C.faceWait) { C.faceWait = false; C.since = Date.now(); pill(T("지켜보는 중 · 얼굴은 가려서 보내요", "Watching · faces are blurred before sending")); }
     cv.width = 480; cv.height = Math.round(480 * v.videoHeight / v.videoWidth);
     drawFrame(cv, v);
