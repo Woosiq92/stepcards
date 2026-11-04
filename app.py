@@ -54,6 +54,8 @@ mark_interrupted()
 
 
 APP_KEY = os.environ.get("APP_KEY", "")  # 공개 주소에 올릴 때만 설정: 키를 아는 사람만 크레딧을 쓰고 카드를 바꾸게
+if not APP_KEY and any(k.startswith("RAILWAY_") for k in os.environ):  # 공개 배포(Railway)에서 키가 비면 전면 개방된다: 조용히 열지 말고 기동 거부(11-04 보안 검수)
+    raise SystemExit("APP_KEY 가 비어 있습니다: 공개 배포에서는 전면 개방을 막기 위해 기동하지 않습니다. 환경변수 APP_KEY 를 설정하세요.")
 JUDGE_KEY = os.environ.get("JUDGE_KEY", "")  # 심사위원용 키: 다 해 볼 수 있지만 하루 한도가 있다(제출 설명에 적는 키)
 JUDGE_LIMITS = {"upload": 15, "illustrate": 60, "agent": 20, "translate": 10, "step": 400, "compare": 400, "coach": 3000, "frame": 60, "retry": 15, "verify": 600}  # 하루 횟수, 심사위원 전원 합계(키가 하나라 사람을 못 가른다). 따라 하기 3000번 ≈ 2시간·약 $9. 전체는 비용 상한이 막는다
 JUDGE_USE = {"day": "", "n": {}}
@@ -136,7 +138,10 @@ def owns(request, role, run_id):
 
 
 def client_ip(request):
-    return (request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "")) or "?"
+    # x-forwarded-for 는 클라이언트가 넣는 값이라 앞 토큰은 위조된다(가짜 IP 로 로그인 무차별·/now 폭주 한도를 피했다, 11-04 보안 검수).
+    # Railway 는 프록시 1단: 실제 IP 는 맨 뒤 항목. 프록시가 없는 로컬은 헤더가 없어 request.client.host 로 떨어진다.
+    xff = request.headers.get("x-forwarded-for", "")
+    return (xff.split(",")[-1].strip() if xff else (request.client.host if request.client else "")) or "?"
 
 
 RATE = {}
