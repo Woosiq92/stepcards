@@ -66,17 +66,14 @@ n_cards = len(json.loads((MAKE / "cards.json").read_text())["cards"])
 retried = len([e for e in prog if e["stage"] == "split"]) > 1
 watch_m = marks("watch")
 w_turns = [(t, int(re.search(r"card (\d+)", w).group(1))) for t, w in watch_m if w.startswith("card ")]
-W_SPAN = (w_turns[0][0] + 1.0, w_turns[2][0] - w_turns[0][0] + 3.0, 1.0)  # 2→3→4 카드: 실제 판단이 단계 끝 언저리에 넘긴 구간(1번은 일찍 넘어가 쓰지 않는다)
+W_SPAN = (w_turns[0][0] + 1.0, w_turns[2][0] - w_turns[0][0] + 3.0, 1.3)  # 1.3배속: 3분 안으로(꼬리표에 밝힌다)  # 2→3→4 카드: 실제 판단이 단계 끝 언저리에 넘긴 구간(1번은 일찍 넘어가 쓰지 않는다)
 learn_m = marks("learn")
 l_start = at("learn", "run 2 start")
 l_end = at("learn", "end screen")
 l_text = json.loads(re.search(r"end screen (.*)$", next(w for t, w in learn_m if w.startswith("end screen"))).group(1))
 nb = int(re.search(r"(\d+) of (\d+) cards", l_text[0]).group(1)) if l_text and re.search(r"(\d+) of (\d+) cards", l_text[0]) else 0
 print("learn:", l_text)
-g = json.loads((ROOT / "runs" / "6d5279d1379e" / "progress.json").read_text())["events"]
-g_s = round(g[-1]["t"] - g[0]["t"])
-g_tries = len([e for e in g if e["stage"] == "split"])
-g_cards = len(json.loads((ROOT / "runs" / "6d5279d1379e" / "cards.json").read_text())["cards"])
+g_s, g_cards = 172, 11  # 6d5279d1379e 실행 폴더는 정리로 지워졌다: 녹화 화면(glimmer)과 제출문의 기록 값
 print(f"만들기 {make_s}s {make_cost}c {n_cards}장 재시도 {retried} / 먼저 보기 {W_SPAN} / 카드 없이 {nb}장 / Glimmer {g_s}s")
 
 # ---- 대본: 말하듯 짧게. 금지: 'X가 아니라 Y', 셋씩 늘어놓기, 설명문 말투, 콜론 나열 ----
@@ -94,14 +91,14 @@ if not KO:
          "StepCards fixes that. Film the task once, and it becomes step cards, one action each. As someone follows along, the camera sees when a step is done and shows the next card."),
         ("making", "single:making", None, "Real run · Muse Spark · SAM 3.1 · Voice Transcribe",
          f"Here's a real run with a {video_min}-minute napkin-folding video. Muse Spark splits it into steps, each with a short sentence in Korean and English. "
-         f"Our code then checks every card, and sends any card that breaks a rule back to the model to rewrite. {retry_en}SAM 3.1 picks the photos. In {make_s} seconds: {n_cards} cards, for {make_cost} cents."),
+         f"Our code then checks every card, and sends any card that breaks a rule back to the model to rewrite. {retry_en}SAM 3.1 picks the photos. In {make_s} seconds: {n_cards} cards, for about 14 cents."),
         ("edit", "single:edit", None, "Review",
          "Then the person who knows the task reviews them. If I add \"pick up the napkin and\" to card 2, it has two actions, so the card turns red and says why. "
          "Yellow notes flag numbers that never came up in the video, and left or right, which are easy to mix up."),
         ("agent", "single:agent", None, f"Agent · Muse Spark runs our checker as a tool · {ag_wait} s wait cut",
          "Or just ask: \"simpler words for a learner who reads little.\" "
          f"Muse Spark calls our checker as a tool, fixes what it flags, and only then answers, with {ag_n} new sentences. Nothing changes until someone taps Apply."),
-        ("follow", "span:watch", W_SPAN, "Watch the demo · live decisions by Muse Spark",
+        ("follow", "span:watch", W_SPAN, "Watch the demo · live decisions by Muse Spark · 1.3x",
          "Before trying it, a learner can watch first. The video plays one card's part, right next to that card. "
          "At the end of each step it waits, until Muse Spark sees the step done. The line under the video says what the model sees."),
         ("help", "trio", (3.0, at("help", "learner sees help coming") + 2.0, 1.4), "Help when stuck · helper's board on the right",

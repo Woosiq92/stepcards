@@ -26,7 +26,7 @@ async function open(path, w, h) {  // 화면마다 브라우저를 따로: 헤�
   const p = (await browser.pages())[0] || await browser.newPage();
   p.on("pageerror", e => errs.push(e.message));
   // 2배 해상도로 찍어 1920 영상에서 글자가 또렷하게. 따라 하기(실제 판단)는 1배: 2배 녹화가 브라우저를 무겁게 해 판단이 밀렸다(넘김 지연 중간 23초)
-  await p.setViewport({ width: w, height: h, deviceScaleFactor: scene === "coach" ? 1 : 2 });
+  await p.setViewport({ width: w, height: h, deviceScaleFactor: ["coach", "watch", "learn"].includes(scene) ? 1 : 2 });
   await p.evaluateOnNewDocument(l => { try { const L = l; localStorage.setItem("lang", L); localStorage.setItem("ui", L); localStorage.setItem("help", "on"); } catch {} }, L);
   await p.goto(BASE + path, { waitUntil: "load" }); await wait(1500);  // 안경·현황판은 계속 묻느라 networkidle 이 안 온다
   return p;
@@ -129,6 +129,9 @@ if (scene === "learn") {
   // 1회차(2단계, 녹화 안 함) → 2회차(3단계 카드 없이, 녹화) → 끝 화면의 '카메라가 확인한 카드'와 '지난번보다 도움이 줄어든 카드'
   const p = await open(`/?ui=${L}#run=${SAMPLE}&view=coach`, 1280, 800);
   await p.evaluate(() => { try { localStorage.removeItem("steps"); } catch {} });
+  const PREV = process.env.PREV_SUP && JSON.parse(process.env.PREV_SUP);  // 1회차를 이미 실제로 돌렸으면 그 기록(카드별 도움 크기·넘김 방법)을 넣고 2회차만 찍는다
+  if (PREV) await p.evaluate((prev, sample) => { const cards = {}; S.data.cards.forEach((c, i) => { cards[c.n] = { s: prev[i], how: i === S.data.cards.length - 1 ? "manual" : "auto" }; });
+    localStorage.setItem("steps", JSON.stringify({ [sample]: [{ at: Date.now() - 600000, help: true, bare: false, fin: true, cards }] })); }, PREV, SAMPLE);
   await p.evaluate(sample => {
     navigator.mediaDevices.getUserMedia = async () => {
       document.querySelector("#feedvid")?.remove();
@@ -144,17 +147,26 @@ if (scene === "learn") {
     while (!(await p.evaluate(() => !!document.querySelector("#csum")))) {
       const ended = await p.evaluate(() => !!document.querySelector("#feedvid")?.ended);
       if (ended && !endedAt) endedAt = Date.now();
+      const onCard = await p.evaluate(() => (Date.now() - (C.cardAt || Date.now())) / 1000);
+      if (onCard > 60) { await p.evaluate(() => document.querySelector("#cnext").click()); mark("hand next (60 s on card)"); await wait(1500); continue; }  // 되풀이 재생은 끝나지 않는다: 한 카드에 60초 넘게 머물면 손으로
       if (endedAt && Date.now() - endedAt > 25000) { await p.evaluate(() => document.querySelector("#cnext").click()); mark("hand next"); await wait(1500); continue; }
       await wait(1000);
     }
   };
-  await p.evaluate(() => coachCamera()); mark("run 1 start");
-  await done(); mark("run 1 end " + JSON.stringify(await p.evaluate(() => ({ moves: (C.moves || []).length, sup: C.sup }))));
-  await wait(1500);
+  if (!PREV) {
+    await p.evaluate(() => coachCamera()); mark("run 1 start");
+    await done(); mark("run 1 end " + JSON.stringify(await p.evaluate(() => ({ moves: (C.moves || []).length, sup: C.sup }))));
+    await wait(1500);
+  }
   const r1 = await rec(p, "learn");
   mark("rec"); await wait(1500);
   await p.evaluate(() => { S.idx = 0; route(); }); await wait(800);
   await p.evaluate(() => { C.bare = true; coachCamera(); }); mark("run 2 start");
+  // 카메라로 흘리는 시범 영상도 '먼저 보기'처럼: 지금 카드 구간을 틀고, 넘어갈 때까지 그 단계를 되풀이한다(학습자는 다음 카드가 나올 때까지 기다린다).
+  // 그냥 흘리면 판단(3~10초)보다 영상이 앞서가 카드가 저절로 열리고 끝에는 손으로 넘겼다(11-04 첫 녹화)
+  await p.evaluate(() => { let idx = -1; setInterval(() => { const hv = document.querySelector("#feedvid"); if (!hv || !C.running) return; const cs = S.data.cards, c = cs[S.idx];
+    if (idx !== S.idx) { idx = S.idx; if (hv.currentTime < c.start - 1.5 || hv.currentTime > c.end + 1) hv.currentTime = Math.max(0, c.start - 1); return; }
+    if (hv.currentTime > c.end + 0.5) { const pe = S.idx ? cs[S.idx - 1].end : c.start - 1; hv.currentTime = Math.max(0, Math.min(c.start - 1, pe + 0.5)); } }, 300); });
   let last = 0;
   const watchCards = setInterval(async () => { const i = await p.evaluate(() => S.idx).catch(() => last); if (i !== last) { mark(`card ${i + 1}`); last = i; } }, 300);
   await done(); clearInterval(watchCards);
