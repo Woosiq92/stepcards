@@ -956,7 +956,7 @@ function doneCard(r) {
   const x = practiced()[r.id] || {}, d = x.at ? new Date(x.at).toLocaleDateString(ui === "en" ? "en-US" : "ko-KR") : "";
   return `<article class="libcard">
     <a href="#run=${r.id}&view=use" class="libimg"><img src="/runs/${r.id}/${r.thumb}" alt=""></a>
-    <div class="libbody"><span class="kicker">${d}</span><a href="#run=${r.id}&view=use"><strong>${esc(runTitle(r).replace(/ \((견본|sample)\)$/, ""))}</strong></a>
+    <div class="libbody"><span class="kicker">${d}${x.alone ? T(" · 혼자 할 수 있어요", " · Can do it alone") : ""}</span><a href="#run=${r.id}&view=use"><strong>${esc(runTitle(r).replace(/ \((견본|sample)\)$/, ""))}</strong></a>
       <span class="muted">${T(`카메라가 넘김 ${x.auto ?? 0} · 직접 ${x.hand ?? 0} · 확인하기 ${x.check ?? 0}`, `Camera ${x.auto ?? 0} · by hand ${x.hand ?? 0} · Check ${x.check ?? 0}`)}</span>
       <span class="lacts"><a class="btn primary" href="#run=${r.id}&view=coach">${T("다시 하기", "Again")}</a>
         <button class="btn" onclick="unpractice('${r.id}')">${T("연습 전으로", "Move back")}</button></span></div></article>`;
@@ -1940,8 +1940,8 @@ function coach() {
         <li><span class="cnum">1</span><div><b>${T("먼저 보기", "Watch first")}</b><span>${T("카메라 없이, 시범 영상으로 카드가 저절로 넘어가는 걸 봐요.", "No camera needed: watch the cards move on by themselves with the demo video.")}</span>
           <button class="navb next" onclick="coachWatch()">${icon("video")} ${T("시범 영상으로 보기", "Watch the demo")}</button></div></li>
         <li><span class="cnum">2</span><div><b>${T("직접 해 보기", "Try it yourself")}</b><span>${T("카메라 앞에서 따라 하면, 사진은 저장하지 않고 다 됐는지 봐 줘요.", "Follow along on camera; it checks each step without storing photos.")}</span>
-          <button class="navb" onclick="coachCamera()">${icon("camera")} ${T("카메라 켜기", "Turn on camera")}</button></div></li></ol>`
-        : `<button class="navb next" onclick="coachCamera()">${noDone() ? T("시작하기", "Start") : T("카메라 켜기", "Turn on camera")}</button>`}
+          <button class="navb" onclick="coachCamera()">${icon("camera")} ${T("카메라 켜기", "Turn on camera")}</button></div></li>${bareLi()}</ol>`
+        : `<button class="navb next" onclick="coachCamera()">${noDone() ? T("시작하기", "Start") : T("카메라 켜기", "Turn on camera")}</button>${stepHist(S.run).some(h => h.fin) ? `<button class="navb" onclick="C.bare = true; coachCamera()">${T("카드 없이 해 보기", "Try without cards")}</button>` : ""}`}
       <details class="csettings"><summary>${T("설정 · 도움 방식, 안경 연결", "Settings · help, glasses")}</summary>
       <div class="seg" id="cwhere">
         <button class="on" onclick="coachWhere('api')">${T("Meta API", "Meta API")}</button>
@@ -1959,7 +1959,7 @@ function coach() {
       </details>
     </div>
   </div>`;
-  C.started = false; C.shown = -1; C.max = {}; C.manual = false; C.syncN = 0; C.againSaid = -1; setVoice(C.voice); setHelp(C.help);
+  C.started = false; C.shown = -1; C.max = {}; C.sup = {}; C.bare = false; C.manual = false; C.syncN = 0; C.againSaid = -1; setVoice(C.voice); setHelp(C.help);
   if (S.data?.pov !== "facing") faceLoad();  // 얼굴 가리기 모델을 시작 화면에서 미리 받아 둔다: 카메라를 켜면 바로 보낼 수 있게
   C.hold = true; coachCard();  // 지난 위치를 읽기 전에 1번 카드로 덮어쓰지 않게 안경 알림을 잠시 멈춘다
   fetch(`/api/runs/${S.run}/now?s=${C.pair}`).then(r => r.json()).then(d => {  // 지난번에 중간에 멈췄으면 그 카드부터 이어 하기
@@ -1977,7 +1977,7 @@ function coach() {
     const d = await fetch(`/api/runs/${S.run}/now?s=${C.pair}`).then(r => r.json()).catch(() => null);
     if (d && d.ack && d.ack !== C.ackSeen) { C.ackSeen = d.ack; if (C.called === S.idx || d.ack > Date.now() / 1000 - 5) { callBtn(true); pill(T("도와주러 오고 있어요", "Help is on the way")); speak(true, false, T("도와주러 오고 있어요.", "Help is on the way.")); } }
     if (d && d.call && C.called !== S.idx && d.why === "glasses") { C.called = S.idx; callBtn(); }  // 안경에서 부름
-    if (d && d.by === "glasses" && d.v > (C.v || 0) && !d.fin && $("#csum")) { C.v = d.v; $("#csum").remove(); C.max = {}; S.idx = d.i; coachCard(true); coachCamera(); }  // 끝 화면 뒤 안경에서 '처음으로': 카메라·판단도 다시 켠다
+    if (d && d.by === "glasses" && d.v > (C.v || 0) && !d.fin && $("#csum")) { C.v = d.v; $("#csum").remove(); C.max = {}; C.sup = {}; C.peek = {}; S.idx = d.i; coachCard(true); coachCamera(); }  // 끝 화면 뒤 안경에서 '처음으로': 카메라·판단도 다시 켠다
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.fin) { C.v = d.v; coachEnd(true, "glasses"); }  // 안경에서 '다 했어요'
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.i !== S.idx) { C.v = d.v; clog("card", { cur: S.idx + 1, to: d.i + 1, by: "glasses" }); S.idx = d.i; C.buf = []; C.prev = 0; C.pm = -1; $("#cagain").hidden = true; coachCard(); }
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.vreq && d.vreq !== C.vreqDone) { C.v = d.v; C.vreqDone = d.vreq; verifyNow(d.vreq); }
@@ -2005,6 +2005,7 @@ function setVoice(on) {
 }
 function speak(force, again, only) {
   if (!window.speechSynthesis || !(C.voice || force) || !C.started) return;
+  if (bareHidden() && !only) return;  // 카드 없이 해 보기: 카드 글을 읽어 주면 시험이 아니다
   const c = S.data.cards[S.idx], parts = only ? [[only, ui === "en" ? "en-US" : "ko-KR"]] : [];
   if (again) parts.push([T("이 카드부터 해요.", "Start with this card."), ui === "en" ? "en-US" : "ko-KR"]);
   stopVoice();
@@ -2091,7 +2092,7 @@ function setHelp(on) {
 }
 function maxLv() { return S.data.stage === "archived" ? (C.voice ? 3 : 2) : 4; }  // 보관된 묶음은 영상이 없어 움직임 단계가 없다(소리도 끄면 그림까지)
 function helpMedia(c) {
-  if (S.data.stage === "archived" && c.view === "clip") c = { ...c, view: c.ill ? "ill" : "photo" };
+  if ((S.data.stage === "archived" || (!C.help && C.faded?.[S.idx])) && c.view === "clip") c = { ...c, view: c.ill ? "ill" : "photo" };  // 줄이기: 지난번에 카메라가 끝난 걸 본 카드는 움직이는 영상 대신 사진
   if (!C.help || C.lv >= 4) return media(C.help ? { ...c, view: "clip" } : c);
   if (C.lv < 2) return `<button class="helpbtn" onclick="helpUp()">${icon("plus")}${T("도움이 필요하면 눌러요", "Tap if you need help")}</button>`;
   return media(c.view === "clip" ? { ...c, view: c.ill ? "ill" : "photo" } : c);
@@ -2113,6 +2114,42 @@ function coachExit() {
   coachEnd(false);
 }
 // 끝 화면 결과: 걸린 시간, 카드가 어떻게 넘어갔는지(카메라·확인하기·직접). 카메라가 못 잡은 카드를 알 수 있게(11-03)
+/* 회차 기록(이 기기, 11-04): 카드마다 이번에 받은 도움의 크기와 넘어간 방법. 따라 하기를 끝까지 해냈다는 것만으로는
+   배웠는지 모른다. 회차마다 도움이 줄어드는지를 남겨 다음 회차의 줄이기와 끝 화면 비교에 쓴다.
+   도움의 크기: 0 카드 없이 · 1 글만 · 2 그림 · 3 소리 · 4 움직이는 영상. '카드 다 보여 주기'는 보여 준 것(영상 4, 사진·그림 2) */
+const stepHist = id => { try { return JSON.parse(localStorage.getItem("steps") || "{}")[id] || []; } catch { return []; } };
+const bareHidden = () => S.view === "coach" && !!C.bare && !C.peek?.[S.idx];
+function supNow() {
+  if (bareHidden()) return 0;
+  if (C.help) return C.lv;
+  const c = S.data.cards[S.idx];
+  return c.view === "clip" && S.data.stage !== "archived" && !C.faded?.[S.idx] ? 4 : 2;
+}
+function peekCard() { (C.peek ||= {})[S.idx] = true; C.lv = 1; C.since = Date.now(); clog("peek", { n: S.idx + 1 }); coachCard(); }
+const liveRun = () => !!$("#cvid")?.srcObject || !!C.manual;  // 시범 영상·영상 파일로 돌린 회차는 남기지 않는다
+function saveSteps(finished) {
+  const how = {}; (C.moves || []).filter(m => m.to > m.cur).forEach(m => { how[m.cur - 1] ??= m.by; });
+  const cards = {}; Object.entries(C.sup || {}).forEach(([i, sp]) => { cards[S.data.cards[+i].n] = { s: sp, how: how[i] || "" }; });
+  const hist = stepHist(S.run), prev = hist.at(-1) || null;
+  if (!liveRun() || !Object.keys(cards).length) return { prev: null, streak: 0 };
+  const entry = { at: Date.now(), help: !!C.help, bare: !!C.bare, fin: !!finished, cards };
+  hist.push(entry);
+  try { const all = JSON.parse(localStorage.getItem("steps") || "{}"); all[S.run] = hist.slice(-10); localStorage.setItem("steps", JSON.stringify(all)); } catch {}
+  let streak = 0;  // 카드를 한 번도 열지 않고 끝까지 한 회차가 몇 번 이어졌나
+  for (let k = hist.length - 1; k >= 0; k--) { const h = hist[k]; if (h.bare && h.fin && Object.values(h.cards).every(x => x.s === 0)) streak++; else break; }
+  return { prev, streak };
+}
+function stepCompare(prev) {
+  if (!prev) return "";
+  const less = [], more = [];
+  S.data.cards.forEach((c, i) => { const a = prev.cards[c.n], b = C.sup?.[i]; if (!a || b === undefined) return; if (b < a.s) less.push(i + 1); else if (b > a.s) more.push(i + 1); });
+  const d = new Date(prev.at).toLocaleDateString(ui === "en" ? "en-US" : "ko-KR");
+  if (!less.length && !more.length) return `<div class="d">${T(`지난번(${d})과 같은 만큼 도움을 받았어요`, `Same help as last time (${d})`)}</div>`;
+  return `<div class="d">${less.length ? T(`지난번(${d})보다 도움이 줄어든 카드: ${less.join(", ")}`, `Less help than last time (${d}): card${less.length > 1 ? "s" : ""} ${less.join(", ")}`) : ""}${less.length && more.length ? " · " : ""}${more.length ? T(`늘어난 카드: ${more.join(", ")}`, `more help: card${more.length > 1 ? "s" : ""} ${more.join(", ")}`) : ""}</div>`;
+}
+// 3단계는 2단계를 끝까지 한 번 해 본 뒤에만(기록이 있어야 줄었는지 볼 수 있다)
+const bareLi = () => !stepHist(S.run).some(h => h.fin) ? "" : `<li><span class="cnum">3</span><div><b>${T("카드 없이 해 보기", "Without cards")}</b><span>${T("카드를 가리고 해 봐요. 막히면 카드를 열 수 있어요. 3번 이어서 끝까지 하면 '혼자 할 수 있어요'.", "Cards stay hidden; open one if you're stuck. Three full runs in a row means you can do it alone.")}</span>
+          <button class="navb" onclick="C.bare = true; coachCamera()">${icon("camera")} ${T("카드 없이 시작", "Start without cards")}</button></div></li>`;
 function runStats() {
   const mv = (C.moves || []).filter(m => m.to > m.cur), how = {};
   mv.forEach(m => { how[m.cur] ??= m.by; });
@@ -2139,15 +2176,20 @@ function coachEnd(finished, endBy) {
   const rec = Object.entries(C.max || {});
   const by = [1, 2, 3, 4].map(l => rec.filter(([, m]) => m === l).map(([i]) => +i + 1));
   const cv = $("#cvid"), demo = !!cv && !cv.srcObject && /\/demo\.mp4/.test(cv.src || "");  // 1단계(시범 영상을 카메라 대신)였다
+  const hs = saveSteps(finished), n = S.data.cards.length, nb = Object.values(C.sup || {}).filter(x => x === 0).length;
   if (S.rec && Object.keys(C.max || {}).length)
     fetch(`/api/runs/${S.run}/records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ s: C.pair, rows: Object.entries(C.max).map(([i, lv]) => ({ n: S.data.cards[+i].n, lv })) }) }).catch(() => {});
   if (finished) fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: S.idx, by: "coach", fin: true, s: C.pair }) }).catch(() => {});
   $(".coachv").insertAdjacentHTML("beforeend", `<div class="cstart" id="csum"><div class="glyph">${icon("check")}</div><div class="t">${finished ? T("다 했어요", "All steps done") : T("오늘 따라 하기", "Today's run")}</div>
     ${finished ? `<img class="sumimg" src="${imgSrc(S.data.cards[S.idx])}" alt="${esc(main(S.data.cards[S.idx]))}">` : ""}
+    ${C.bare ? `<div class="d">${T(`카드 없이 해낸 카드 ${nb}장 / ${n}장`, `${nb} of ${n} cards done without the card`)}${finished && hs.streak ? (hs.streak >= 3 ? T(` · 카드 없이 끝까지 ${hs.streak}번 이어서 했어요. 혼자 할 수 있어요`, ` · ${hs.streak} full runs in a row without cards. Can do it alone`) : T(` · 카드 없이 끝까지 ${hs.streak}번째 (3번 이어지면 '혼자 할 수 있어요')`, ` · full run without cards #${hs.streak} (3 in a row = can do it alone)`)) : ""}</div>` : ""}
+    ${stepCompare(hs.prev)}
     ${(() => {  // 주 단추(파랑) 하나만 크게, 나머지는 한 줄로(11-03 사용자: 세로 일자 4개는 길다)
-      const stuck = by[2].length + by[3].length > 0, main = demo ? "step2" : stuck ? "stuck" : "home";
+      const bare = finished && !demo && !C.bare && liveRun();  // 2단계를 끝까지 했으면 3단계(카드 없이)로
+      const stuck = by[2].length + by[3].length > 0, main = demo ? "step2" : stuck ? "stuck" : bare ? "bare" : "home";
       const b = {
         step2: demo ? [`S.idx=0;route();setTimeout(() => { if ($('#cstart')) coachCamera(); }, 300)`, `${icon("camera")} ${T("2단계 · 이제 직접 해 보기", "Step 2 · Now try it yourself")}`] : null,
+        bare: bare ? [`S.idx=0;route();setTimeout(() => { if ($('#cstart')) { C.bare = true; coachCamera(); } }, 300)`, `${icon("camera")} ${T("3단계 · 카드 없이 해 보기", "Step 3 · Try without cards")}`] : null,
         again: [`S.idx=0;route()`, T("처음부터 다시", "Start over")],
         share: [`shareRun()`, T("결과 보내기", "Share run")],
         stuck: stuck ? [`sendStuck()`, T("막힌 카드 고치러 가기", "Fix the cards that were hard")] : null,
@@ -2162,7 +2204,7 @@ function coachEnd(finished, endBy) {
     ${runResult()}
     </div></details></div>`);  // 끝났으면 묶음 화면이 아니라 처음 화면으로(11-03 사용자). 막힌 카드가 있으면 그것을 주 단추로
   C.sum = { finished: !!finished, upto: S.idx + 1, by };
-  if (finished) { const st = runStats(); markPracticed(S.run, { at: Date.now(), auto: st.auto, check: st.check, hand: st.hand }); }
+  if (finished) { const st = runStats(); markPracticed(S.run, { ...practiced()[S.run], at: Date.now(), auto: st.auto, check: st.check, hand: st.hand, ...(hs.streak >= 3 ? { alone: Date.now() } : {}) }); }
   stopCoach(true);
   if (finished && C.voice && window.speechSynthesis) speechSynthesis.speak(utter(T("다 했어요.", "All steps done."), ui === "en" ? "en-US" : "ko-KR"));  // 멈춘 뒤에 읽어야 끊기지 않는다
 }
@@ -2236,14 +2278,16 @@ function coachCard(quiet) {
   const cs = S.data.cards, c = cs[S.idx];
   if (C.shown !== S.idx) { stopVoice(); C.called = -1; C.vdiff = 0; callBtn(); C.shown = S.idx; C.lv = 1; C.since = Date.now(); C.cardAt = Date.now(); if (C.manual) { const j = $("#cjudge"); if (j) { j.className = "judge"; j.textContent = T("이전·다음으로 넘겨요", "Use Back and Next"); } } else if (C.running) judge(null); C.lastMove = Date.now(); C.diffN = 0; C.diffFor = -1; $("#clive")?.setAttribute("hidden", ""); }
   if (C.started && C.help) C.max[S.idx] = Math.max(C.max[S.idx] || 0, C.lv);
+  if (C.started) (C.sup ||= {})[S.idx] = Math.max(C.sup[S.idx] ?? 0, supNow());
+  const hide = bareHidden();
   glassesSync(false);
   if (!quiet && (!C.help || C.lv >= 3)) speak();
-  $("#cwrap").innerHTML = helpMedia(c);
-  $("#clv").hidden = $("#chlabel").hidden = !C.help;  // 시안: 켜진 도움(채움)만큼 아이콘 4개
+  $("#cwrap").innerHTML = hide ? `<button class="helpbtn" onclick="peekCard()">${icon("plus")}${T("막히면 카드 보기", "Stuck? Show the card")}</button>` : helpMedia(c);
+  $("#clv").hidden = $("#chlabel").hidden = !C.help || hide;  // 시안: 켜진 도움(채움)만큼 아이콘 4개
   $("#clv").innerHTML = [1, 2, 3, 4].slice(0, maxLv()).map(l => `<i class="${l <= C.lv ? "on" : ""}" title="${lvName(l)}" aria-label="${lvName(l)}${l <= C.lv ? " ✓" : ""}">${helpIcon(l)}</i>`).join("");
   callBtn();
-  $("#ctxt").innerHTML = text(c);
-  $(".coachv")?.classList.toggle("lv1", !!C.help && C.lv === 1);  // 글만 단계: 그림 칸이 비어 있으니 따라 하는 동안엔 카메라가 가운데를 쓴다
+  $("#ctxt").innerHTML = hide ? T("카드 없이 해 봐요", "Try it without the card") : text(c);
+  $(".coachv")?.classList.toggle("lv1", !hide && !!C.help && C.lv === 1);  // 글만 단계: 그림 칸이 비어 있으니 따라 하는 동안엔 카메라가 가운데를 쓴다
   $("#cmid").innerHTML = `<span class="tnum"><b>${S.idx + 1}</b> / ${cs.length}</span>${dashesHtml(cs.length, S.idx)}`;
   $("#cprev").disabled = !S.idx;
   const last = S.idx === cs.length - 1;
@@ -2368,11 +2412,19 @@ function coachStart() {
                     : T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box"));  // 처음엔 크게: 손이 보이면 저절로 작아진다
   $("#caimqr").hidden = S.data?.pov === "facing" ? /Android|iPhone|iPad/i.test(navigator.userAgent) : !C.front;  // 춤·운동: 가로 노트북 카메라로는 좁은 방에서 발까지 안 담긴다. 세로로 세운 휴대폰을 권한다(11-03)
   clearTimeout(C.aimTimer); C.aimTimer = setTimeout(() => { if (!C.noView) aim(false); }, 10000);  // 판단이 안 와도 10초 뒤 작게(카드를 오래 가리지 않게)
+  C.sup = {}; C.peek = {}; C.faded = {};
+  const prev = liveRun() && !C.help && !C.bare ? stepHist(S.run).at(-1) : null;  // 줄이기: 지난 회차에 카메라가 끝난 걸 본 카드는 영상 대신 사진부터. 막히면 영상이 다시 나온다
+  if (prev) S.data.cards.forEach((c, i) => { const r = prev.cards[c.n]; if (c.view === "clip" && r && ["auto", "check"].includes(r.how)) C.faded[i] = true; });
+  const nf = Object.keys(C.faded).length;
+  if (nf) toast(T(`지난번에 잘한 카드 ${nf}장은 사진만 보여 줘요. 막히면 영상이 다시 나와요`, `${nf} card${nf > 1 ? "s" : ""} you did well last time show a photo only. The video comes back if you get stuck`));
   C.started = true; C.since = C.cardAt = C.t0 = Date.now(); C.moves = []; coachCard(); clog("start", { cur: S.idx + 1, n: S.data.cards.length });
   clearInterval(C.helpTimer);
   C.helpTimer = setInterval(() => {
     if (C.faceWait || document.hidden || C.noView >= 2) { C.since = Math.max(C.since, Date.now() - 1000); return; }  // 학습자 탓이 아닌 기다림은 세지 않는다
-    if (C.help && C.running && !C.checking && C.lv < maxLv() && Date.now() - C.since > helpWait(S.data.cards[S.idx]) * 1000) helpUp();
+    const waited = C.running && !C.checking && Date.now() - C.since > helpWait(S.data.cards[S.idx]) * 1000;
+    if (bareHidden()) { if (waited) peekCard(); }  // 카드 없이 해 보기: 오래 막히면 카드를 연다(연 카드는 '카드 없이'로 세지 않는다)
+    else if (!C.help && C.faded?.[S.idx] && waited) { C.faded[S.idx] = false; C.since = Date.now(); clog("unfade", { n: S.idx + 1 }); coachCard(true); }
+    else if (C.help && C.running && !C.checking && C.lv < maxLv() && Date.now() - C.since > helpWait(S.data.cards[S.idx]) * 1000) helpUp();
     else if (C.help && C.running && !C.checking && C.lv >= maxLv() && Date.now() - C.since > helpWait(S.data.cards[S.idx]) * 1500) callMaker("auto");  // 도움을 다 써도 안 되면 사람을 부른다
     if (C.running && !noDone() && Date.now() - C.lastMove > IDLE_MIN * 60000) coachPause();  // 켜 둔 채 잊어도 비용이 계속 나가지 않게
   }, 1000);
