@@ -439,7 +439,11 @@
   .tab.coachv.follow .cam video { width:100%; flex:1 1 auto; min-height:0; object-fit:contain; }
   .tab.coachv.follow .imgwrap { flex:1 1 0; max-width:760px; padding:0; align-self:stretch; align-items:flex-end; }
   .tab.coachv.follow.lv1 .imgwrap { display:none; }
-  .coachv.watch #caimqr { display:none; }  /* 작동 보기: 카메라를 쓰지 않는다. 오른쪽 칸은 같은 영상이 아니라 카드(사진+번호)를 띄운다(11-04 사용자) */
+  .coachv.watch #caimqr { display:none; }
+  .samplenote { display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#EEF3FF; border:1px solid #C9D7FB; border-radius:var(--r); padding:12px 14px; margin:0 0 12px; font-size:15px; } .samplenote span { flex:1; min-width:240px; }  /* 견본 고치기 화면: 저장이 안 되는 이유와 갈 곳(11-04) */
+  .coachv .wcap { display:none; } .coachv.watch .wcap { display:block; position:absolute; left:50%; top:14px; transform:translateX(-50%); width:min(520px, calc(100vw - 440px)); z-index:2; text-align:center; font-size:15px; line-height:1.4; color:#dfe7f0; }  /* 처음 온 사람: 무엇을 보고 있는지 한 줄(11-04 사용자) */
+  @media (max-width:900px) { .coachv.watch .wcap { display:none; } }  /* 좁은 화면은 위아래 배치라 "왼쪽·오른쪽"이 틀리고 단추와 겹친다. 영상·카드 이름표가 대신한다 */
+  .coachv.watch .cam .judge::before { content:attr(data-k); font-weight:700; margin-right:6px; }  /* 작동 보기: 카메라를 쓰지 않는다. 오른쪽 칸은 같은 영상이 아니라 카드(사진+번호)를 띄운다(11-04 사용자) */
   .hrow .aimqr.hot:not([hidden]) { box-shadow:0 0 0 3px var(--accent); }  /* 발까지 안 보일 때 휴대폰 길을 눈에 띄게 */  /* 작동 보기: 카메라 자리가 이미 시범 영상이라 오른쪽 시범을 또 띄우면 같은 화면이 둘(11-04 사용자) */
   /* 두 칸이 다 냅킨 영상일 때(움직임 도움) 어느 쪽이 내 카메라인지 */
   .tab.coachv.follow .cam::before, .tab.coachv.follow:not(.lv1) .imgwrap::before { content:attr(data-label); position:absolute; top:8px; left:8px; z-index:3; background:rgba(17,24,58,.82); color:#fff; font-size:13px; font-weight:700; padding:3px 10px; border-radius:999px; }
@@ -882,7 +886,7 @@ async function home() {
         <span class="mpov">${icon("glasses")} <span class="long">${T("하는 사람의 눈높이에서 찍은 시범 (Ray-Ban Meta 시점)", "Demonstration filmed at the doer's eye level (Ray-Ban Meta view)")}</span><span class="short">${T("눈높이에서 찍은 시범", "Filmed at eye level")}</span></span>
         <h2>${T("한 번 보여 주면, 다음부턴 혼자서", "Show it once. Then they've got it.")}</h2>
         <p>${T("시범 영상 하나가 따라 하기 카드가 되고, 막히는 순간에만 손을 내밀어요.", "One demonstration turns into follow-along cards that step in only when someone gets stuck.")}</p>
-        <div class="mbtns"><a class="pill" href="#" onclick="event.preventDefault();homeTab('mine');document.getElementById('start').scrollIntoView({behavior:'smooth'})">${T("영상 넣기", "Add a video")}</a></div>
+        <div class="mbtns">${has(N) ? `<a class="pill" href="#run=${N}&view=coach&go=watch">${icon("video")} ${T("1분 만에 작동 보기 · 카메라 없이", "See it work · 1 min, no camera")}</a>` : ""}<a class="pill${has(N) ? " ghost" : ""}" href="#" onclick="event.preventDefault();homeTab('mine');document.getElementById('start').scrollIntoView({behavior:'smooth'})">${T("내 영상으로 만들기", "Make cards from a video")}</a></div>
       </div>
       <div class="mstrip"><span class="mlabel">${T("도움은 필요할 때만 늘어나요", "Help grows only when needed")}</span>
         <span class="msteps">${[1, 2, 3, 4].map(l => `<span><i>${helpIcon(l)}</i>${lvName(l)}</span>`).join('<b class="mline"></b>')}</span></div>
@@ -1275,6 +1279,8 @@ function edit() {
         ${S.undo ? `<button class="btn" onclick="undoLast()">↶ ${T("되돌리기", "Undo")}</button>` : ""}</div></details>
       <button class="btn primary" onclick="markReviewed()">${T("다 됐어요 → 따라 하며 확인", "Done → Follow & check")}</button>
     </div>
+    ${S.data.sample && S.role !== "admin" ? `<div class="samplenote"><span>${T("영상 하나에서 이 카드들이 만들어졌어요. 견본이라 여기서는 바뀌지 않아요. 고치기와 Muse Spark 부탁을 해 보려면 사본을 만드세요.", "These cards were made from one video. This is a sample, so changes aren't saved here. To try editing and Ask, make your own copy.")}</span>
+      <button class="btn primary" onclick="copyRun('${S.run}')">${T("사본 만들어 고치기", "Make a copy to edit")}</button></div>` : ""}
     <div id="stuck">${stuckHtml()}</div>
     <form class="ask" onsubmit="askAgent(event)">
       <span class="ci">${icon("draw")}</span>
@@ -1923,7 +1929,7 @@ function coach() {
   $("#main").innerHTML = `<div class="tab coachv${noDone() ? " nodone" : ""}">
     <button class="exit" onclick="coachExit()">${icon("x")}${T("나가기", "Exit")}</button>
     <button class="exit voice" id="cvoice" onclick="setVoice(!C.voice)"></button>
-    <div class="ttop"><div class="tprog" id="cmid"></div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
+    <div class="ttop"><div class="tprog" id="cmid"></div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div><div class="wcap" id="cwcap">${T("왼쪽: 카메라 대신 도는 시범 영상 · 오른쪽: 지금 카드. 단계가 끝난 게 보이면 Muse Spark가 카드를 넘겨요.", "Left: the demo video, standing in for a camera. Right: the current card. When Muse Spark sees a step done, it turns the card.")}</div>
     <div class="cstage">
     <div class="cam" data-label="${T("카메라", "Camera")}" onclick="aim(false)"><video id="cvid" muted playsinline></video><img class="ghost" id="cghost" alt=""><div class="guide"></div><div class="aimtxt" id="caimtxt">${T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box")}</div>
       <div class="judge" id="cjudge" aria-live="polite"></div><div class="posechip" id="cpose" hidden aria-live="polite"></div></div>
@@ -1971,6 +1977,10 @@ function coach() {
   </div>`;
   C.help = false; C.started = false; C.shown = -1; C.max = {}; C.sup = {}; C.bare = false; C.watching = false; C.manual = false; C.syncN = 0; C.againSaid = -1; setVoice(C.voice); setHelp(C.help);
   if (S.data?.pov !== "facing") faceLoad();  // 얼굴 가리기 모델을 시작 화면에서 미리 받아 둔다: 카메라를 켜면 바로 보낼 수 있게
+  if (new URLSearchParams(location.hash.slice(1)).get("go") === "watch") {  // 처음 화면 '1분 만에 작동 보기': 시작 화면을 건너뛰고 바로 1단계(11-04 사용자: 처음 온 사람이 따라가기만 하면 되게)
+    history.replaceState(null, "", location.href.replace(/&go=watch/, ""));  // '처음부터 다시'가 또 자동 시작하지 않게
+    if (S.data.sample && !noDone()) setTimeout(() => { if ($("#cstart")) coachWatch(); }, 0);
+  }
   C.hold = true; coachCard();  // 지난 위치를 읽기 전에 1번 카드로 덮어쓰지 않게 안경 알림을 잠시 멈춘다
   fetch(`/api/runs/${S.run}/now?s=${C.pair}`).then(r => r.json()).then(d => {  // 지난번에 중간에 멈췄으면 그 카드부터 이어 하기
     const n = S.data.cards.length;
@@ -2198,6 +2208,7 @@ function coachEnd(finished, endBy) {
   $(".coachv").insertAdjacentHTML("beforeend", `<div class="cstart" id="csum"><div class="glyph">${icon("check")}</div><div class="t">${finished ? T("다 했어요", "All steps done") : T("오늘 따라 하기", "Today's run")}</div>
     ${finished ? `<img class="sumimg" src="${imgSrc(S.data.cards[S.idx])}" alt="${esc(main(S.data.cards[S.idx]))}">` : ""}
     ${C.bare ? `<div class="d">${T(`카드 없이 해내고 카메라가 확인한 카드 ${nb}장 / ${n}장`, `${nb} of ${n} cards done without the card, confirmed by the camera`)}${nh ? T(` · 직접 넘겨 확인 못 한 카드 ${nh}장`, ` · ${nh} turned by hand, not confirmed`) : ""}${finished && hs.streak ? (hs.streak >= 3 ? T(` · 카드 없이 끝까지 ${hs.streak}번 이어서 했어요. 혼자 할 수 있어요`, ` · ${hs.streak} full runs in a row without cards. Can do it alone`) : T(` · 카드 없이 끝까지 ${hs.streak}번째 (3번 이어지면 '혼자 할 수 있어요')`, ` · full run without cards #${hs.streak} (3 in a row = can do it alone)`)) : ""}</div>` : ""}
+    ${demo ? `<div class="d">${T(`방금 본 것: 시범 영상을 카메라 자리에 틀었고, 카드 ${S.idx + 1}장까지 Muse Spark가 단계를 보고 넘겼어요. 다음은 카메라 앞에서 직접 해 보기예요.`, `What you just saw: the demo video played where a camera would be, and Muse Spark turned the cards up to card ${S.idx + 1} as it saw each step done. Next, try it yourself on camera.`)}</div>` : ""}
     ${stepCompare(hs.prev)}
     ${(() => {  // 주 단추(파랑) 하나만 크게, 나머지는 한 줄로(11-03 사용자: 세로 일자 4개는 길다)
       const bare = finished && !demo && !C.bare && liveRun();  // 2단계를 끝까지 했으면 3단계(카드 없이)로
@@ -2206,7 +2217,8 @@ function coachEnd(finished, endBy) {
         step2: demo ? [`S.idx=0;route();setTimeout(() => { if ($('#cstart')) coachCamera(); }, 300)`, `${icon("camera")} ${T("2단계 · 이제 직접 해 보기", "Step 2 · Now try it yourself")}`] : null,
         bare: bare ? [`S.idx=0;route();setTimeout(() => { if ($('#cstart')) { C.bare = true; coachCamera(); } }, 300)`, `${icon("camera")} ${T("3단계 · 카드 없이 해 보기", "Step 3 · Try without cards")}`] : null,
         again: [`S.idx=0;route()`, T("처음부터 다시", "Start over")],
-        share: [`shareRun()`, T("결과 보내기", "Share run")],
+        made: demo ? [`go({ run: S.run, view: 'edit' })`, T("이 카드는 어떻게 만들었나", "How these cards were made")] : null,  // 처음 온 사람: 작동 보기 다음 갈 곳(영상→카드)
+        share: demo ? null : [`shareRun()`, T("결과 보내기", "Share run")],
         stuck: stuck ? [`sendStuck()`, T("막힌 카드 고치러 가기", "Fix the cards that were hard")] : null,
         home: [`go({})`, T("처음 화면", "Home")] };
       const btn = (k, cls) => `<button class="navb ${cls}" onclick="${b[k][0]}">${b[k][1]}</button>`;
@@ -2461,6 +2473,7 @@ function coachWatch() {
   const v = $("#cvid"); v.srcObject = null; v.src = `/api/runs/${S.run}/demo.mp4`; v.muted = true; v.classList.remove("mirror");
   $(".coachv .cam")?.setAttribute("data-label", T("시범 영상 재생 · 카메라 대신", "Demo replay · in place of the camera"));
   $(".coachv")?.classList.add("watch"); C.watching = true;
+  $("#cjudge")?.setAttribute("data-k", T("Muse Spark가 본 것:", "Muse Spark sees:"));
   // 카드 한 장의 구간만 틀고, 그 단계가 끝난 모습에서 멈춰 카메라 판단을 기다린다. 판단이 카드를 넘기면 다음 카드 구간으로.
   // 영상을 끝까지 그냥 흘리면 5~6초짜리 단계(서랍장)는 판단(3~10초)보다 빨리 지나가 카드가 1에 머문 채 영상만 앞서갔다(11-04 사용자).
   // 앞 인사·카드 사이 빈 구간은 이것으로 저절로 건너뛴다(다음 카드 1초 전으로 옮긴다)
