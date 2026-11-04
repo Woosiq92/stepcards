@@ -84,6 +84,8 @@
   .mshot figcaption { color:#c7d0f0; font-size:14px; margin-top:10px; line-height:1.4; } .mshot .mpause { right:12px; top:12px; width:40px; height:40px; font-size:12px; }
   .mcopy { position:relative; text-align:left; color:#fff; max-width:600px; display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
   .mcopy h2 span { display:block; white-space:nowrap; }
+  .glgo { display:none; }
+
   @media (min-width:861px) { .mhero.full { height:auto; min-height:0; padding-top:56px; padding-bottom:0; } .mhero .mstrip { position:relative; left:auto; right:auto; grid-column:1 / -1; grid-row:2; margin-top:36px; } }  /* 높이가 낮은 화면(안경 브라우저 600x600 등)에서 바닥에 붙은 도움 줄이 단추를 덮었다(11-04 사용자) */
   @media (max-width:1000px) { .step { padding:6px 8px; font-size:0; gap:0; } .step .dot { font-size:12px; } .step.on { font-size:13px; gap:6px; padding-right:12px; white-space:nowrap; } }
   @media (max-width:420px) { .mbtns .pill { font-size:15px; padding:12px 18px; white-space:nowrap; } .mstrip .msteps { gap:6px; font-size:14px; } .mstrip .msteps i { width:28px; height:28px; } .mstrip .msteps span { gap:6px; } }  /* 휴대폰: 단추·도움 단계가 한 줄에 들어가게 */
@@ -557,7 +559,18 @@
     .tab .mid .dots { display:none; }
     .cstart { justify-content:flex-start; overflow-y:auto; padding-top:64px; padding-bottom:16px; }  /* 위쪽 소리·나가기 단추와 안 겹치게 */
   }
-</style>
+  /* 안경(Ray-Ban Display 600x600 같은 작은 정사각 화면): 쓸 수 없는 것(올리기·검색·분류)과 긴 글을 빼고, 검은 바탕(투명하게 비친다)에 제목·작동 보기·카드 목록만(11-04 사용자) */
+  @media (max-width:700px) and (max-height:700px) and (min-aspect-ratio:4/5) {
+    body.homepage, body.homepage main { background:#000; }
+    body.homepage header { background:#000; border-color:#222; } body.homepage #uiseg { background:#1a1a1a; } body.homepage #uiseg button { color:#aaa; } body.homepage #uiseg button.on { background:#333; color:#fff; } body.homepage #steps { display:none; }
+    .mhero { background:#000; padding-top:28px; } .mhero .mcopy p, .mhero .mshot, .mhero .mstrip, .mbtns .pill.ghost { display:none; }
+    .htabs, .libtop .lq, .libnote, .libchips, .libh, .jobsrc, .mstory, #hmine, #hdone { display:none !important; }
+    .lib { color:#fff; } .libtop h2 { color:#fff; }
+    .libgrid { grid-template-columns:1fr 1fr; gap:12px; } .libcard { background:#111; border-color:#333; color:#fff; }
+    .libcard .kicker, .libcard .muted, .libcard .ltags, .libcard .lacts { display:none; } .libcard strong { color:#fff; font-size:20px; }
+    .libcard .glgo { display:inline-flex; margin-top:8px; min-height:48px; font-size:18px; }
+    .libcard .btn.primary:focus-visible, .mbtns .pill:focus-visible { outline:3px solid #fff; outline-offset:4px; }
+  }</style>
 </head>
 <body>
 <header>
@@ -995,6 +1008,7 @@ function libCard(r) {
     <div class="libbody"><span class="kicker">${libKicker(r)}</span><a href="#run=${r.id}&view=use"><strong>${esc(runTitle(r).replace(/ \((견본|sample)\)$/, ""))}</strong></a>
       <span class="muted">${T(`카드 ${r.count}장`, `${r.count} cards`)}</span>
       <span class="ltags">${tags.map(t => `<span>${t}</span>`).join("")}</span>
+      <a class="btn primary glgo" href="/glasses?run=${r.id}&lang=${ui}&m=${ui}">${T("안경에 띄우기", "Open on glasses")}</a>
       <span class="lacts"><a class="btn primary" href="#run=${r.id}&view=coach">${T("따라 하기", "Follow")}</a><a class="btn" href="#run=${r.id}&view=use">${T("카드 보기", "View cards")}</a>
         <button class="btn" onclick="copyRun('${r.id}')" title="${T("원본은 그대로 두고 '내가 만든 카드'에 사본을 만들어요", "Makes a copy in 'Made by me'; the original stays as it is")}">${T("고치기", "Edit")}</button></span></div>
   </article>`;
