@@ -8,7 +8,7 @@ const scene = process.argv[2];
 const BASE = "http://127.0.0.1:8790";
 const L = process.env.DEMO_LANG || "en";  // 화면 언어: en | ko(한글판)
 const KO = L === "ko", tx = (en, ko) => KO ? ko : en;
-const RUN = KO ? "d3d3d3d3d3k1" : "d3d3d3d3d301";  // 냅킨 견본의 데모 전용 복사본(견본은 건드리지 않는다)
+const RUN = process.env.DEMO_RUN || (KO ? "d3d3d3d3d3k1" : "d3d3d3d3d301");  // 냅킨 견본의 데모 전용 복사본(견본은 건드리지 않는다)
 const OUT = process.env.OUT_DIR || new URL(`./out/v3${process.env.DEMO_LANG === "ko" ? "ko" : ""}/`, import.meta.url).pathname;  // OUT_DIR: 데모 녹화를 덮지 않고 시험만 할 때
 const NAPKIN = new URL("../samples/napkin_butterfly.mp4", import.meta.url).pathname;
 mkdirSync(OUT, { recursive: true });
@@ -105,10 +105,68 @@ if (scene === "coach") {
   await r1.stop(); await r2.stop();
 }
 
+const SAMPLE = "8e1456e529ca";  // 냅킨 견본: 시범 영상(demo.mp4)은 견본에서만 열린다. 이 두 장면은 견본을 읽기만 한다
+if (scene === "watch") {
+  // 먼저 보기(11-04 판): 왼쪽 시범 영상은 지금 카드 구간만 틀고 그 단계 끝에서 멈춰 실제 Muse Spark 판단을 기다린다. 오른쪽은 그 카드
+  const p = await open(`/?ui=${L}#run=${SAMPLE}&view=coach`, 1280, 800);
+  await wait(1200);
+  const r1 = await rec(p, "watch");
+  mark("rec"); await wait(2500);
+  await p.evaluate(() => coachWatch()); mark("video start");
+  let last = 0;
+  while (true) {
+    const s = await p.evaluate(() => ({ i: S.idx, vt: document.querySelector("#cvid").currentTime, paused: document.querySelector("#cvid").paused, fin: !!document.querySelector("#csum") }));
+    if (s.fin) { mark("end screen"); break; }
+    if (s.i !== last) { mark(`card ${s.i + 1} at video ${s.vt.toFixed(1)}s`); last = s.i; }
+    if (s.i + 1 >= Number(process.env.UNTIL_CARD || 6)) { await wait(6000); break; }
+    await wait(250);
+  }
+  await r1.stop();
+}
+
+if (scene === "learn") {
+  // 회차 기록 · 3단계 카드 없이(11-04): 시범 영상을 카메라 스트림으로 흘려(captureStream) 실제 카메라 경로를 그대로 탄다.
+  // 1회차(2단계, 녹화 안 함) → 2회차(3단계 카드 없이, 녹화) → 끝 화면의 '카메라가 확인한 카드'와 '지난번보다 도움이 줄어든 카드'
+  const p = await open(`/?ui=${L}#run=${SAMPLE}&view=coach`, 1280, 800);
+  await p.evaluate(() => { try { localStorage.removeItem("steps"); } catch {} });
+  await p.evaluate(sample => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      document.querySelector("#feedvid")?.remove();
+      const hv = document.createElement("video"); hv.id = "feedvid"; hv.muted = true; hv.playsInline = true; hv.src = `/api/runs/${sample}/demo.mp4`;
+      hv.style.cssText = "position:fixed;left:0;top:0;width:4px;height:4px;opacity:0;pointer-events:none"; document.body.append(hv);
+      await hv.play(); const st = hv.captureStream(), tr = st.getVideoTracks()[0], gs = tr.getSettings.bind(tr);
+      tr.getSettings = () => ({ ...gs(), facingMode: "environment" });  // 뒤카메라처럼(노트북 앞카메라로 보면 사진을 돌린다)
+      return st;
+    };
+  }, SAMPLE);
+  const done = async () => {  // 시범 영상이 끝나고 25초가 지나도 끝 화면이 안 나오면 남은 카드는 손으로 넘긴다(끝 화면에 '직접 넘김'으로 그대로 남는다)
+    let endedAt = 0;
+    while (!(await p.evaluate(() => !!document.querySelector("#csum")))) {
+      const ended = await p.evaluate(() => !!document.querySelector("#feedvid")?.ended);
+      if (ended && !endedAt) endedAt = Date.now();
+      if (endedAt && Date.now() - endedAt > 25000) { await p.evaluate(() => document.querySelector("#cnext").click()); mark("hand next"); await wait(1500); continue; }
+      await wait(1000);
+    }
+  };
+  await p.evaluate(() => coachCamera()); mark("run 1 start");
+  await done(); mark("run 1 end " + JSON.stringify(await p.evaluate(() => ({ moves: (C.moves || []).length, sup: C.sup }))));
+  await wait(1500);
+  const r1 = await rec(p, "learn");
+  mark("rec"); await wait(1500);
+  await p.evaluate(() => { S.idx = 0; route(); }); await wait(800);
+  await p.evaluate(() => { C.bare = true; coachCamera(); }); mark("run 2 start");
+  let last = 0;
+  const watchCards = setInterval(async () => { const i = await p.evaluate(() => S.idx).catch(() => last); if (i !== last) { mark(`card ${i + 1}`); last = i; } }, 300);
+  await done(); clearInterval(watchCards);
+  mark("end screen " + JSON.stringify(await p.evaluate(() => [...document.querySelectorAll("#csum .d")].map(x => x.textContent))));
+  await wait(6000);
+  await r1.stop();
+}
+
 if (scene === "help") {
   // 7번 카드(안 보이는 겹을 펴는 어려운 단계): 도움 단추로 글 → 그림 → 소리 → 움직임, 다 쓰면 '도와줘요' → 교사 현황판 '갈게요' → 학습자·안경에 '오고 있어요'
   const RUN = "d3h" + Date.now().toString(36);  // 매번 새 복사본: 현황판에 앞선 시험의 줄이 남지 않게
-  cpSync(new URL(`../runs/${KO ? "d3d3d3d3d3k1" : "d3d3d3d3d301"}`, import.meta.url).pathname, new URL(`../runs/${RUN}`, import.meta.url).pathname, { recursive: true });
+  cpSync(new URL(`../runs/${process.env.DEMO_RUN || (KO ? "d3d3d3d3d3k1" : "d3d3d3d3d301")}`, import.meta.url).pathname, new URL(`../runs/${RUN}`, import.meta.url).pathname, { recursive: true });
   const p = await open(`/?ui=${L}#run=${RUN}&view=coach`, 1152, 720);
   await wait(1200);
   await p.addStyleTag({ content: ".coachv .cam{visibility:hidden}" });  // 이 장면은 카메라를 켜지 않는다(빈 검은 창 숨김, 'Camera off' 표시는 그대로)

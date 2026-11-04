@@ -2407,8 +2407,10 @@ function coachWatch() {
       if (v.currentTime < c.start - 1.5 || v.currentTime > c.end + 1) v.currentTime = Math.max(0, c.start - 1);
       v.play().catch(() => {}); return;
     }
-    if (!v.paused && v.currentTime > c.end + 0.5) { v.pause(); C.holdAt = Date.now(); pill(T("이 단계가 끝난 모습에서 멈춰 판단을 기다려요", "Paused at the end of this step · waiting for the decision")); }
-    else if (C.holdAt && Date.now() - C.holdAt > 15000) { C.holdAt = 0; pill(T("카메라가 이 단계의 끝을 못 알아봤어요 · 다음으로 넘길 수 있어요", "The camera didn't recognise this step's end · press Next to move on")); }
+    // 멈춰 두면 앞뒤가 같은 단계(뒤집기)는 움직임을 볼 수 없어 넘어가지 않았다(11-04 녹화 4번 카드): 멈추지 않고 단계의 마지막 3초를 되풀이한다
+    // 되풀이는 앞 카드가 끝난 곳부터: 카드 시간 경계가 동작보다 조금 늦게 잡히면 뒤집기 같은 동작이 카드 앞 빈 구간에 있었다(11-04 녹화)
+    if (v.currentTime > c.end + 0.5) { const pe = S.idx ? cs[S.idx - 1].end : c.start - 1; v.currentTime = Math.max(0, Math.min(c.start - 1, pe + 0.5)); if (!C.holdAt) { C.holdAt = Date.now(); pill(T("이 단계의 끝을 되풀이하며 판단을 기다려요", "Repeating the end of this step · waiting for the decision")); } }
+    if (C.holdAt && Date.now() - C.holdAt > 20000) { C.holdAt = -1; pill(T("카메라가 이 단계의 끝을 못 알아봤어요 · 다음으로 넘길 수 있어요", "The camera didn't recognise this step's end · press Next to move on")); }
   }, 300);
   v.play().catch(() => {}); coachStart(); aim(false);
   v.onended = () => { C.running = false; pill(T("영상이 끝났어요", "Video ended")); setTimeout(() => { if (S.view === "coach" && !$("#csum")) coachEnd(false); }, 1500); };
@@ -2434,6 +2436,7 @@ function coachStart() {
   C.started = true; C.since = C.cardAt = C.t0 = Date.now(); C.moves = []; coachCard(); clog("start", { cur: S.idx + 1, n: S.data.cards.length });
   clearInterval(C.helpTimer);
   C.helpTimer = setInterval(() => {
+    if (C.watching) return;  // 시범 보기: 배우는 사람이 없다. 도움을 올리거나 사람을 부르지 않는다
     if (C.faceWait || document.hidden || C.noView >= 2) { C.since = Math.max(C.since, Date.now() - 1000); return; }  // 학습자 탓이 아닌 기다림은 세지 않는다
     const waited = C.running && !C.checking && Date.now() - C.since > helpWait(S.data.cards[S.idx]) * 1000;
     if (bareHidden()) { if (waited) peekCard(); }  // 카드 없이 해 보기: 오래 막히면 카드를 연다(연 카드는 '카드 없이'로 세지 않는다)
