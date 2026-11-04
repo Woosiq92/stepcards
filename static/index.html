@@ -884,12 +884,13 @@ async function home() {
       <div class="mshade"></div>
       <div class="mcopy">
         <span class="mpov">${icon("glasses")} <span class="long">${T("하는 사람의 눈높이에서 찍은 시범 (Ray-Ban Meta 시점)", "Demonstration filmed at the doer's eye level (Ray-Ban Meta view)")}</span><span class="short">${T("눈높이에서 찍은 시범", "Filmed at eye level")}</span></span>
-        <h2>${T("한 번 보여 주면, 다음부턴 혼자서", "Show it once. Then they've got it.")}</h2>
-        <p>${T("시범 영상 하나가 따라 하기 카드가 되고, 막히는 순간에만 손을 내밀어요.", "One demonstration turns into follow-along cards that step in only when someone gets stuck.")}</p>
+        <h2>${T("영상 하나 넣으면, 따라 하는 카드가 돼요", "Add one video. Get step cards anyone can follow.")}</h2>
+        <p>${T("일하는 모습을 찍은 영상을 넣으면 동작마다 사진 카드가 한 장씩 생겨요. 따라 하는 동안 카메라가 보고, 단계가 끝나면 다음 카드를 띄워요.", "Add a video of someone doing the task. You get one picture card per action. While someone follows along, the camera watches and shows the next card when a step is done.")}</p>
         <div class="mbtns">${has(N) ? `<a class="pill" href="#run=${N}&view=coach&go=watch">${icon("video")} ${T("1분 만에 작동 보기 · 카메라 없이", "See it work · 1 min, no camera")}</a>` : ""}<a class="pill${has(N) ? " ghost" : ""}" href="#" onclick="event.preventDefault();homeTab('mine');document.getElementById('start').scrollIntoView({behavior:'smooth'})">${T("내 영상으로 만들기", "Make cards from a video")}</a></div>
       </div>
-      <div class="mstrip"><span class="mlabel">${T("도움은 필요할 때만 늘어나요", "Help grows only when needed")}</span>
-        <span class="msteps">${[1, 2, 3, 4].map(l => `<span><i>${helpIcon(l)}</i>${lvName(l)}</span>`).join('<b class="mline"></b>')}</span></div>
+      <div class="mstrip"><span class="mlabel">${T("이렇게 돼요", "How it works")}</span>
+        <span class="msteps">${[["video", T("1 영상 넣기", "1 Add a video")], ["tablet", T("2 단계 카드가 생겨요", "2 Step cards are made")], ["camera", T("3 카메라 앞에서 따라 하기", "3 Follow along on camera")]]
+          .map(([ic, t]) => `<span><i>${icon(ic)}</i>${t}</span>`).join('<b class="mline"></b>')}</span></div>
       ${has(L) ? `<button class="mpause" onclick="const v=this.parentElement.querySelector('video');v.paused?v.play():v.pause();this.innerHTML=v.paused?'▶':'❚❚'" aria-label="${T("영상 멈추기", "Pause video")}">❚❚</button>` : ""}
     </section>
 
