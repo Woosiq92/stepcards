@@ -878,9 +878,12 @@ def call_set(run_id: str, body: dict):
 
 @app.get("/api/runs/{run_id}/live")
 def live(run_id: str, request: Request):
-    """만든 사람의 현황판: 이 카드 묶음을 지금(10분 안) 따라 하는 화면들. 기록처럼 키가 있는 사람만"""
-    if not has_key(request):
+    """만든 사람의 현황판: 이 카드 묶음을 지금(2분 안) 따라 하는 화면들. 키가 있는 사람만, 교사 키는 자기 묶음·견본만(/api/calls 와 같은 소유 규칙)"""
+    role = who(request)
+    if not role:
         raise HTTPException(401, "key required")
+    if role.startswith("teacher") and run_id not in SEED_INDEX and owner_of(run_id) != role:
+        raise HTTPException(403, "someone else's card set")
     now, out = time.time(), []
     for k, st in NOW.items():
         if k.split("|")[0] == run_id and alive(st, now) and not st.get("fin"):
