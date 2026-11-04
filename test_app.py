@@ -704,3 +704,21 @@ def test_ack_needs_key_and_security_headers():
     client.post(f"/api/runs/{rid}/now", json={"i": 0, "by": "coach", "s": "ackt"})
     r = client.get("/")
     assert r.headers.get("X-Frame-Options") == "SAMEORIGIN" and r.headers.get("X-Content-Type-Options") == "nosniff"
+
+
+def test_judge_ip_limit_across_new_browsers(monkeypatch):
+    """심사 링크가 공개돼도: 쿠키를 지워 새 브라우저가 돼도 같은 IP 는 하루 한도를 넘지 못한다"""
+    rid, d = make_run()
+    monkeypatch.setattr(A, "APP_KEY", "teach-1"); monkeypatch.setattr(A, "JUDGE_KEY", "judge-9")
+    monkeypatch.setitem(A.JUDGE_IP_LIMITS, "agent", 2); A.JUDGE_USE.update(day="", n={}, g={}, ip={}); A.RATE.clear()
+    import agent
+    def fail(*a):
+        raise RuntimeError("model timeout")
+    monkeypatch.setattr(agent, "run", fail)
+    codes = []
+    for _ in range(3):  # 매번 새 브라우저(새 게스트 쿠키)
+        c = TestClient(A.app, base_url="https://testserver", raise_server_exceptions=False)
+        c.post("/login", data={"k": "judge-9"})
+        cid = c.post(f"/api/runs/{rid}/copy").json().get("id", rid)
+        codes.append(c.post(f"/api/runs/{cid}/agent", json={"instruction": "x"}).status_code)
+    assert codes[-1] == 429 and codes[:2] != [429, 429]

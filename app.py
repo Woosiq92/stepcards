@@ -117,6 +117,7 @@ def who(request):
 
 
 GUEST = re.compile(r"[0-9a-f]{16}")
+JUDGE_IP_LIMITS = {"upload": 8, "agent": 12, "illustrate": 30, "retry": 8, "translate": 8}  # 같은 IP 하루 한도: 심사 링크(키)가 제출문과 함께 공개될 수 있어서, 쿠키를 지워 새 브라우저로 한도를 다시 받는 것을 막는다(11-04)
 GUEST_LIMITS = {"upload": 5, "agent": 8, "illustrate": 20, "retry": 5, "translate": 5}  # 심사용 키를 쓰는 브라우저(게스트) 한 곳의 하루 한도: 한 사람이 심사위원 전체 몫을 다 쓰지 않게
 
 
@@ -225,12 +226,16 @@ async def need_key(request: Request, call_next):
         if kind:  # 크레딧이 드는 요청만 센다. 날이 바뀌면 처음부터
             today = kst_day()
             if JUDGE_USE["day"] != today:
-                JUDGE_USE.update(day=today, n={}, g={})
+                JUDGE_USE.update(day=today, n={}, g={}, ip={})
             if JUDGE_USE["n"].get(kind, 0) >= JUDGE_LIMITS[kind]:
                 return JSONResponse({"error": "daily limit for the judge key"}, 429)
             gu = JUDGE_USE.setdefault("g", {}).setdefault(guest_id(request) or "-", {})
             if kind in GUEST_LIMITS and gu.get(kind, 0) >= GUEST_LIMITS[kind]:
                 return JSONResponse({"error": "daily limit for this browser"}, 429)
+            iu = JUDGE_USE.setdefault("ip", {}).setdefault(client_ip(request), {})
+            if kind in JUDGE_IP_LIMITS and iu.get(kind, 0) >= JUDGE_IP_LIMITS[kind]:
+                return JSONResponse({"error": "daily limit for this network"}, 429)
+            iu[kind] = iu.get(kind, 0) + 1
             JUDGE_USE["n"][kind] = JUDGE_USE["n"].get(kind, 0) + 1  # 처리 전에 센다(동시 요청 경쟁), 4xx 면 아래에서 돌려준다
             gu[kind] = gu.get(kind, 0) + 1
     request.state.who = ident(request, role)  # 주인 이름(심사용 키는 judge:게스트번호): 올리기·사본·저장 한도가 이 이름으로
@@ -244,6 +249,9 @@ async def need_key(request: Request, call_next):
             g = JUDGE_USE.get("g", {}).get(guest_id(request) or "-", {})
             if kind in g:
                 g[kind] -= 1
+            i = JUDGE_USE.get("ip", {}).get(client_ip(request), {})
+            if kind in i:
+                i[kind] -= 1
         save_state()
     return r
 
