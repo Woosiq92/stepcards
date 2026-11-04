@@ -2127,22 +2127,25 @@ function supNow() {
 }
 function peekCard() { (C.peek ||= {})[S.idx] = true; C.lv = 1; C.since = Date.now(); clog("peek", { n: S.idx + 1 }); coachCard(); }
 const liveRun = () => !!$("#cvid")?.srcObject || !!C.manual;  // 시범 영상·영상 파일로 돌린 회차는 남기지 않는다
+// 혼자 해낸 카드 = 카드를 열지 않았고, 카메라가 끝난 걸 보고 넘겼다(직접 넘긴 카드는 아무도 확인하지 않았다, 11-04 사용자)
+const seenAlone = x => x.s === 0 && ["auto", "check"].includes(x.how);
 function saveSteps(finished) {
   const how = {}; (C.moves || []).filter(m => m.to > m.cur).forEach(m => { how[m.cur - 1] ??= m.by; });
   const cards = {}; Object.entries(C.sup || {}).forEach(([i, sp]) => { cards[S.data.cards[+i].n] = { s: sp, how: how[i] || "" }; });
   const hist = stepHist(S.run), prev = hist.at(-1) || null;
-  if (!liveRun() || !Object.keys(cards).length) return { prev: null, streak: 0 };
+  if (!liveRun() || !Object.keys(cards).length) return { prev: null, streak: 0, cards };
   const entry = { at: Date.now(), help: !!C.help, bare: !!C.bare, fin: !!finished, cards };
   hist.push(entry);
   try { const all = JSON.parse(localStorage.getItem("steps") || "{}"); all[S.run] = hist.slice(-10); localStorage.setItem("steps", JSON.stringify(all)); } catch {}
   let streak = 0;  // 카드를 한 번도 열지 않고 끝까지 한 회차가 몇 번 이어졌나
-  for (let k = hist.length - 1; k >= 0; k--) { const h = hist[k]; if (h.bare && h.fin && Object.values(h.cards).every(x => x.s === 0)) streak++; else break; }
-  return { prev, streak };
+  for (let k = hist.length - 1; k >= 0; k--) { const h = hist[k]; if (h.bare && h.fin && Object.values(h.cards).every(seenAlone)) streak++; else break; }
+  return { prev, streak, cards };
 }
 function stepCompare(prev) {
   if (!prev) return "";
-  const less = [], more = [];
-  S.data.cards.forEach((c, i) => { const a = prev.cards[c.n], b = C.sup?.[i]; if (!a || b === undefined) return; if (b < a.s) less.push(i + 1); else if (b > a.s) more.push(i + 1); });
+  const less = [], more = []; let k = 0;
+  S.data.cards.forEach((c, i) => { const a = prev.cards[c.n], b = C.sup?.[i]; if (!a || b === undefined) return; k++; if (b < a.s) less.push(i + 1); else if (b > a.s) more.push(i + 1); });
+  if (!k) return "";  // 겹치는 카드가 없으면(카드를 고쳐 번호가 바뀜 등) 비교하지 않는다
   const d = new Date(prev.at).toLocaleDateString(ui === "en" ? "en-US" : "ko-KR");
   if (!less.length && !more.length) return `<div class="d">${T(`지난번(${d})과 같은 만큼 도움을 받았어요`, `Same help as last time (${d})`)}</div>`;
   return `<div class="d">${less.length ? T(`지난번(${d})보다 도움이 줄어든 카드: ${less.join(", ")}`, `Less help than last time (${d}): card${less.length > 1 ? "s" : ""} ${less.join(", ")}`) : ""}${less.length && more.length ? " · " : ""}${more.length ? T(`늘어난 카드: ${more.join(", ")}`, `more help: card${more.length > 1 ? "s" : ""} ${more.join(", ")}`) : ""}</div>`;
@@ -2176,13 +2179,13 @@ function coachEnd(finished, endBy) {
   const rec = Object.entries(C.max || {});
   const by = [1, 2, 3, 4].map(l => rec.filter(([, m]) => m === l).map(([i]) => +i + 1));
   const cv = $("#cvid"), demo = !!cv && !cv.srcObject && /\/demo\.mp4/.test(cv.src || "");  // 1단계(시범 영상을 카메라 대신)였다
-  const hs = saveSteps(finished), n = S.data.cards.length, nb = Object.values(C.sup || {}).filter(x => x === 0).length;
+  const hs = saveSteps(finished), n = S.data.cards.length, nb = Object.values(hs.cards).filter(seenAlone).length, nh = Object.values(hs.cards).filter(x => x.s === 0 && !seenAlone(x)).length;
   if (S.rec && Object.keys(C.max || {}).length)
     fetch(`/api/runs/${S.run}/records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ s: C.pair, rows: Object.entries(C.max).map(([i, lv]) => ({ n: S.data.cards[+i].n, lv })) }) }).catch(() => {});
   if (finished) fetch(`/api/runs/${S.run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: S.idx, by: "coach", fin: true, s: C.pair }) }).catch(() => {});
   $(".coachv").insertAdjacentHTML("beforeend", `<div class="cstart" id="csum"><div class="glyph">${icon("check")}</div><div class="t">${finished ? T("다 했어요", "All steps done") : T("오늘 따라 하기", "Today's run")}</div>
     ${finished ? `<img class="sumimg" src="${imgSrc(S.data.cards[S.idx])}" alt="${esc(main(S.data.cards[S.idx]))}">` : ""}
-    ${C.bare ? `<div class="d">${T(`카드 없이 해낸 카드 ${nb}장 / ${n}장`, `${nb} of ${n} cards done without the card`)}${finished && hs.streak ? (hs.streak >= 3 ? T(` · 카드 없이 끝까지 ${hs.streak}번 이어서 했어요. 혼자 할 수 있어요`, ` · ${hs.streak} full runs in a row without cards. Can do it alone`) : T(` · 카드 없이 끝까지 ${hs.streak}번째 (3번 이어지면 '혼자 할 수 있어요')`, ` · full run without cards #${hs.streak} (3 in a row = can do it alone)`)) : ""}</div>` : ""}
+    ${C.bare ? `<div class="d">${T(`카드 없이 해내고 카메라가 확인한 카드 ${nb}장 / ${n}장`, `${nb} of ${n} cards done without the card, confirmed by the camera`)}${nh ? T(` · 직접 넘겨 확인 못 한 카드 ${nh}장`, ` · ${nh} turned by hand, not confirmed`) : ""}${finished && hs.streak ? (hs.streak >= 3 ? T(` · 카드 없이 끝까지 ${hs.streak}번 이어서 했어요. 혼자 할 수 있어요`, ` · ${hs.streak} full runs in a row without cards. Can do it alone`) : T(` · 카드 없이 끝까지 ${hs.streak}번째 (3번 이어지면 '혼자 할 수 있어요')`, ` · full run without cards #${hs.streak} (3 in a row = can do it alone)`)) : ""}</div>` : ""}
     ${stepCompare(hs.prev)}
     ${(() => {  // 주 단추(파랑) 하나만 크게, 나머지는 한 줄로(11-03 사용자: 세로 일자 4개는 길다)
       const bare = finished && !demo && !C.bare && liveRun();  // 2단계를 끝까지 했으면 3단계(카드 없이)로
