@@ -1,6 +1,6 @@
 # 로컬 서버: 영상 올리기 → 파이프라인 → 진행판·편집·인쇄·태블릿 보기
 # 사용: .venv/bin/python app.py  → http://127.0.0.1:8790
-import hashlib, hmac, io, json, os, re, secrets, shutil, threading, time, uuid
+import hashlib, hmac, io, json, os, re, secrets, shutil, subprocess, threading, time, uuid
 from pathlib import Path
 from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -451,6 +451,14 @@ def upload(request: Request, file: UploadFile, local: bool = Form(False)):  # as
                 f.write(b)
         if shutil.disk_usage(UPLOADS).free < MIN_FREE_GB << 30:
             raise HTTPException(507, "저장 공간이 부족합니다")
+        if Path(file.filename or "").suffix.lower() == ".webm" or (file.content_type or "").startswith("video/webm"):  # 브라우저로 바로 찍은 영상(webm): 길이 정보가 없고 뒤 단계(ffmpeg 자르기)가 mp4를 가정한다 → mp4로 바꾼다
+            conv = tmp.with_suffix(".mp4")
+            r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(tmp), "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p", "-c:a", "aac", "-movflags", "+faststart", str(conv)], capture_output=True)
+            if r.returncode or not conv.exists():
+                conv.unlink(missing_ok=True)
+                raise HTTPException(400, "영상을 읽지 못했습니다")
+            os.replace(conv, tmp)
+            file.filename = Path(file.filename or "camera.webm").stem + ".mp4"
         secs = video_seconds(tmp)
         if not 0 < secs <= MAX_VIDEO_SEC:
             raise HTTPException(400, f"영상 길이는 {MAX_VIDEO_SEC // 60}분 이하여야 합니다" if secs else "영상을 읽지 못했습니다")

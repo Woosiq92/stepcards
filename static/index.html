@@ -85,6 +85,13 @@
   .mcopy { position:relative; text-align:left; color:#fff; max-width:600px; display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
   .mcopy h2 span { display:block; white-space:nowrap; }
   .glgo { display:none; }
+  .recrow { margin:12px 0 0; } .recrow .btn { min-height:44px; }
+  #recbox { position:fixed; inset:0; z-index:60; background:#000; display:flex; flex-direction:column; }
+  #recbox video { flex:1; min-height:0; width:100%; object-fit:contain; background:#000; }
+  #recbox .rectop { position:absolute; top:16px; left:16px; right:16px; display:flex; gap:12px; align-items:center; color:#fff; font-size:15px; }
+  #recbox .rectop b { background:#d93025; padding:4px 10px; border-radius:99px; font-variant-numeric:tabular-nums; }
+  #recbox .recbar { display:flex; gap:12px; justify-content:center; padding:16px 16px max(16px, env(safe-area-inset-bottom)); }
+  #recbox .recbar .btn { min-height:52px; font-size:17px; padding:0 22px; } #recbox #recgo.on { background:#d93025; border-color:#d93025; }
 
   @media (min-width:861px) { .mhero.full { height:auto; min-height:0; padding-top:56px; padding-bottom:0; } .mhero .mstrip { position:relative; left:auto; right:auto; grid-column:1 / -1; grid-row:2; margin-top:36px; } }  /* 높이가 낮은 화면(안경 브라우저 600x600 등)에서 바닥에 붙은 도움 줄이 단추를 덮었다(11-04 사용자) */
   @media (max-width:1000px) { .step { padding:6px 8px; font-size:0; gap:0; } .step .dot { font-size:12px; } .step.on { font-size:13px; gap:6px; padding-right:12px; white-space:nowrap; } }
@@ -1003,6 +1010,7 @@ async function home() {
           <button class="on" onclick="makeWhere(false)">${T("Meta API", "Meta API")}</button><button onclick="makeWhere(true)">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button></span>
         <span class="muted" id="mkwhered" hidden></span>
       </label>
+      <div class="recrow center"><button class="btn" onclick="recOpen()">${icon("camera")} ${T("카메라로 바로 찍기", "Record with camera")}</button></div>
       <div class="trust center">${[T("영상은 Meta AI가 분석하고, 카드 만들기용으로 이 서버에 보관돼요", "The video is analysed by Meta AI and kept on this server to make the cards"), T("지우면 영상·카드가 함께 지워져요", "Deleting a set deletes its video and cards"), T("마지막은 사람이 정해요", "A person decides")].map(t => `<span>${icon("check")}${t}</span>`).join("")}</div>
     </section>
     ${mine.length ? `<section class="pastbox" id="pastbox"></section>` : `<p class="center muted">${T("아직 만든 카드 묶음이 없어요. 위에 영상을 넣거나, 준비된 카드에서 '고치기'로 시작해요.", "No card sets yet. Add a video above, or start from 'Edit' in Ready-made.")}</p>`}
@@ -1199,10 +1207,38 @@ function makeWhere(local) {
   d.textContent = local ? T("영상이 이 맥 밖으로 나가지 않아요. 말 받아쓰기와 물건 테두리는 건너뛰고, 몇 분 더 걸려요.", "The video never leaves this Mac. Speech and object outlines are skipped, and it takes a few minutes longer.")
                         : T("Meta Model API로 만들어요. 가장 빠르고, 말과 물건까지 봐요.", "Made with the Meta Model API: fastest, and uses speech and objects.");
 }
+/* 카메라로 바로 찍기(11-04 사용자): 휴대폰은 뒤 카메라, 노트북은 웹캠. 멈추면 그대로 올려 카드를 만든다. 10분이면 저절로 멈춘다 */
+const REC = {};
+async function recOpen() {
+  try { REC.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: true }); }
+  catch { try { REC.stream = await navigator.mediaDevices.getUserMedia({ video: true }); } catch { return toast(T("카메라를 켤 수 없어요. 브라우저의 카메라 권한을 확인해 주세요.", "Can't turn on the camera. Check the browser's camera permission.")); } }
+  const box = document.createElement("div"); box.id = "recbox";
+  box.innerHTML = `<video id="recv" muted playsinline autoplay></video>
+    <div class="rectop"><b id="rect">0:00</b><span>${T("손과 물건이 잘 보이게 · 한 동작씩 천천히", "Keep hands and objects in view · one action at a time")}</span></div>
+    <div class="recbar"><button class="btn" onclick="recClose()">${T("취소", "Cancel")}</button><button class="btn primary" id="recgo" onclick="recToggle()">● ${T("녹화 시작", "Start recording")}</button></div>`;
+  document.body.append(box); $("#recv").srcObject = REC.stream;
+}
+function recToggle() {
+  if (REC.mr?.state === "recording") return REC.mr.stop();
+  const type = ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm"].find(t => window.MediaRecorder?.isTypeSupported?.(t)) || "";
+  try { REC.mr = new MediaRecorder(REC.stream, type ? { mimeType: type } : {}); } catch { return toast(T("이 브라우저는 녹화를 못 해요. 휴대폰 카메라로 찍어서 넣어 주세요.", "This browser can't record. Film with your phone and add the file.")); }
+  const chunks = []; REC.t0 = Date.now();
+  REC.mr.ondataavailable = e => e.data.size && chunks.push(e.data);
+  REC.mr.onstop = () => {
+    clearInterval(REC.tick); const secs = (Date.now() - REC.t0) / 1000, mt = (REC.mr.mimeType || type || "video/webm").split(";")[0];
+    recClose(); if (secs < 3) return toast(T("너무 짧아요. 3초 넘게 찍어 주세요.", "Too short. Record for more than 3 seconds."));
+    const f = new File(chunks, `camera-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.${mt.includes("mp4") ? "mp4" : "webm"}`, { type: mt });
+    upload(f);
+  };
+  REC.mr.start(1000);
+  $("#recgo").innerHTML = `■ ${T("멈추고 카드 만들기", "Stop and make cards")}`; $("#recgo").classList.add("on");
+  REC.tick = setInterval(() => { const s = Math.round((Date.now() - REC.t0) / 1000); const t = $("#rect"); if (t) t.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; if (s >= 600) REC.mr.stop(); }, 500);
+}
+function recClose() { clearInterval(REC.tick); if (REC.mr?.state === "recording") { REC.mr.onstop = null; REC.mr.stop(); } REC.stream?.getTracks().forEach(t => t.stop()); REC.stream = REC.mr = null; $("#recbox")?.remove(); }
 async function upload(f) {
   if (!f.type.startsWith("video/")) return toast(T("영상 파일만 넣을 수 있어요.", "Only video files can be added."));
   const dur = await new Promise(res => { const v = document.createElement("video"); v.preload = "metadata"; v.onloadedmetadata = () => res(v.duration); v.onerror = () => res(0); v.src = URL.createObjectURL(f); });
-  if (dur > 600) return toast(T(`영상이 ${Math.round(dur / 60)}분이에요. 10분 안으로 잘라서 넣어 주세요(1~5분이 가장 좋아요).`, `This video is ${Math.round(dur / 60)} min. Please trim it to under 10 minutes (1–5 is best).`));
+  if (isFinite(dur) && dur > 600) return toast(T(`영상이 ${Math.round(dur / 60)}분이에요. 10분 안으로 잘라서 넣어 주세요(1~5분이 가장 좋아요).`, `This video is ${Math.round(dur / 60)} min. Please trim it to under 10 minutes (1–5 is best).`));
   if (f.size > 500 * 1048576) return toast(T(`영상이 ${Math.round(f.size / 1048576)}MB예요. 500MB 아래로 줄여 주세요(휴대폰 설정에서 1080p로 찍거나, 앞뒤를 잘라 주세요).`, `This video is ${Math.round(f.size / 1048576)} MB. Please keep it under 500 MB (record at 1080p, or trim it).`));
   const me = await rawFetch("/api/me").then(r => r.json()).catch(() => ({}));  // 큰 영상을 다 올린 뒤에 키를 묻고 또 올리지 않게, 키부터
   if (me.role === null && !(await askKey())) return;
