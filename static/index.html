@@ -895,7 +895,7 @@ async function home() {
     <section class="mhero full">
       <div class="mcopy">
         <h2><span>${T("영상 하나 넣으면,", "Add one video.")}</span><span>${T("단계마다 카드 한 장", "Get one card per step.")}</span></h2>
-        <p>${T("카드를 보며 따라 하면 Meta의 Muse Spark가 카메라로 보고, 단계가 끝날 때 다음 카드로 넘겨요. 발달장애인 직업훈련을 위해 시작했고, 시범으로 보여 줄 수 있는 일이면 무엇이든 쓸 수 있어요.", "Follow the cards, and Meta's Muse Spark watches the camera and turns to the next card when a step is done. Built first for job training of people with developmental disabilities, it works for any task someone can demonstrate.")}</p>
+        <p>${T("따라 하면 Meta의 Muse Spark가 카메라로 보고 카드를 넘겨요. 발달장애인 직업훈련을 위해 시작했어요.", "Follow along, and Meta's Muse Spark turns the card when the camera sees a step done. Built first for job training of people with developmental disabilities.")}</p>
         <div class="mbtns">${has(N) ? `<a class="pill" href="#run=${N}&view=coach&go=watch">${icon("video")} ${T("1분 만에 작동 보기 · 카메라 없이", "See it work · 1 min, no camera")}</a>` : ""}<a class="pill${has(N) ? " ghost" : ""}" href="#" onclick="event.preventDefault();homeTab('mine');document.getElementById('start').scrollIntoView({behavior:'smooth'})">${icon("plus")} ${T("내 영상 넣기", "Add your video")}</a></div>
       </div>
       <figure class="mshot"><video src="/static/hero_${ui === "en" ? "en" : "ko"}.mp4" poster="/static/hero_${ui === "en" ? "en" : "ko"}.jpg" autoplay muted loop playsinline aria-label="${T("앱 화면: 시범 영상을 카메라 대신 틀면 Muse Spark가 단계를 보고 카드를 넘긴다", "App screen: the demo video plays in place of a camera and Muse Spark turns the cards as steps finish")}"></video>
