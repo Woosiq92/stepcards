@@ -434,7 +434,8 @@
   .tab.coachv.follow .cam video { width:100%; flex:1 1 auto; min-height:0; object-fit:contain; }
   .tab.coachv.follow .imgwrap { flex:1 1 0; max-width:760px; padding:0; align-self:stretch; align-items:flex-end; }
   .tab.coachv.follow.lv1 .imgwrap { display:none; }
-  .tab.coachv.follow.watch .imgwrap, .coachv.watch #caimqr { display:none; }  /* 작동 보기: 카메라 자리가 이미 시범 영상이라 오른쪽 시범을 또 띄우면 같은 화면이 둘(11-04 사용자) */
+  .tab.coachv.follow.watch .imgwrap, .coachv.watch #caimqr { display:none; }
+  .hrow .aimqr.hot:not([hidden]) { box-shadow:0 0 0 3px var(--accent); }  /* 발까지 안 보일 때 휴대폰 길을 눈에 띄게 */  /* 작동 보기: 카메라 자리가 이미 시범 영상이라 오른쪽 시범을 또 띄우면 같은 화면이 둘(11-04 사용자) */
   /* 두 칸이 다 냅킨 영상일 때(움직임 도움) 어느 쪽이 내 카메라인지 */
   .tab.coachv.follow .cam::before, .tab.coachv.follow:not(.lv1) .imgwrap::before { content:attr(data-label); position:absolute; top:8px; left:8px; z-index:3; background:rgba(17,24,58,.82); color:#fff; font-size:13px; font-weight:700; padding:3px 10px; border-radius:999px; }
   .tab.coachv.follow .imgwrap { flex-direction:column; justify-content:flex-end; align-items:center; gap:6px; }  /* 꼬리표가 그림 바로 위에 */
@@ -1914,7 +1915,7 @@ function coach() {
     <button class="exit voice" id="cvoice" onclick="setVoice(!C.voice)"></button>
     <div class="ttop"><div class="tprog" id="cmid"></div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
     <div class="cstage">
-    <div class="cam" data-label="${T("카메라", "Camera")}" onclick="aim(false)" title="${T("누르면 맞추기 안내 닫기", "Tap to close the framing guide")}"><video id="cvid" muted playsinline></video><img class="ghost" id="cghost" alt=""><div class="guide"></div><div class="aimtxt" id="caimtxt">${T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box")}</div>
+    <div class="cam" data-label="${T("카메라", "Camera")}" onclick="aim(false)"><video id="cvid" muted playsinline></video><img class="ghost" id="cghost" alt=""><div class="guide"></div><div class="aimtxt" id="caimtxt">${T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box")}</div>
       <div class="judge" id="cjudge" aria-live="polite"></div></div>
     <div class="livehint" id="clive" hidden></div>
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
@@ -2306,8 +2307,13 @@ function viewSeen(d) {
     const need = ui === "en" ? d.need_en : d.need_ko, saw = (ui === "en" ? d.saw_en : d.saw_ko) || "";
     if (C.aimFor !== S.idx) {  // 3초마다 모델의 말이 바뀌면 읽기 어려운 학습자는 따라갈 수 없다: 카드마다 처음 문장 하나로
       C.aimFor = S.idx;
-      aim(true, need ? (saw ? T(`지금 보여요: ${saw}\n`, `I see: ${saw}\n`) : "") + T(`보이게 해 주세요: ${need}`, `Bring into view: ${need}`) : T("이 카드의 동작이 보이게 카메라를 맞춰 주세요", "Point the camera so this card's action is in view"));
-      speak(false, false, T("카메라가 손과 물건을 못 보고 있어요. 카메라를 맞춰 주세요.", "The camera can't see your hands and the objects. Please point the camera."));
+      // 마주 보는 몸 동작을 가로 노트북 카메라로 찍으면 좁은 방에서는 발까지 안 담긴다(렌즈 한계라 "발을 보이게"만 되풀이하면 할 수 있는 게 없다, 11-04 사용자).
+      // 얼마나 물러서야 하는지와 휴대폰 QR을 알려 준다. 2~3m: 책상 높이(약 1m) 카메라·세로 화각 약 43°에서 바닥까지 담는 거리 어림
+      const lap = S.data?.pov === "facing" && $("#caimqr") && !$("#caimqr").hidden;  // QR이 떠 있는 때 = 휴대폰이 아닌 기기
+      aim(true, (need ? (saw ? T(`지금 보여요: ${saw}\n`, `I see: ${saw}\n`) : "") + T(`보이게 해 주세요: ${need}`, `Bring into view: ${need}`) : T("이 카드의 동작이 보이게 카메라를 맞춰 주세요", "Point the camera so this card's action is in view"))
+        + (lap ? T("\n노트북 카메라는 2~3m 물러서야 발까지 보여요. 좁으면 아래 QR로 휴대폰을 세워 두세요", "\nA laptop camera needs you 2–3 m back to see your feet. Short on space? Scan the QR below and stand a phone upright") : ""));
+      if (lap) $("#caimqr")?.classList.add("hot");
+      speak(false, false, S.data?.pov === "facing" ? T("카메라에 몸 전체가 안 보여요. 뒤로 물러서 주세요.", "The camera can't see your whole body. Please step back.") : T("카메라가 손과 물건을 못 보고 있어요. 카메라를 맞춰 주세요.", "The camera can't see your hands and the objects. Please point the camera."));
     } else aim(true);
     if (C.noView === 2) clog("aim", { cur: S.idx + 1, need: d.need_en || "" });
   }
@@ -2336,7 +2342,7 @@ async function coachCamera() {
 function coachWatch() {
   const v = $("#cvid"); v.srcObject = null; v.src = `/api/runs/${S.run}/demo.mp4`; v.muted = true; v.classList.remove("mirror");
   $(".coachv .cam")?.setAttribute("data-label", T("시범 영상 재생 · 카메라 대신", "Demo replay · in place of the camera"));
-  $(".coachv")?.classList.add("watch"); $(".coachv .cam")?.removeAttribute("title");
+  $(".coachv")?.classList.add("watch");
   // 단계가 없는 장면(앞 인사·카드 사이 긴 빈 구간·끝)은 건너뛴다: 바지락 견본은 첫 카드가 15초, 카드 사이 30~60초 빈 곳이 있어 보는 사람이 단계를 놓쳤다(11-03 사용자)
   const cs = [...S.data.cards].sort((a, b) => a.start - b.start), first = cs[0], last = cs.at(-1);
   v.onloadedmetadata = () => { if (first && first.start > 2) v.currentTime = first.start - 1; };
