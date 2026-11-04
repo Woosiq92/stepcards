@@ -897,9 +897,9 @@ async function home() {
       ${has(L) ? `<video class="mbg" src="/api/runs/${L}/clip/9.mp4" poster="/runs/${L}/cards/09.jpg" autoplay muted loop playsinline aria-hidden="true"></video>` : ""}
       <div class="mshade"></div>
       <div class="mcopy">
-        <span class="mpov">${icon("glasses")} <span class="long">${T("하는 사람의 눈높이에서 찍은 시범 (Ray-Ban Meta 시점)", "Demonstration filmed at the doer's eye level (Ray-Ban Meta view)")}</span><span class="short">${T("눈높이에서 찍은 시범", "Filmed at eye level")}</span></span>
+        <span class="mpov">${icon("glasses")} <span class="long">${T("하는 사람의 눈높이에서 찍은 시범 (안경 시점 재연)", "Filmed at the doer's eye level, as smart glasses would see it")}</span><span class="short">${T("눈높이에서 찍은 시범", "Filmed at eye level")}</span></span>
         <h2>${T("영상 하나 넣으면, 따라 하는 카드가 돼요", "Add one video. Get step cards anyone can follow.")}</h2>
-        <p>${T("일하는 모습을 찍은 영상을 넣으면 동작마다 사진 카드가 한 장씩 생겨요. 따라 하는 동안 카메라가 보고, 단계가 끝나면 다음 카드를 띄워요.", "Add a video of someone doing the task. You get one picture card per action. While someone follows along, the camera watches and shows the next card when a step is done.")}</p>
+        <p>${T("발달장애인 직업훈련에서 출발했어요. 일하는 모습을 찍은 영상을 넣으면 동작마다 사진 카드가 한 장씩 생겨요. 따라 하는 동안 카메라가 보고, 단계가 끝났는지는 Meta의 Muse Spark가 보고 다음 카드를 띄워요.", "Built first for job training of people with developmental disabilities. Add a video of someone doing the task. You get one picture card per action. While someone follows along, Meta's Muse Spark watches the camera and shows the next card when a step is done.")}</p>
         <div class="mbtns">${has(N) ? `<a class="pill" href="#run=${N}&view=coach&go=watch">${icon("video")} ${T("1분 만에 작동 보기 · 카메라 없이", "See it work · 1 min, no camera")}</a>` : ""}<a class="pill${has(N) ? " ghost" : ""}" href="#" onclick="event.preventDefault();homeTab('mine');document.getElementById('start').scrollIntoView({behavior:'smooth'})">${T("내 영상으로 만들기", "Make cards from a video")}</a></div>
       </div>
       ${has(N) ? `<div class="mstrip mex"><span class="mlabel">${T("예: 2분 20초짜리 냅킨 접기 영상 하나로 만든 카드", "Example: cards made from one 2 min 20 s napkin-folding video")}</span>
@@ -1007,12 +1007,12 @@ function libCard(r) {
 function libBodyHtml() {  // 분류·검색어로 보일 카드(검색 칸은 그대로 두고 이것만 다시 그린다: 한글 조합이 끊기지 않게)
   const all = S.lib || [], q = LV.q.trim().toLowerCase();
   const hit = r => (LV.cat === "all" || (r.cats || []).includes(LV.cat)) && (!q || runTitle(r).toLowerCase().includes(q) || (r.job || "").toLowerCase().includes(q));
-  const every = all.filter(r => r.use !== "job" && r.use !== "special"), jobs = all.filter(r => r.use === "job" || r.use === "special").sort((a, b) => (b.use === "special") - (a.use === "special") || b.custom - a.custom);
+  const every = all.filter(r => r.use !== "job" && r.use !== "special").sort((a, b) => (b.id === "8e1456e529ca") - (a.id === "8e1456e529ca")), jobs = all.filter(r => r.use === "job" || r.use === "special").sort((a, b) => (b.use === "special") - (a.use === "special") || b.custom - a.custom);
   const grid = list => `<div class="libgrid">${list.map(libCard).join("")}</div>`;
   return LV.cat === "all" && !q
-    ? `${every.length ? `<h3 class="libh">${T("가게에서도, 부엌에서도, 교실에서도", "In the cafe, the kitchen, the classroom")} <span class="muted">${every.length}</span></h3>${grid(every)}` : ""}
-       ${jobs.length ? `<h3 class="libh">${T("특수교육과 장애인 일자리", "Special education and disability jobs")} <span class="muted">${jobs.length}</span></h3>
-       <p class="muted jobsrc">${T(`특수교육 직업훈련 견본과, 보건복지부 「2026년 장애인일자리 사업안내」의 직무에 맞는 공개(CC BY) 시범 영상으로 만든 카드예요. ★ = 심한장애인 맞춤형 직무(지침 p.70의 11개 중 ${jobs.filter(r => r.custom).length}개를 카드로 만들었어요)`, `A special-education job-training sample, and cards made from open (CC BY) demonstration videos matching jobs in Korea's 2026 disability jobs guide. ★ = a job tailored for people with severe disabilities (${jobs.filter(r => r.custom).length} of the 11 on p.70 have cards so far)`)}</p>${grid(jobs)}` : ""}`
+    ? `       ${jobs.length ? `<h3 class="libh">${T("특수교육과 장애인 일자리", "Special education and disability jobs")} <span class="muted">${jobs.length}</span></h3>
+       <p class="muted jobsrc">${T(`특수교육 직업훈련 견본과, 보건복지부 「2026년 장애인일자리 사업안내」의 직무에 맞는 공개(CC BY) 시범 영상으로 만든 카드예요. ★ = 심한장애인 맞춤형 직무(지침 p.70의 11개 중 ${jobs.filter(r => r.custom).length}개를 카드로 만들었어요)`, `A special-education job-training sample, and cards made from open (CC BY) demonstration videos matching jobs in Korea's 2026 disability jobs guide. ★ = a job tailored for people with severe disabilities (${jobs.filter(r => r.custom).length} of the 11 on p.70 have cards so far)`)}</p>${grid(jobs)}` : ""}
+       ${every.length ? `<h3 class="libh">${T("가게에서도, 부엌에서도, 교실에서도", "In the cafe, the kitchen, the classroom")} <span class="muted">${every.length}</span></h3>${grid(every)}` : ""}`
     : (all.filter(hit).length ? grid(all.filter(hit)) : `<p class="muted">${T("맞는 카드가 없어요.", "No cards match.")}</p>`);
 }
 function libList() {
