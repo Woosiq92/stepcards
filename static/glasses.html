@@ -40,7 +40,8 @@
 <script>
 // 안경 화면: 따라 하기 화면이 고른 카드를 그대로 보여 준다. 초점 이동(상하좌우)+선택(Enter)만으로 조작
 const run = (r => r && /^[0-9a-f]{12}$/.test(r) ? r : "")(new URLSearchParams(location.search).get("run"));  // 카드 묶음 id 꼴만(주소로 태그를 심지 못하게)
-const pair = new URLSearchParams(location.search).get("s") || "";  // 따라 하기 화면의 짝 코드(같은 카드 묶음을 여러 명이 써도 따로)
+const solo = !new URLSearchParams(location.search).get("s");  // 휴대폰 QR 없이(안경 첫 화면에서) 열었다: 휴대폰 카메라 확인이 없다
+const pair = new URLSearchParams(location.search).get("s") || "g" + Math.random().toString(36).slice(2, 10);  // 혼자 열어도 자기 자리: 안 그러면 묶음마다 한 자리를 같이 써서, 앞사람이 끝낸 상태(다 했어요)나 남의 카드에서 시작했다(11-04 검수)  // 따라 하기 화면의 짝 코드(같은 카드 묶음을 여러 명이 써도 따로)
 const lang = new URLSearchParams(location.search).get("lang") || (() => { try { return localStorage.getItem("lang") || "en"; } catch { return "en"; } })();  // 안경 브라우저는 교사 설정을 모르니 주소로 받는다
 const M = new URLSearchParams(location.search).get("m") === "en" ? "en" : "ko";  // 한 언어 더(lang=x)일 때 위 줄 언어
 const K = lang === "en" || (lang === "x" && M === "en");
@@ -69,7 +70,7 @@ function draw(again) {
       ${(cur.lv || 1) < (arch ? 3 : 4) ? `<button id="h" onclick="act(help)">${K ? "Help" : "도움"}</button>`
         : alone ? `<button id="h" onclick="act(markStuck)" ${marked.has(c.n) ? "disabled" : ""}>${marked.has(c.n) ? (K ? "Sent" : "알렸어요") : (K ? "Stuck" : "막혔어요")}</button>`
         : `<button id="h" onclick="act(callMaker)" ${cur.call ? "disabled" : ""}>${cur.call ? (K ? "Called" : "불렀어요") : (K ? "Call" : "도와줘요")}</button>`}
-      ${arch || noDone || !pair ? "" : `<button id="v" onclick="act(check)">${K ? "Check" : "확인"}</button>`}
+      ${arch || noDone || solo ? "" : `<button id="v" onclick="act(check)">${K ? "Check" : "확인"}</button>`}
       ${cur.i < n - 1 ? `<button id="f" onclick="act(() => flip(1))">${K ? "Next ▶" : "다음 ▶"}</button>` : `<button id="f" onclick="act(finish)">${K ? "Done ✓" : "다 했어요 ✓"}</button>`}</div>`;
   if (shown !== `${cur.i}|${cur.fin}`) { shown = `${cur.i}|${cur.fin}`; lockUntil = Date.now() + 600; }
   const keep = document.getElementById(had);
@@ -90,7 +91,8 @@ addEventListener("popstate", () => {
 });
 // 초점이 화면 밖으로 나가면(시뮬레이터 단추 등) 화살표·Enter로 다시 데려온다. ←→ 는 이전·다음 단추로 초점만 옮긴다
 document.addEventListener("keydown", e => {  // ←→ 는 단추 줄을 차례로, ↑ 는 나가기(✕), ↓ 는 다시 단추 줄로. 초점이 밖에 있으면 '다음'으로 데려온다
-  if (document.querySelector(".ask")) return;
+  const ask = document.querySelector(".ask");
+  if (ask) { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { const s = ask.querySelector("#stay"), q = ask.querySelector("#quit"); (document.activeElement === s ? q : s).focus(); e.preventDefault(); } return; }  // "그만할까요?": 좌우로 계속하기·그만하기
   const row = ["b", "h", "v", "f"].map(id => document.getElementById(id)).filter(x => x && !x.disabled), x = document.getElementById("x");
   if (!row.length || !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"].includes(e.key)) return;
   const a = document.activeElement, k = row.indexOf(a), home = row.at(-1);
@@ -102,7 +104,7 @@ document.addEventListener("keydown", e => {  // ←→ 는 단추 줄을 차례�
   else if (k < 0 && a !== x) to = home;
   if (to) { to.focus(); e.preventDefault(); }
 });
-document.addEventListener("keydown", e => { if (e.key === "Enter" && !e.isTrusted) { const a = document.activeElement; if (a && a.tagName === "BUTTON" && !a.disabled) { e.preventDefault(); a.click(); } } });  // 시뮬레이터 선택 단추(스크립트 Enter)는 브라우저가 눌러 주지 않는다
+document.addEventListener("keydown", e => { if (e.key === "Enter" && !e.isTrusted && !e.defaultPrevented) {  /* 위에서 초점만 되찾은 Enter 는 누르지 않는다(한 번에 다음 카드로 넘어갔다) */ const a = document.activeElement; if (a && a.tagName === "BUTTON" && !a.disabled) { e.preventDefault(); a.click(); } } });  // 시뮬레이터 선택 단추(스크립트 Enter)는 브라우저가 눌러 주지 않는다
 function leave() { location.href = `/?ui=${K ? "en" : "ko"}`; }  // 안경 첫 화면(카드 목록)으로
 // 확인: 안경에는 카메라가 없어 따라 하기 화면(휴대폰)이 찍어서 확인하고, 결과 한 줄을 돌려준다
 let shownRes = undefined, pending = 0;
@@ -135,7 +137,7 @@ async function callMaker() {  // 도움을 다 봐도 안 되면 사람을 부�
   if (r.ok) { cur = await r.json(); draw(false); }
 }
 async function help() {  // 도움 단계 한 칸 올리기(따라 하기 화면이 받아서 그림·소리·움직임을 더 보여 준다)
-  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: cur.i, lv: cur.lv + 1, by: "glasses", s: pair, base: cur.v }) });  // base: 마지막으로 본 상태. 그사이 휴대폰이 카드를 넘겼으면 서버가 이 값을 버린다
+  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: cur.i, lv: Math.max(2, (cur.lv || 0) + 1), by: "glasses", s: pair, base: cur.v }) });  // 사진이 보이는 상태에서 처음 누르면 글만 남던 것(11-04 검수): 그림부터  // base: 마지막으로 본 상태. 그사이 휴대폰이 카드를 넘겼으면 서버가 이 값을 버린다
   if (r.ok) { cur = await r.json(); draw(false); }
 }
 async function flip(d) {
