@@ -85,13 +85,7 @@
   .mcopy h2 { font-size:clamp(36px,5vw,64px); font-weight:700; line-height:1.05; letter-spacing:-.025em; margin:14px 0 16px; }
   .mcopy p { font-size:18px; opacity:.9; margin:0 0 28px; max-width:520px; } .mbtns { display:flex; gap:12px; justify-content:flex-start; flex-wrap:wrap; }
   .mstrip { position:absolute; left:max(24px, calc((100vw - 1120px) / 2)); right:max(24px, calc((100vw - 1120px) / 2)); bottom:0; display:flex; align-items:center; gap:20px; flex-wrap:wrap; padding:22px 0 26px; border-top:1px solid rgba(255,255,255,.16); color:#fff; font-size:15px; }
-  .mstrip .mlabel { opacity:.8; }
-  .mhero:has(.mex) { height:auto; min-height:0; padding-top:56px; padding-bottom:28px; grid-template-columns:minmax(0,1fr); }  /* 예시 카드가 단추와 겹치지 않게 흐름 안에 둔다 */
-  .mstrip.mex { position:relative; left:auto; right:auto; grid-row:2; margin-top:28px; flex-direction:column; align-items:flex-start; gap:10px; padding:16px 0 0; min-width:0; } .mex .mlabel { font-size:14px; }
-  .mcards { display:flex; gap:10px; max-width:100%; overflow-x:auto; min-height:150px; } .mcards figure { margin:0; flex:none; width:170px; background:#fff; color:var(--ink); border-radius:12px; overflow:hidden; }
-  .mcards img { display:block; width:100%; aspect-ratio:4/3; object-fit:cover; } .mcards figcaption { display:flex; gap:6px; align-items:flex-start; padding:7px 9px 9px; font-size:13px; font-weight:600; line-height:1.3; word-break:keep-all; }
-  .mcards figcaption b { flex:none; width:20px; height:20px; border-radius:50%; background:var(--accent); color:#fff; font-size:11px; display:grid; place-items:center; }
-  .mmore { color:#fff; font-weight:700; font-size:14px; opacity:.9; } .msteps { display:flex; align-items:center; gap:10px; font-weight:600; flex-wrap:wrap; }
+  .mstrip .mlabel { opacity:.8; min-width:150px; } .mstrip { flex-direction:column; align-items:stretch; gap:12px; } .mrow { display:flex; align-items:center; gap:20px; flex-wrap:wrap; } .msteps { display:flex; align-items:center; gap:10px; font-weight:600; flex-wrap:wrap; }
   .msteps span { display:inline-flex; align-items:center; gap:8px; } .msteps i { width:32px; height:32px; border-radius:50%; background:#fff; color:var(--ink); display:grid; place-items:center; }
   .msteps i .ico { width:18px; height:18px; } .mline { width:22px; height:1px; background:rgba(255,255,255,.4); }
   @media (max-width:860px) { .mstrip { position:relative; left:auto; right:auto; grid-row:2; padding-top:18px; } .mline { display:none; } .mhero { padding-bottom:24px; height:auto; min-height:0; padding-top:72px; } }
@@ -902,9 +896,8 @@ async function home() {
         <p>${T("발달장애인 직업훈련에서 출발했어요. 일하는 모습을 찍은 영상을 넣으면 동작마다 사진 카드가 한 장씩 생겨요. 따라 하는 동안 카메라가 보고, 단계가 끝났는지는 Meta의 Muse Spark가 보고 다음 카드를 띄워요.", "Built first for job training of people with developmental disabilities. Add a video of someone doing the task. You get one picture card per action. While someone follows along, Meta's Muse Spark watches the camera and shows the next card when a step is done.")}</p>
         <div class="mbtns">${has(N) ? `<a class="pill" href="#run=${N}&view=coach&go=watch">${icon("video")} ${T("1분 만에 작동 보기 · 카메라 없이", "See it work · 1 min, no camera")}</a>` : ""}<a class="pill${has(N) ? " ghost" : ""}" href="#" onclick="event.preventDefault();homeTab('mine');document.getElementById('start').scrollIntoView({behavior:'smooth'})">${T("내 영상으로 만들기", "Make cards from a video")}</a></div>
       </div>
-      ${has(N) ? `<div class="mstrip mex"><span class="mlabel">${T("예: 2분 20초짜리 냅킨 접기 영상 하나로 만든 카드", "Example: cards made from one 2 min 20 s napkin-folding video")}</span>
-        <div class="mcards" id="mcards"></div>
-        <a class="mmore" href="#run=${N}&view=use">${T("카드 12장 모두 보기 →", "See all 12 cards →")}</a></div>` : ""}
+      <div class="mstrip"><div class="mrow"><span class="mlabel">${T("막히면 도움이 한 단계씩", "Stuck? Help steps up")}</span>
+        <span class="msteps">${[1, 2, 3, 4].map(l => `<span><i>${helpIcon(l)}</i>${lvName(l)}</span>`).join('<b class="mline"></b>')}</span></div></div>
       ${has(L) ? `<button class="mpause" onclick="const v=this.parentElement.querySelector('video');v.paused?v.play():v.pause();this.innerHTML=v.paused?'▶':'❚❚'" aria-label="${T("영상 멈추기", "Pause video")}">❚❚</button>` : ""}
     </section>
 
@@ -952,10 +945,6 @@ async function home() {
     </div>`;
     })()}`;
   S.mine = mine; if (mine.length) pastList();
-  fetch("/api/runs/8e1456e529ca/cards").then(r => r.ok ? r.json() : null).then(d => {  // 첫 화면 예시: 실제로 만들어진 카드 앞 4장(11-04 사용자: 장점이 바로 보이는 예시)
-    const box = $("#mcards"); if (!d || !box) return;
-    box.innerHTML = d.cards.slice(0, 4).map((c, i) => `<figure><img src="/runs/8e1456e529ca/cards/${String(i + 1).padStart(2, "0")}.jpg" alt="" loading="lazy"><figcaption><b>${i + 1}</b>${esc(ui === "en" ? c.en : c.ko)}</figcaption></figure>`).join("");
-  }).catch(() => {});
   S.lib = runs.filter(r => r.use && r.done); libList(); homeTab(HT());
   const drop = $("#drop"), file = $("#file");
   file.onchange = () => file.files[0] && upload(file.files[0]);
