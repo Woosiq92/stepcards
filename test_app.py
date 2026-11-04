@@ -685,3 +685,15 @@ def test_coach_local_ignored_and_learner_frame_cap(monkeypatch):
     r = c.post(f"/api/runs/{rid}/coach", json={"cur": 1, "frames": [jpg] * 6, "local": True})
     assert r.status_code == 200, r.text
     assert seen["n"] == 4 and seen["local"] is False  # 키 없는 기기는 4장까지, 배포 서버(키 설정)에선 local 무시
+
+
+def test_now_stale_glasses_write_does_not_undo_phone_flip():
+    """안경이 휴대폰의 카드 넘김을 못 본 채(base 가 옛 v) 보낸 '도움'은 넘어간 카드를 되돌리지 않는다(11-04 녹화에서 3번→2번으로 되돌아감)"""
+    rid, d = make_run()
+    s = {"s": "stale1"}
+    g = client.post(f"/api/runs/{rid}/now", json={"i": 0, "by": "glasses", **s}).json()  # 안경이 본 상태
+    c = client.post(f"/api/runs/{rid}/now", json={"i": 1, "by": "coach", **s}).json()     # 그사이 휴대폰이 2번으로
+    r = client.post(f"/api/runs/{rid}/now", json={"i": 0, "lv": 2, "by": "glasses", "base": g["v"], **s}).json()
+    assert r.get("held") and r["i"] == 1 and client.get(f"/api/runs/{rid}/now?s=stale1").json()["i"] == 1
+    r = client.post(f"/api/runs/{rid}/now", json={"i": 1, "lv": 2, "by": "glasses", "base": c["v"], **s}).json()  # 지금 상태를 본 뒤의 도움은 적용
+    assert not r.get("held") and r["i"] == 1 and r["lv"] == 2

@@ -2141,6 +2141,7 @@ function coach() {
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.i !== S.idx) { C.v = d.v; clog("card", { cur: S.idx + 1, to: d.i + 1, by: "glasses" }); S.idx = d.i; C.buf = []; C.prev = 0; C.pm = -1; $("#cagain").hidden = true; coachCard(); }
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.vreq && d.vreq !== C.vreqDone) { C.v = d.v; C.vreqDone = d.vreq; verifyNow(d.vreq); }
     else if (d && d.by === "glasses" && d.v > (C.v || 0) && C.help && d.lv > C.lv) { C.v = d.v; helpUp(); }  // 안경에서 '도움'을 눌렀다
+    else if (d && d.by === "glasses" && d.v > (C.v || 0) && d.i === S.idx) C.v = d.v;  // 같은 카드에서의 안경 변경(도움 방식이 꺼져 있어 따로 할 일이 없어도)은 '봤다'고 적는다: 안 적으면 다음 넘김이 '옛 상태에서 보낸 쓰기'로 서버에서 막혀 카드가 되돌아갔다(11-04 녹화)
   }, 1000);
   C.local = false;
   coachWhere(C.where === "device" && !LAB ? "api" : C.where || "api");

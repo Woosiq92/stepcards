@@ -120,7 +120,7 @@ function overlay(head, text, ms) {
 async function finish() { await send({ i: cur.i, by: "glasses", fin: true }); }
 async function restart() { await send({ i: 0, by: "glasses", lv: cur.lv ? 1 : 0 }); }
 async function send(body) {
-  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, s: pair }) });
+  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, s: pair, base: cur.v }) });
   if (r.ok) { cur = await r.json(); draw(false); }
 }
 const marked = new Set();
@@ -135,12 +135,12 @@ async function callMaker() {  // 도움을 다 봐도 안 되면 사람을 부�
   if (r.ok) { cur = await r.json(); draw(false); }
 }
 async function help() {  // 도움 단계 한 칸 올리기(따라 하기 화면이 받아서 그림·소리·움직임을 더 보여 준다)
-  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: cur.i, lv: cur.lv + 1, by: "glasses", s: pair }) });
+  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i: cur.i, lv: cur.lv + 1, by: "glasses", s: pair, base: cur.v }) });  // base: 마지막으로 본 상태. 그사이 휴대폰이 카드를 넘겼으면 서버가 이 값을 버린다
   if (r.ok) { cur = await r.json(); draw(false); }
 }
 async function flip(d) {
   const i = Math.max(0, Math.min(cards.length - 1, cur.i + d));
-  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i, by: "glasses", lv: cur.lv ? 1 : 0, s: pair }) });
+  const r = await fetch(`/api/runs/${run}/now`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ i, by: "glasses", lv: cur.lv ? 1 : 0, s: pair, base: cur.v }) });
   if (r.ok) { cur = await r.json(); draw(false); }
 }
 let fails = 0;

@@ -837,6 +837,11 @@ def now_set(run_id: str, body: dict):
             prev["vres"] = {k: str(x)[:80] for k, x in list(body["vres"].items())[:8] if k in VRES_KEYS}
         prev["t"] = round(time.time())
         return {**prev, "held": True}
+    if body.get("by") == "glasses" and prev.get("by") not in (None, "glasses") and base is not None and base < prev.get("v", 0):
+        # 반대 방향도 같다(11-04 녹화): 안경이 휴대폰의 카드 넘김을 아직 못 본 채 보낸 '도움'·넘김은 옛 카드 번호를 싣고 와서, 넘어간 카드를 되돌렸다.
+        # 적용하지 않고 지금 상태를 돌려준다: 안경은 이 응답으로 바로 지금 카드를 그리고, 사람은 다시 누르면 된다
+        prev["t"] = round(time.time())
+        return {**prev, "held": True}
     keep = prev.get("i") == i and not body.get("fin")  # '도와줘요'는 그 카드에 있는 동안만 켜 둔다(다음 카드로 가면 저절로 꺼짐)
     NOW[key] = {"call": prev.get("call", 0) if keep else 0, "why": prev.get("why", "") if keep else "","i": max(0, min(n - 1, int(body.get("i", 0)))), "again": bool(body.get("again")), "by": str(body.get("by", ""))[:10], "v": v,
                    "lv": max(0, min(4, int(body.get("lv") or 0))), "fin": bool(body.get("fin")), "t": round(time.time()), "seen": round(time.time()),
