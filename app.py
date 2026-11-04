@@ -1,6 +1,6 @@
 # 로컬 서버: 영상 올리기 → 파이프라인 → 진행판·편집·인쇄·태블릿 보기
 # 사용: .venv/bin/python app.py  → http://127.0.0.1:8790
-import hashlib, hmac, io, json, os, re, shutil, threading, time, uuid
+import hashlib, hmac, io, json, os, re, secrets, shutil, threading, time, uuid
 from pathlib import Path
 from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -114,6 +114,44 @@ def who(request):
     return "judge" if eq(c.get("sc_judge", ""), JUDGE_KEY) else ""
 
 
+GUEST = re.compile(r"[0-9a-f]{16}")
+GUEST_LIMITS = {"upload": 5, "agent": 8, "illustrate": 20, "retry": 5, "translate": 5}  # 심사용 키를 쓰는 브라우저(게스트) 한 곳의 하루 한도: 한 사람이 심사위원 전체 몫을 다 쓰지 않게
+
+
+def guest_id(request):
+    g = getattr(request.state, "gid", "") or request.cookies.get("sc_guest", "")
+    return g if GUEST.fullmatch(g or "") else ""
+
+
+def ident(request, role=None):
+    """카드 묶음의 주인 이름. 심사용 키는 하나라 브라우저마다 붙인 게스트 번호로 나눈다(11-04: 심사위원끼리 '내가 만든 카드'가 섞였다)"""
+    role = who(request) if role is None else role
+    return f"judge:{guest_id(request)}" if role == "judge" and guest_id(request) else role
+
+
+def owns(request, role, run_id):
+    """이 사람이 카드 묶음의 주인인가. 게스트 번호 전에 심사용 키로 만든 묶음(주인 'judge')은 심사용 키 모두가 쓴다"""
+    o = owner_of(run_id)
+    return bool(role) and (o == ident(request, role) or (role == "judge" and o == "judge"))
+
+
+def client_ip(request):
+    return (request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "")) or "?"
+
+
+RATE = {}
+
+
+def too_fast(key, n, window, count=True):
+    """간단한 횟수 제한(메모리): window 초 안에 n 번 넘으면 True. count=False 면 세지 않고 보기만"""
+    now = time.time()
+    q = [t for t in RATE.get(key, []) if now - t < window]
+    if len(RATE) > 20000:
+        RATE.clear()
+    RATE[key] = q + [now] if count else q
+    return len(q) >= n
+
+
 def has_key(request):
     return bool(who(request))
 
@@ -131,17 +169,24 @@ async def need_key(request: Request, call_next):
     path = request.url.path
     if path != "/api/upload" and int(request.headers.get("content-length") or 0) > 12_000_000:  # 사진 6장 넘는 본문은 받지 않는다(메모리)
         return JSONResponse({"error": "request too large"}, 413)
+    if NOW_PATH.match(path) and request.method == "POST":  # 키 없는 안경·학습자 요청: 아이피마다 횟수 제한(가짜 '도와줘요'·상태 파일 쓰기 폭주 막기)
+        kind = path.rsplit("/", 1)[1]
+        if too_fast(("now", kind, client_ip(request)), {"now": 240, "call": 20, "mark": 60}[kind], 60):
+            return JSONResponse({"error": "too many requests"}, 429)
     if not APP_KEY or request.method in ("GET", "HEAD") or NOW_PATH.match(path):
         return await call_next(request)
     if path.endswith(PAID_PATHS) and spend.over():  # 누적 비용 상한: Meta 를 부르는 요청은 모두 거절(보기·손으로 넘기기는 그대로)
         return JSONResponse({"error": "credit cap reached", "cap": spend.CAP}, 402)
     if path == "/login" and request.method == "POST":
+        if too_fast(("login", client_ip(request)), 10, 600, count=False):  # 키 맞히기 막기: 아이피마다 10분에 틀린 키 10번(맞은 로그인은 세지 않는다)
+            return JSONResponse({"error": "too many attempts, try again later"}, 429)
         k = str((await request.form()).get("k", ""))
         for name, key in [("sc_key", APP_KEY), ("sc_judge", JUDGE_KEY)] + [("sc_teacher", tk) for tk in TEACHERS.values()]:
             if eq(k, key):
                 r = JSONResponse({"ok": True})
                 r.set_cookie(name, key, max_age=60 * 60 * 24 * 30, httponly=True, secure=True, samesite="lax")
                 return r
+        too_fast(("login", client_ip(request)), 10, 600)
         return JSONResponse({"error": "wrong key"}, 401)
     role = who(request)
     m = RUN_PATH.match(path)
@@ -168,18 +213,22 @@ async def need_key(request: Request, call_next):
     if m and not use_only and role != "admin" and (RUNS / m.group(1)).is_dir():  # 교사·심사 키는 자기가 올린 묶음만 고치고 지운다
         if m.group(1) in SEED_INDEX:
             return JSONResponse({"error": "sample card sets can't be changed"}, 403)
-        if owner_of(m.group(1)) != role:
+        if not owns(request, role, m.group(1)):
             return JSONResponse({"error": "someone else's card set"}, 403)
     if role == "judge":
         kind = next((k for k in JUDGE_LIMITS if path.rstrip("/").endswith(k)), None)
         if kind:  # 크레딧이 드는 요청만 센다. 날이 바뀌면 처음부터
             today = kst_day()
             if JUDGE_USE["day"] != today:
-                JUDGE_USE.update(day=today, n={})
+                JUDGE_USE.update(day=today, n={}, g={})
             if JUDGE_USE["n"].get(kind, 0) >= JUDGE_LIMITS[kind]:
                 return JSONResponse({"error": "daily limit for the judge key"}, 429)
+            gu = JUDGE_USE.setdefault("g", {}).setdefault(guest_id(request) or "-", {})
+            if kind in GUEST_LIMITS and gu.get(kind, 0) >= GUEST_LIMITS[kind]:
+                return JSONResponse({"error": "daily limit for this browser"}, 429)
             JUDGE_USE["n"][kind] = JUDGE_USE["n"].get(kind, 0) + 1  # 처리 전에 센다(동시 요청 경쟁), 4xx 면 아래에서 돌려준다
-    request.state.who = role
+            gu[kind] = gu.get(kind, 0) + 1
+    request.state.who = ident(request, role)  # 주인 이름(심사용 키는 judge:게스트번호): 올리기·사본·저장 한도가 이 이름으로
     if m and not use_only and (RUNS / m.group(1)).is_dir():  # 누가 무엇을 바꿨는지(따라 하기 판단은 너무 잦아서 뺀다)
         with (RUNS / m.group(1) / "audit.jsonl").open("a") as f:
             f.write(json.dumps({"t": round(time.time()), "who": role, "do": f"{request.method} {path[len(m.group(0)):] or '/'}"}, ensure_ascii=False) + "\n")
@@ -187,7 +236,22 @@ async def need_key(request: Request, call_next):
     if role == "judge" and kind:  # 4xx 는 돈이 안 든 요청이라 돌려준다. 5xx 는 Meta 를 부른 뒤 실패했을 수 있어 그대로 센다
         if 400 <= r.status_code < 500:
             JUDGE_USE["n"][kind] -= 1
+            g = JUDGE_USE.get("g", {}).get(guest_id(request) or "-", {})
+            if kind in g:
+                g[kind] -= 1
         save_state()
+    return r
+
+
+@app.middleware("http")
+async def guest_cookie(request: Request, call_next):
+    """브라우저마다 게스트 번호(무작위, 이름·기기 정보 없음). 심사용 키로 만든 카드를 브라우저별로 나누는 데만 쓴다"""
+    g = request.cookies.get("sc_guest", "")
+    fresh = not GUEST.fullmatch(g)
+    request.state.gid = secrets.token_hex(8) if fresh else g
+    r = await call_next(request)
+    if fresh:
+        r.set_cookie("sc_guest", request.state.gid, max_age=60 * 60 * 24 * 90, httponly=True, secure=True, samesite="lax")
     return r
 
 
@@ -274,7 +338,7 @@ def runs(request: Request):
     out, role = [], who(request)
     for d in sorted(RUNS.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
         prog = read(d, "progress.json") if d.is_dir() else None
-        if prog and (role == "admin" or d.name in SEED_INDEX or (role and owner_of(d.name) == role)):
+        if prog and (role == "admin" or d.name in SEED_INDEX or owns(request, role, d.name)):
             data = read(d, "cards.json")
             cs = data["cards"] if data else []
             seed = SEED_INDEX.get(d.name, {})
@@ -516,6 +580,7 @@ def progress(run_id: str):
     p = read(d, "progress.json", {"events": []})
     p["title"] = (read(d, "cards.json") or {}).get("title") or SEED_INDEX.get(run_id, {}).get("title", "")  # 진행 화면에 파일 이름 대신
     p["title_en"] = SEED_INDEX.get(run_id, {}).get("title_en", "")
+    p.pop("video_path", None)  # 서버 안 경로는 내보내지 않는다(11-04 보안 검수)
     return p
 
 
@@ -667,7 +732,7 @@ def illustrate(run_id: str, n: int):
 
 
 @app.post("/api/runs/{run_id}/coach")
-def coach_check(run_id: str, body: dict):
+def coach_check(run_id: str, body: dict, request: Request):
     """따라 하기: 카메라 사진 몇 장으로 카드를 넘길지 정한다. 사진은 저장하지 않는다."""
     data = read(run_dir(run_id), "cards.json")
     if not data:
@@ -677,14 +742,15 @@ def coach_check(run_id: str, body: dict):
         return {"decision": "reload", "seen": 0}
     if data.get("no_done"):  # 사람을 돕는 일: 기계가 '다 했다'를 정하지 않는다(카드는 사람이 넘긴다)
         raise HTTPException(409, "이 카드 묶음은 직접 넘겨요")
-    frames = [f for f in body.get("frames", [])[-6:] if isinstance(f, str) and f.startswith("data:image/jpeg;base64,") and len(f) < 1_500_000]  # 사진당 크기 제한(비용)
+    learner = getattr(request.state, "who", "") == "learner"  # 키 없는 기기: 사진 4장·장당 40만 자까지(화면은 480px 사진 4장을 보낸다). 6장·큰 사진으로 비용을 부풀리지 못하게(11-04 보안 검수)
+    frames = [f for f in body.get("frames", [])[-(4 if learner else 6):] if isinstance(f, str) and f.startswith("data:image/jpeg;base64,") and len(f) < (400_000 if learner else 1_500_000)]  # 사진당 크기 제한(비용)
     try:
         cur = int(body.get("cur", 1))
     except (TypeError, ValueError):
         raise HTTPException(400, "카드 번호가 틀렸습니다")
     if len(frames) < 2 or not 1 <= cur <= len(data["cards"]):
         raise HTTPException(400, "사진이 부족하거나 카드 번호가 틀렸습니다")
-    ref, d, local = None, run_dir(run_id), bool(body.get("local"))
+    ref, d, local = None, run_dir(run_id), bool(body.get("local")) and not APP_KEY  # 이 맥 Glimmer 는 키를 설정하지 않은 로컬에서만: 배포 서버에서 local 을 보내면 없는 서버를 불러 500 → 한도만 깎이고 알림이 쏟아졌다(11-04 보안 검수)
     if body.get("live"):  # 실시간 확인: 지금 카드의 완료 기준 사진을 같은 판단에 넣는다
         ref = pipeline.data_url(verify.reference(d, data["cards"][cur - 1], "after"))
     # Meta API 판단은 시범의 단계 끝 사진들과 맞춘다(이 맥 Glimmer 는 사진이 많으면 느려 예전 방식 그대로)
@@ -1217,10 +1283,13 @@ def health():
 
 
 @app.get("/api/runs/{run_id}/export.zip")
-def export(run_id: str):
+def export(run_id: str, request: Request):
     """카드 묶음 내려받기(백업·다른 서버로 옮기기): 카드·사진·그림·제목. 영상과 1초 사진은 빼서 작게"""
     import zipfile
     d = run_dir(run_id)
+    role = who(request)
+    if APP_KEY and run_id not in SEED_INDEX and role != "admin" and not owns(request, role, run_id):  # 주인만(주소를 아는 학습자가 묶음째 받지 못하게, 11-04 보안 검수)
+        raise HTTPException(403, "내 카드 묶음만 내려받을 수 있어요")
     if not (d / "cards.json").exists():
         raise HTTPException(404, "아직 카드가 없습니다")
     buf = io.BytesIO()

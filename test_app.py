@@ -640,3 +640,48 @@ def test_unusable_steps_not_cached(monkeypatch):
         assert json.loads((d / "progress.json").read_text())["events"][-1]["stage"] == "error"
         assert (d / "frames").is_dir() and not (d / ".frames_tmp").exists()
     importlib.reload(pipeline)
+
+
+def test_guest_owner_split_and_hardening(monkeypatch):
+    """11-04 게스트 방식·보안 검수: 심사용 키 하나라도 브라우저(게스트 번호)마다 주인이 갈리고, 게스트별 하루 한도·로그인 횟수 제한·local 무시·zip 주인만"""
+    rid, d = make_run()
+    monkeypatch.setattr(A, "APP_KEY", "teach-1"); monkeypatch.setattr(A, "JUDGE_KEY", "judge-9")
+    A.JUDGE_USE.update(day="", n={}, g={}); A.RATE.clear()
+    a, b = TestClient(A.app, base_url="https://testserver"), TestClient(A.app, base_url="https://testserver")
+    for c in (a, b):
+        assert c.post("/login", data={"k": "judge-9"}).status_code == 200
+        assert A.GUEST.fullmatch(c.cookies.get("sc_guest", ""))
+    assert a.cookies["sc_guest"] != b.cookies["sc_guest"]
+    (d / "owner.txt").write_text("judge:" + a.cookies["sc_guest"])
+    cards = json.loads((d / "cards.json").read_text())["cards"]
+    assert a.put(f"/api/runs/{rid}/cards", json={"cards": cards}).status_code == 200
+    assert b.put(f"/api/runs/{rid}/cards", json={"cards": cards}).status_code == 403  # 다른 심사위원 브라우저
+    assert rid in [x["id"] for x in a.get("/api/runs").json()] and rid not in [x["id"] for x in b.get("/api/runs").json()]
+    assert a.get(f"/api/runs/{rid}/export.zip").status_code == 200 and b.get(f"/api/runs/{rid}/export.zip").status_code == 403
+    assert TestClient(A.app, base_url="https://testserver").get(f"/api/runs/{rid}/export.zip").status_code == 403  # 키 없음
+    assert "video_path" not in a.get(f"/api/runs/{rid}/progress").json()
+    # 게스트별 하루 한도
+    import agent
+    monkeypatch.setattr(agent, "run", lambda *x: {"changes": [], "note": "", "problems": [], "checks": 0, "cost": 0})
+    monkeypatch.setitem(A.GUEST_LIMITS, "agent", 1)
+    assert [a.post(f"/api/runs/{rid}/agent", json={"instruction": "x"}).status_code for _ in range(2)] == [200, 429]
+    # 로그인 횟수 제한
+    A.RATE.clear()
+    w = TestClient(A.app, base_url="https://testserver")
+    assert [w.post("/login", data={"k": "nope"}).status_code for _ in range(11)][-1] == 429
+    assert w.post("/login", data={"k": "judge-9"}).status_code == 429  # 막힌 동안은 맞는 키도
+    A.RATE.clear()
+
+
+def test_coach_local_ignored_and_learner_frame_cap(monkeypatch):
+    rid, d = make_run()
+    monkeypatch.setattr(A, "APP_KEY", "teach-1")
+    seen = {}
+    monkeypatch.setattr(A.coach, "check", lambda *x, **k: (seen.update(n=len(x[2]), local=x[4]), {"decision": "stay", "seen": 0})[1])
+    monkeypatch.setattr(A.coach, "state_refs", lambda *x, **k: None)
+    A.PUBLIC_USE.update(day="", n={})
+    jpg = "data:image/jpeg;base64," + "A" * 100
+    c = TestClient(A.app, base_url="https://testserver")
+    r = c.post(f"/api/runs/{rid}/coach", json={"cur": 1, "frames": [jpg] * 6, "local": True})
+    assert r.status_code == 200, r.text
+    assert seen["n"] == 4 and seen["local"] is False  # 키 없는 기기는 4장까지, 배포 서버(키 설정)에선 local 무시
