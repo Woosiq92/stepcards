@@ -697,3 +697,10 @@ def test_now_stale_glasses_write_does_not_undo_phone_flip():
     assert r.get("held") and r["i"] == 1 and client.get(f"/api/runs/{rid}/now?s=stale1").json()["i"] == 1
     r = client.post(f"/api/runs/{rid}/now", json={"i": 1, "lv": 2, "by": "glasses", "base": c["v"], **s}).json()  # 지금 상태를 본 뒤의 도움은 적용
     assert not r.get("held") and r["i"] == 1 and r["lv"] == 2
+
+
+def test_ack_needs_key_and_security_headers():
+    rid, d = make_run()
+    client.post(f"/api/runs/{rid}/now", json={"i": 0, "by": "coach", "s": "ackt"})
+    r = client.get("/")
+    assert r.headers.get("X-Frame-Options") == "SAMEORIGIN" and r.headers.get("X-Content-Type-Options") == "nosniff"

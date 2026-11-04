@@ -255,6 +255,8 @@ async def guest_cookie(request: Request, call_next):
     fresh = not GUEST.fullmatch(g)
     request.state.gid = secrets.token_hex(8) if fresh else g
     r = await call_next(request)
+    r.headers.setdefault("X-Content-Type-Options", "nosniff")
+    r.headers.setdefault("X-Frame-Options", "SAMEORIGIN")  # 다른 사이트가 이 앱을 틀에 넣어 단추를 누르게 하지 못하게(11-04 보안 검수)
     if fresh:
         r.set_cookie("sc_guest", request.state.gid, max_age=60 * 60 * 24 * 90, httponly=True, secure=True, samesite="lax")
     return r
@@ -453,8 +455,12 @@ def upload(request: Request, file: UploadFile, local: bool = Form(False)):  # as
             raise HTTPException(507, "저장 공간이 부족합니다")
         if Path(file.filename or "").suffix.lower() == ".webm" or (file.content_type or "").startswith("video/webm"):  # 브라우저로 바로 찍은 영상(webm): 길이 정보가 없고 뒤 단계(ffmpeg 자르기)가 mp4를 가정한다 → mp4로 바꾼다
             conv = tmp.with_suffix(".mp4")
-            r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(tmp), "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p", "-c:a", "aac", "-movflags", "+faststart", str(conv)], capture_output=True)
-            if r.returncode or not conv.exists():
+            try:  # 길이·크기·시간에 상한: 큰 webm 으로 CPU 를 오래 묶지 못하게(11-04 보안 검수)
+                r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "webm", "-i", str(tmp), "-t", str(MAX_VIDEO_SEC + 1), "-vf", "scale='min(1280,iw)':-2", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+                                    "-pix_fmt", "yuv420p", "-c:a", "aac", "-movflags", "+faststart", str(conv)], capture_output=True, timeout=300)
+            except subprocess.TimeoutExpired:
+                r = None
+            if r is None or r.returncode or not conv.exists():
                 conv.unlink(missing_ok=True)
                 raise HTTPException(400, "영상을 읽지 못했습니다")
             os.replace(conv, tmp)
@@ -875,13 +881,15 @@ def mark_stuck(run_id: str, body: dict):
 
 
 @app.post("/api/runs/{run_id}/call")
-def call_set(run_id: str, body: dict):
+def call_set(run_id: str, body: dict, request: Request):
     """만든 사람 부르기: 따라 하는 사람(안경·휴대폰)이 누르거나, 도움이 끝까지 가도 안 될 때 화면이 저절로. 만든 사람이 '갔어요'로 끈다.
     카드 번호·도움 단계만 오가고 사진·이름은 없다"""
     key = now_key(run_id, body.get("s", ""))
     if key not in NOW:
         raise HTTPException(404, "따라 하는 화면이 없습니다")
     on = bool(body.get("call"))
+    if body.get("ack") and not who(request):  # '갈게요'는 현황판(키 있는 사람)만: 키 없이 남의 부름을 끄지 못하게
+        raise HTTPException(401, "key required")
     if body.get("ack"):  # 만든 사람이 현황판에서 '갈게요': 부름은 끄고, 따라 하는 화면·안경에 '오고 있어요'
         NOW[key] = {**NOW[key], "call": 0, "why": "", "ack": round(time.time()), "v": NOW[key].get("v", 0) + 1}
         save_state()

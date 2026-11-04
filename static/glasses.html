@@ -39,7 +39,7 @@
 <div class="net" id="net" hidden></div>
 <script>
 // 안경 화면: 따라 하기 화면이 고른 카드를 그대로 보여 준다. 초점 이동(상하좌우)+선택(Enter)만으로 조작
-const run = new URLSearchParams(location.search).get("run");
+const run = (r => r && /^[0-9a-f]{12}$/.test(r) ? r : "")(new URLSearchParams(location.search).get("run"));  // 카드 묶음 id 꼴만(주소로 태그를 심지 못하게)
 const pair = new URLSearchParams(location.search).get("s") || "";  // 따라 하기 화면의 짝 코드(같은 카드 묶음을 여러 명이 써도 따로)
 const lang = new URLSearchParams(location.search).get("lang") || (() => { try { return localStorage.getItem("lang") || "en"; } catch { return "en"; } })();  // 안경 브라우저는 교사 설정을 모르니 주소로 받는다
 const M = new URLSearchParams(location.search).get("m") === "en" ? "en" : "ko";  // 한 언어 더(lang=x)일 때 위 줄 언어
