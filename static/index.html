@@ -431,6 +431,9 @@
      카드 그림(도움 2단계부터)이 곧 이 단계의 목표 모습이라, 학습자는 내 손과 목표를 나란히 본다. 판단 한 줄은 카메라 아래 */
   .coachv .cstage { display:contents; }
   .coachv .cam .judge { display:none; }
+  .coachv .cam .posechip { position:absolute; top:8px; right:8px; z-index:4; max-width:70%; padding:6px 12px; border-radius:12px; font-size:15px; font-weight:700; line-height:1.35; color:#fff; background:#8A5A00; text-align:right; }
+  .coachv .cam .posechip.ok { background:#0A7A35; } .coachv .cam .posechip[hidden] { display:none; }
+  .coachv .cam.pose-ok { box-shadow:0 0 0 3px #19a974, 0 10px 30px rgba(0,0,0,.5); }  /* 몸 보이기: 시범에 보이는 부위가 다 들어오면 초록 테두리 */
   .tab.coachv.follow .cstage { display:flex; flex:1; min-height:0; gap:24px; align-items:flex-end; justify-content:center; padding:84px 24px 8px; }
   .tab.coachv.follow .cam { position:relative; inset:auto; width:auto; flex:1 1 0; max-width:760px; max-height:100%; display:flex; flex-direction:column; z-index:1; cursor:default; }
   .tab.coachv.follow .cam video { width:100%; flex:1 1 auto; min-height:0; object-fit:contain; }
@@ -1923,7 +1926,7 @@ function coach() {
     <div class="ttop"><div class="tprog" id="cmid"></div><div class="pill" id="cpill" aria-live="polite">${T("카메라 꺼짐", "Camera off")}</div></div>
     <div class="cstage">
     <div class="cam" data-label="${T("카메라", "Camera")}" onclick="aim(false)"><video id="cvid" muted playsinline></video><img class="ghost" id="cghost" alt=""><div class="guide"></div><div class="aimtxt" id="caimtxt">${T("휴대폰을 눈높이(안경 자리)에 두고, 이 카드의 동작이 네모 안에 보이게 해요", "Hold the phone at eye level, where glasses would be, with this card's action inside the box")}</div>
-      <div class="judge" id="cjudge" aria-live="polite"></div></div>
+      <div class="judge" id="cjudge" aria-live="polite"></div><div class="posechip" id="cpose" hidden aria-live="polite"></div></div>
     <div class="livehint" id="clive" hidden></div>
     <div class="againtag" id="cagain" hidden>${T("이 카드부터 해요", "Start with this card")}</div>
     <div class="imgwrap" id="cwrap" data-label="${T("시범", "Demonstration")}"></div></div>
@@ -2335,7 +2338,7 @@ function judge(d, cur, moved) {
 }
 /* 카메라 맞추기: 모델이 손·물건을 못 보면(두 번 연속) 미리보기를 크게 띄우고 점선 네모로 안내, 보이면 다시 작게 */
 /* 자리 잡기(11-03): 카메라가 시범과 같은 곳을 비슷한 시점에서 보는지 먼저 한 번. 아니면 고칠 한 마디와 시범 장면을 흐리게 겹쳐 맞추게 한다.
-   여섯 번(약 25초) 안에 못 맞추면 막지 않고 판단을 시작한다(안 보이면 판단이 '보이게 해 주세요'로 다시 안내) */
+   세 번 안에 못 맞추면 막지 않고 판단을 시작한다(안 보이면 판단이 '보이게 해 주세요'로 다시 안내) */
 async function setupCheck(v) {
   C.setupBusy = true; C.setupAt = Date.now(); C.setupN = (C.setupN || 0) + 1; const sess = C.sess;
   const cv = document.createElement("canvas"); cv.width = 480; cv.height = Math.round(480 * v.videoHeight / v.videoWidth); drawFrame(cv, v);
@@ -2358,7 +2361,61 @@ function aim(on, text) {
   if (on && text) $("#caimtxt").textContent = text;
 }
 // 카드마다 보여야 할 것이 다르다(손과 냅킨, 사람과 차 문, 상반신과 얼굴…): 모델이 이 카드에 필요한 것이 안 보인다고 하면 그것을 보이게 해 달라고
+/* 몸 보이기(마주 보고 찍은 춤·수어, 11-04): 기기 안 MediaPipe 자세 인식으로, 시범(카드 사진)에 보이는 몸 부위가 카메라에도 다 들어왔는지 바로 알려 준다.
+   좁은 방·노트북 가로 카메라에서 발이 잘려도 Muse Spark 판단(3~10초)을 기다리지 않고 "한 걸음 뒤로"를 말한다. 사진은 기기 밖으로 나가지 않는다.
+   요구할 부위는 시범에서 정한다: 수어처럼 상반신만 보이는 시범이면 상반신만, 춤처럼 발까지 보이면 발까지 */
+const POSE_MODEL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+const POSE = { lm: null, loading: null, failed: false, need: {}, msg: "", said: 0 };
+const PARTS = [["head", [0]], ["shoulders", [11, 12]], ["hips", [23, 24]], ["knees", [25, 26]], ["feet", [27, 28]]];
+function poseLoad() {
+  return POSE.loading ??= (async () => {
+    const { FilesetResolver, PoseLandmarker } = await import(`${MP}/vision_bundle.mjs`);
+    const files = await FilesetResolver.forVisionTasks(`${MP}/wasm`);
+    POSE.lm = await PoseLandmarker.createFromOptions(files, { baseOptions: { modelAssetPath: POSE_MODEL }, runningMode: "IMAGE", numPoses: 1 });
+  })().catch(() => { POSE.failed = true; });  // 못 불러오면 예전처럼 Muse Spark 판단의 안내만
+}
+function poseParts(img) {
+  const p = POSE.lm?.detect(img)?.landmarks?.[0];
+  if (!p) return null;
+  const ok = i => p[i] && (p[i].visibility ?? 1) > 0.5 && p[i].x > 0.01 && p[i].x < 0.99 && p[i].y > 0.01 && p[i].y < 0.99;
+  return PARTS.filter(([, ids]) => ids.some(ok)).map(([k]) => k);
+}
+async function poseNeed(c) {  // 카드 사진(시범 장면)에 보이는 부위. 사람이 없으면 요구하지 않는다
+  if (c.n in POSE.need) return POSE.need[c.n];
+  POSE.need[c.n] = null;
+  const im = new Image(); im.crossOrigin = "anonymous"; im.src = `/runs/${S.run}/${c.image}`;
+  try { await im.decode(); POSE.need[c.n] = poseParts(im); } catch {}
+  return POSE.need[c.n];
+}
+function poseStart() {
+  POSE.need = {}; POSE.msg = ""; poseLoad();
+  clearInterval(C.poseTimer);
+  const cv = document.createElement("canvas");
+  C.poseTimer = setInterval(async () => {
+    const v = $("#cvid"), chip = $("#cpose");
+    if (S.view !== "coach" || !v || !chip) { clearInterval(C.poseTimer); return; }
+    if (!POSE.lm || !v.srcObject || v.readyState < 2 || !C.running || C.watching) return;
+    const need = await poseNeed(S.data.cards[S.idx]);
+    if (!need) { chip.hidden = true; $(".coachv .cam")?.classList.remove("pose-ok"); return; }
+    cv.width = 320; cv.height = Math.round(320 * v.videoHeight / v.videoWidth); cv.getContext("2d").drawImage(v, 0, 0, cv.width, cv.height);
+    const seen = poseParts(cv), miss = seen ? need.filter(k => !seen.includes(k)) : need;
+    const low = miss.some(k => k === "feet" || k === "knees"), lap = !$("#caimqr")?.hidden;
+    const msg = !seen ? T("카메라 앞에 서 주세요", "Stand in front of the camera")
+      : !miss.length ? (need.includes("feet") ? T("몸 전체가 보여요 ✓", "Whole body in view ✓") : T("상반신이 보여요 ✓", "Upper body in view ✓"))
+      : miss.includes("head") ? T("머리가 잘려요 · 한 걸음 뒤로 가거나 카메라를 낮춰 주세요", "Head is cut off · step back or lower the camera")
+      : low ? T(`발이 안 보여요 · 한 걸음 뒤로 가 주세요${lap ? " (노트북은 2~3m, 세운 휴대폰은 약 1.5m)" : " (세운 휴대폰에서 약 1.5m)"}`, `Feet are out of view · step back${lap ? " (2–3 m from a laptop, about 1.5 m from a phone stood up)" : " (about 1.5 m from a phone stood up)"}`)
+      : T("한 걸음 뒤로 가 주세요", "Step back a little");
+    chip.hidden = false; chip.textContent = msg; chip.classList.toggle("ok", !!seen && !miss.length);
+    $(".coachv .cam")?.classList.toggle("pose-ok", !!seen && !miss.length);
+    $("#caimqr")?.classList.toggle("hot", low && lap);
+    if (msg !== POSE.msg) {  // 바뀐 안내만, 6초에 한 번까지 소리로(멀리 서 있으면 화면 글자가 안 보인다)
+      POSE.msg = msg;
+      if (miss.length && Date.now() - POSE.said > 6000) { POSE.said = Date.now(); speak(false, false, msg.replace(/ \(.*\)$/, "")); }
+    }
+  }, 400);
+}
 function viewSeen(d) {
+  if (S.data?.pov === "facing" && POSE.lm) return;  // 몸 보이기는 기기 안 자세 인식이 더 빨리 알려 준다(안내가 둘이면 헷갈린다)
   if (d.in_view === true) { C.aimFor = -1; if ($(".coachv")?.classList.contains("aim")) { aim(false); pill(T("잘 보여요", "In view")); } C.noView = 0; return; }
   if (d.in_view !== false) return;  // 모름(이 맥 모델이 답을 못 줌 등)은 그대로 둔다
   C.noView = (C.noView || 0) + 1;
@@ -2389,7 +2446,7 @@ async function coachCamera() {
     $("#cvid").srcObject = C.stream; await $("#cvid").play();
     // 노트북 앞 카메라는 맞은편에서 비춘다: 화면을 젖히라고 안내하고, 보내는 사진은 180도 돌린다
     C.front = isFront(C.stream.getVideoTracks()[0]);
-    if (S.data?.pov !== "facing") faceLoad();
+    if (S.data?.pov !== "facing") faceLoad(); else poseStart();
     $("#cvid").classList.toggle("mirror", mirrored($("#cvid")));
     coachStart();
   } catch {  // 카메라를 못 켜면(거부·없음) 시작 덮개에 갇히지 않게 손으로 넘기는 따라 하기로 시작한다(11-02 검토)
