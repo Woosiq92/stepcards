@@ -175,6 +175,29 @@ if (scene === "learn") {
   await r1.stop();
 }
 
+if (scene === "dance") {
+  // 몸 보이기(11-04): 춤 시범을 카메라 스트림으로 흘리고(전체 → 60%로 당겨 발이 잘림 → 다시 전체), 기기 안 자세 인식 안내가 바뀌는 모습
+  const R = "d8e60e3947bd";
+  const p = await open(`/?ui=${L}#run=${R}&view=coach`, 1280, 800);
+  await p.evaluate(r => { window.__zoom = 1;
+    navigator.mediaDevices.getUserMedia = async () => {
+      const hv = document.createElement("video"); hv.muted = true; hv.loop = true; hv.src = `/api/runs/${r}/demo.mp4`;
+      hv.style.cssText = "position:fixed;left:0;top:0;width:4px;height:4px;opacity:0;pointer-events:none"; document.body.append(hv); await hv.play(); hv.currentTime = 30;
+      const c = document.createElement("canvas"); c.width = 1280; c.height = 720; const x = c.getContext("2d");
+      (function loop() { const z = window.__zoom, sw = hv.videoWidth * z, sh = hv.videoHeight * z, sx = Math.max(0, Math.min(hv.videoWidth - sw, hv.videoWidth * 0.62 - sw / 2));
+        x.drawImage(hv, sx, 0, sw, sh, 0, 0, 1280, 720); requestAnimationFrame(loop); })();  // 비율을 지킨 채 당긴다(카메라에 다가선 것과 같다)
+      const st = c.captureStream(15), tr = st.getVideoTracks()[0], gs = tr.getSettings.bind(tr); tr.getSettings = () => ({ ...gs(), facingMode: "user" }); return st;
+    }; }, R);
+  await p.evaluate(() => document.querySelectorAll(".csteps button")[1].click());
+  await p.waitForFunction(() => /in view/i.test(document.querySelector("#cpose")?.textContent || ""), { timeout: 60000, polling: 300 });
+  const r1 = await rec(p, "dance"); mark("rec"); await wait(5000);
+  await p.evaluate(() => { window.__zoom = 0.6; }); mark("zoom in");
+  await p.waitForFunction(() => /out of view|step back/i.test(document.querySelector("#cpose")?.textContent || ""), { timeout: 20000, polling: 200 }); mark("feet out"); await wait(4500);
+  await p.evaluate(() => { window.__zoom = 1; }); mark("zoom out");
+  await p.waitForFunction(() => /in view/i.test(document.querySelector("#cpose")?.textContent || ""), { timeout: 20000, polling: 200 }); mark("whole body"); await wait(3500);
+  await r1.stop();
+}
+
 if (scene === "help") {
   // 7번 카드(안 보이는 겹을 펴는 어려운 단계): 도움 단추로 글 → 그림 → 소리 → 움직임, 다 쓰면 '도와줘요' → 교사 현황판 '갈게요' → 학습자·안경에 '오고 있어요'
   const RUN = "d3h" + Date.now().toString(36);  // 매번 새 복사본: 현황판에 앞선 시험의 줄이 남지 않게

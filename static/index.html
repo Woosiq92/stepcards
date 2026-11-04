@@ -2340,6 +2340,7 @@ function judge(d, cur, moved) {
 /* 자리 잡기(11-03): 카메라가 시범과 같은 곳을 비슷한 시점에서 보는지 먼저 한 번. 아니면 고칠 한 마디와 시범 장면을 흐리게 겹쳐 맞추게 한다.
    세 번 안에 못 맞추면 막지 않고 판단을 시작한다(안 보이면 판단이 '보이게 해 주세요'로 다시 안내) */
 async function setupCheck(v) {
+  if (S.data?.pov === "facing" && POSE.lm) { C.setupOk = true; $(".coachv")?.classList.remove("ghosting"); aim(false); return; }  // 몸 보이기는 기기 안 자세 인식이 맡는다: 안내가 둘(자리 잡기·흐린 사진 + 몸 보이기) 겹쳤다(11-04 데모 녹화)
   C.setupBusy = true; C.setupAt = Date.now(); C.setupN = (C.setupN || 0) + 1; const sess = C.sess;
   const cv = document.createElement("canvas"); cv.width = 480; cv.height = Math.round(480 * v.videoHeight / v.videoWidth); drawFrame(cv, v);
   let d = null;
@@ -2405,6 +2406,7 @@ function poseStart() {
       : miss.includes("head") ? T("머리가 잘려요 · 한 걸음 뒤로 가거나 카메라를 낮춰 주세요", "Head is cut off · step back or lower the camera")
       : low ? T(`발이 안 보여요 · 한 걸음 뒤로 가 주세요${lap ? " (노트북은 2~3m, 세운 휴대폰은 약 1.5m)" : " (세운 휴대폰에서 약 1.5m)"}`, `Feet are out of view · step back${lap ? " (2–3 m from a laptop, about 1.5 m from a phone stood up)" : " (about 1.5 m from a phone stood up)"}`)
       : T("한 걸음 뒤로 가 주세요", "Step back a little");
+    if ($(".coachv")?.classList.contains("aim")) { C.setupOk = true; $(".coachv")?.classList.remove("ghosting"); aim(false); }  // 큰 맞추기 안내는 닫는다(이 칩이 대신한다)
     chip.hidden = false; chip.textContent = msg; chip.classList.toggle("ok", !!seen && !miss.length);
     $(".coachv .cam")?.classList.toggle("pose-ok", !!seen && !miss.length);
     $("#caimqr")?.classList.toggle("hot", low && lap);

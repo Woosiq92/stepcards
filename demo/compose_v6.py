@@ -108,17 +108,19 @@ if not KO:
         ("reveal", "span:watch", R_SPAN, "Demo video used as the camera · live decisions",
          "StepCards fixes that. Film the task once, and it becomes step cards, one action each. As someone follows along, the camera sees when a step is done and shows the next card."),
         ("making", "single:making", None, "Real run · Muse Spark · SAM 3.1 · Voice Transcribe",
-         f"Here's a real run with a {video_min}-minute napkin-folding video. Muse Spark splits it into steps, each with a short sentence in Korean and English. "
-         f"Our code then checks every card, and sends any card that breaks a rule back to the model to rewrite. {retry_en}SAM 3.1 picks the photos. In {make_s} seconds: {n_cards} cards, for about 14 cents."),
+         f"A real run with a {video_min}-minute napkin video. Muse Spark splits it into steps, in Korean and English. "
+         f"Our code checks every card and sends rule breakers back to the model. {retry_en}SAM 3.1 picks the photos. In {make_s} seconds: {n_cards} cards, for about 14 cents."),
         ("edit", "single:edit", None, "Review",
          "Then the person who knows the task reviews them. If I add \"pick up the napkin and\" to card 2, it has two actions, so the card turns red and says why. "
          "Yellow notes flag numbers that never came up in the video, and left or right, which are easy to mix up."),
         ("agent", "single:agent", None, f"Agent · Muse Spark runs our checker as a tool · {ag_wait} s wait cut",
          "Or just ask: \"simpler words for a learner who reads little.\" "
-         f"Muse Spark calls our checker as a tool, fixes what it flags, and only then answers, with {ag_n} new sentences. Nothing changes until someone taps Apply."),
+         f"Muse Spark checks its draft with our checker, then offers {ag_n} new sentences. Nothing changes until someone taps Apply."),
         ("follow", "span:watch_take1", W_SPAN, "Watch the demo · live decisions by Muse Spark · 1.3x",
          "Before trying it, a learner can watch first. The video plays one card's part, right next to that card. "
-         "At the end of each step it waits, until Muse Spark sees the step done."),
+         "At the end of each step it waits, until Muse Spark sees the step done. Faces are blurred on the device before any frame is sent."),
+        ("dance", "single:dance", None, "Pose check on the device · demo video used as the camera",
+         "Dancing in a small room? Pose tracking on the device says right away when your feet are out of frame, and when your whole body is back."),
         ("help", "trio", (3.0, at("help", "learner sees help coming") + 2.0, 1.4), "Help when stuck · helper's board on the right",
          "Now, an iced latte. Stuck? Help grows one step at a time: a picture, the sentence read aloud, then a short clip. "
          "\"Ask for help\" puts the card on the helper's board. No scores, and no video is kept."),
@@ -127,12 +129,11 @@ if not KO:
          f"In step three the cards stay hidden, and the camera still checks each step. Here, {nb} of {l_n} steps were done with no card. "
          "Three full runs like that, and the set says: can do it alone."),
         ("breadth", "single:breadth", None, "Same app · CC BY demo videos",
-         "Openly licensed videos also became cards for a cafe drink, a stew, a cabinet, a dance, and disability job training. "
-         "If the demo is a drawn manual, or the work is caring for a person, the camera stays off and a person turns the cards."),
+         "Openly licensed videos also became cards for a cafe drink, a stew, a dance, and disability job training. "
+         "Even an animated assembly manual becomes one step per card. There, and in care work, the camera stays off and a person turns the cards."),
         ("glimmer", "single:glimmer", None, f"Recorded on this Mac · Muse Glimmer · {g_s} s · $0",
-         f"Schools that can't send video out can make the cards on one Mac with the open-weight Muse Glimmer: {g_cards} cards in {g_s} seconds, at no cost. "
-         "We haven't yet tested it with real learners, or with a different person in front of a live camera."),
-        ("close", "close", None, None, "Show it once. Then they've got it. StepCards."),
+         f"Schools that can't send video out can make cards on one Mac with the open-weight Muse Glimmer, at no cost."),
+        ("close", "close", None, None, "We haven't tested it with real learners yet. Show it once. Then they've got it."),
     ]
     if HUMOR:  # 도입 30초(hook~p_sum)를 밈 셋 + 직업 훈련 한 줄로. 웃음은 단계를 건너뛰는 튜토리얼에게만, 배우는 사람에게는 아니다
         k = next(i for i, x in enumerate(S) if x[0] == "reveal")
