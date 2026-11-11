@@ -3,27 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#f5f6f8">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>StepCards</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230064e0'/%3E%3Cpath d='m7 12.5 3 3 7-7' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>영상으로 카드 만들기 · 자립노트</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%232563eb'/%3E%3Cpath d='m7 12.5 3 3 7-7' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
   :root {
-    /* 로직크래프트 색(logiccraft.co.kr global.css): 남색 글자, 브랜드 파랑, 흙색 강조, 종이색 바탕 */
-    --bg:#f7f6f2; --paper:#fff; --raised:#f1efe8; --ink:#11183a; --ink2:#34406b; --muted:#5f6888; --line:#e7e6df; --line2:#d9d8cf; --field:#7d849c;
-    --accent:#2f63f4; --accent-h:#1f49c4; --accent-soft:#eef2ff; --accent-ink:#1f49c4; --clay:#cf8350; --clay-soft:#f3e6da; --clay-ink:#8f5226;
+    /* 자립노트 첫 쪽 색(prototype/css/home-c.css, 11-11 통합): 로고의 검정 #111318·파랑 #2563eb, 바탕 #f5f6f8, 흰 카드 */
+    --bg:#f5f6f8; --paper:#fff; --raised:#eef1f5; --ink:#111318; --ink2:#334155; --muted:#4b5563; --line:#e3e6eb; --line2:#d7dbe2; --field:#6b7280;
+    --accent:#2563eb; --accent-h:#1d4ed8; --accent-soft:#e6eeff; --accent-ink:#1d4ed8; --clay:#334155; --clay-soft:#eef2f7; --clay-ink:#334155;
     --bad:#c4122f; --bad-soft:#fdecef; --ok:#0a7a35; --ok-soft:#e6f4eb; --warn:#8a5600; --warn-soft:#fff3d9;
     --dark:#0b1015; --dark2:#1a222a; --dark3:#2a343e;
-    --r-s:10px; --r:16px; --r-l:24px;
-    --sh-1:0 1px 2px rgba(17,24,58,.06), 0 1px 3px rgba(17,24,58,.05);
-    --sh-2:0 4px 12px rgba(17,24,58,.08), 0 1px 3px rgba(17,24,58,.06);
-    --sh-3:0 12px 32px rgba(17,24,58,.14);
-    --focus:0 0 0 3px rgba(47,99,244,.35);
+    --r-s:12px; --r:20px; --r-l:28px;
+    --sh-1:0 1px 2px rgba(17,19,24,.06), 0 1px 3px rgba(17,19,24,.05);
+    --sh-2:0 4px 12px rgba(17,19,24,.08), 0 1px 3px rgba(17,19,24,.06);
+    --sh-3:0 12px 32px rgba(17,19,24,.14);
+    --focus:0 0 0 3px rgba(37,99,235,.35);
     --hh:64px;
   }
   * { box-sizing:border-box; }
   body { overflow-wrap:break-word; }  /* 긴 영어 단어·주소가 칸을 뚫지 않게 */
-  body { margin:0; font-family:"SF Pro Text",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Segoe UI",Roboto,sans-serif;
+  body { margin:0; font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
          background:var(--bg); color:var(--ink); word-break:keep-all; line-height:1.5; -webkit-font-smoothing:antialiased; letter-spacing:-.005em; }
   button { font:inherit; cursor:pointer; color:inherit; }
   :focus-visible { outline:none; box-shadow:var(--focus); }
@@ -65,7 +65,7 @@
   .drop { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; border:1.5px dashed var(--line2); border-radius:var(--r-l); background:var(--paper); padding:48px 24px; text-align:center; cursor:pointer; transition:.15s; box-shadow:var(--sh-1); min-height:280px; }
   .drop:hover, .drop.over { border-color:var(--accent); background:var(--accent-soft); }
   .drop .big { font-size:18px; font-weight:700; }
-  .drop .plus { width:64px; height:64px; border-radius:50%; background:var(--accent); color:#fff; display:grid; place-items:center; margin-bottom:8px; box-shadow:0 6px 16px rgba(47,99,244,.3); }
+  .drop .plus { width:64px; height:64px; border-radius:50%; background:var(--accent); color:#fff; display:grid; place-items:center; margin-bottom:8px; box-shadow:0 6px 16px rgba(37,99,235,.3); }
   .drop .plus svg { width:28px; height:28px; stroke-width:2.2; }
   .drop .btn { margin-top:10px; pointer-events:none; }
   .drop .makewhere { margin-top:6px; } .drop #mkwhered { max-width:360px; font-size:13px; }
@@ -79,8 +79,8 @@
   .pill { display:inline-flex; align-items:center; gap:6px; background:var(--accent); color:#fff; border-radius:100px; padding:12px 22px; font-size:16px; font-weight:700; }
   .pill:hover { background:var(--accent-h); text-decoration:none; } .pill.ghost { background:rgba(255,255,255,.16); backdrop-filter:blur(8px); } .pill.ghost:hover { background:rgba(255,255,255,.26); }
   .mhero { position:relative; height:min(78vh,720px); min-height:520px; margin-top:-32px; display:grid; align-items:center; overflow:hidden; background:var(--ink); padding:0 max(24px, calc((100vw - 1120px) / 2)) 96px; }
-  .mhero { background:radial-gradient(90% 120% at 80% 30%, #26306b 0%, #11183a 60%); grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); column-gap:48px; }  /* 흐린 배경 영상 대신 실제 앱 화면(11-04 사용자: 심사위원이 바로 알게) */
-  .mshot { position:relative; margin:0; grid-column:2; grid-row:1; } .mshot video { display:block; width:100%; aspect-ratio:2/1; border-radius:16px; box-shadow:0 30px 70px rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12); background:#11183a; }
+  .mhero { background:radial-gradient(90% 120% at 80% 30%, #1c2a4a 0%, #111318 60%); grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); column-gap:48px; }  /* 흐린 배경 영상 대신 실제 앱 화면(11-04 사용자: 심사위원이 바로 알게) */
+  .mshot { position:relative; margin:0; grid-column:2; grid-row:1; } .mshot video { display:block; width:100%; aspect-ratio:2/1; border-radius:16px; box-shadow:0 30px 70px rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12); background:#111318; }
   .mshot figcaption { color:#c7d0f0; font-size:14px; margin-top:10px; line-height:1.4; } .mshot .mpause { right:12px; top:12px; width:40px; height:40px; font-size:12px; }
   .mcopy { position:relative; text-align:left; color:#fff; max-width:600px; display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
   .mcopy h2 span { display:block; white-space:nowrap; }
@@ -227,7 +227,7 @@
   .jump button { flex:none; min-width:34px; height:34px; border-radius:99px; border:1px solid var(--line2); background:var(--paper); font-weight:700; font-size:13px; color:var(--ink2); }
   .jump button.bad { border-color:var(--bad); color:var(--bad); background:var(--bad-soft); }
   .tab .txt { cursor:pointer; } .tab .hear .ico { width:.6em; height:.6em; opacity:.5; vertical-align:middle; }
-  @media (max-width:720px) { .toolbar { position:static; } .jump { position:sticky; top:var(--hh); z-index:5; background:rgba(247,246,242,.95); backdrop-filter:blur(12px); padding-top:8px; margin:0 -16px; padding-left:16px; padding-right:16px; } }
+  @media (max-width:720px) { .toolbar { position:static; } .jump { position:sticky; top:var(--hh); z-index:5; background:rgba(245,246,248,.95); backdrop-filter:blur(12px); padding-top:8px; margin:0 -16px; padding-left:16px; padding-right:16px; } }
   @media (pointer:coarse) { .seg.mini button, .linkbtn, .actions .btn, .between .btn { min-height:40px; } }
   .pastcard .del { position:absolute; top:8px; right:8px; width:32px; height:32px; border-radius:50%; border:none; background:rgba(11,16,21,.6); color:#fff; display:grid; place-items:center; opacity:0; transition:opacity .15s; }
   .pastcard:hover .del, .pastcard .del:focus-visible { opacity:1; } .pastcard .del .ico { width:16px; height:16px; }
@@ -248,7 +248,7 @@
   .stage.wait { opacity:.5; }
   .stage strong { font-size:15px; }
   @keyframes spin { to { transform:rotate(360deg); } }
-  .prog { height:6px; background:rgba(47,99,244,.15); border-radius:99px; overflow:hidden; margin:10px 0 4px; width:min(420px,100%); }
+  .prog { height:6px; background:rgba(37,99,235,.15); border-radius:99px; overflow:hidden; margin:10px 0 4px; width:min(420px,100%); }
   .prog i { display:block; height:100%; background:var(--accent); border-radius:99px; transition:width .4s; }
   .detail { font-size:14px; margin-top:8px; color:var(--warn); background:var(--warn-soft); padding:10px 12px; border-radius:var(--r-s); } .detail ul { margin:4px 0 0; padding-left:18px; }
   .thumbs { display:grid; grid-template-columns:repeat(auto-fill,minmax(132px,1fr)); gap:10px; margin-bottom:24px; }
@@ -261,7 +261,7 @@
   details.kebab .kmenu { position:absolute; right:0; top:calc(100% + 6px); z-index:20; display:flex; flex-direction:column; gap:6px; background:var(--paper, #fff); border:1px solid var(--line); border-radius:14px; padding:8px; box-shadow:0 12px 32px rgba(0,0,0,.14); min-width:200px; }
   details.kebab .kmenu .btn { justify-content:flex-start; white-space:nowrap; }
   @media (max-width:640px) { .toolbar details.kebab .kmenu { position:fixed; left:16px; right:16px; top:auto; } .toolbar details.kebab .kmenu .btn { white-space:normal; } }
-  .toolbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; position:sticky; top:var(--hh); background:rgba(247,246,242,.92); backdrop-filter:blur(12px); padding:14px 0; z-index:5; margin-top:-14px; }
+  .toolbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; position:sticky; top:var(--hh); background:rgba(245,246,248,.92); backdrop-filter:blur(12px); padding:14px 0; z-index:5; margin-top:-14px; }
   .chip { display:inline-flex; align-items:center; gap:4px; padding:6px 12px; border-radius:999px; font-size:13px; font-weight:700; border:none; }
   .chip.ok { background:var(--ok-soft); color:var(--ok); } .chip.bad { background:var(--bad-soft); color:var(--bad); }
   .saved { color:var(--muted); font-size:13px; }
@@ -273,8 +273,8 @@
   .n { width:32px; height:32px; border-radius:50%; background:var(--ink); color:#fff; display:grid; place-items:center; font-weight:700; font-size:14px; }
   .pic { position:relative; border-radius:var(--r); overflow:hidden; background:var(--line); aspect-ratio:16/9; }
   .pic img, .pic video, .pic canvas.fold3d { width:100%; height:100%; object-fit:cover; display:block; }
-  canvas.fold3d { background:#f4f1ea; cursor:pointer; } .f3wrap { position:relative; display:block; width:100%; height:100%; } .tab .imgwrap .f3wrap { display:inline-block; width:auto; height:auto; }
-  .f3speed { position:absolute; left:10px; bottom:10px; font-size:13px; padding:5px 11px; border-radius:999px; border:1px solid #c9c2b2; background:#fffdf8; color:#11183a; cursor:pointer; }
+  canvas.fold3d { background:#eef1f5; cursor:pointer; } .f3wrap { position:relative; display:block; width:100%; height:100%; } .tab .imgwrap .f3wrap { display:inline-block; width:auto; height:auto; }
+  .f3speed { position:absolute; left:10px; bottom:10px; font-size:13px; padding:5px 11px; border-radius:999px; border:1px solid #c9c2b2; background:#fffdf8; color:#111318; cursor:pointer; }
   canvas.fold3d[data-paused] + .f3speed::after { content:" · II"; } .tab .imgwrap canvas.fold3d { width:min(100%, 880px, 133cqh); aspect-ratio:4/3; height:auto; border-radius:var(--r-l); }  /* 칸 높이(cqh)도 본다: 가로 화면·긴 문장에서 그림이 칸 밖으로 넘쳐 '다음' 단추를 덮었다(11-02 검토) */
   .tab .imgwrap { container-type:size; }
   .f3tag { display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; background:var(--line); margin-left:6px; } .f3tag.no { background:#fbe3dc; color:#b4441f; }
@@ -326,7 +326,7 @@
   .pastbar { display:flex; gap:8px; flex-wrap:wrap; } .pastbar .pq { flex:1; min-width:160px; padding:9px 12px; border:1px solid var(--field); border-radius:10px; font:inherit; }
   .pastbar .psort { padding:9px 10px; border:1px solid var(--line); border-radius:10px; font:inherit; background:#fff; }
   .pchips { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; } .pchips button { border:1px solid var(--line); background:#fff; border-radius:999px; padding:6px 12px; font:inherit; font-size:14px; cursor:pointer; } .pchips button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
-  .pickbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; background:#eef2ff; border-radius:12px; padding:8px 12px; margin-bottom:10px; } .pickbar select { padding:7px 8px; border-radius:8px; border:1px solid var(--line); font:inherit; }
+  .pickbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; background:#e6eeff; border-radius:12px; padding:8px 12px; margin-bottom:10px; } .pickbar select { padding:7px 8px; border-radius:8px; border:1px solid var(--line); font:inherit; }
   .pastcard { position:relative; } .pastcard.picked { outline:3px solid var(--accent); }
   .pickbox { position:absolute; top:8px; left:8px; z-index:2; width:26px; height:26px; border-radius:7px; background:#fff; border:2px solid var(--accent); color:var(--accent); font-weight:800; display:flex; align-items:center; justify-content:center; }
   .ptags { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; } .ptags span { font-size:12px; border-radius:999px; padding:2px 8px; }
@@ -442,7 +442,7 @@
   .coachv.aim .imgwrap { padding-left:calc(min(34vw, 380px) + 40px); }  /* 카드는 미리보기 옆으로 비켜서 계속 보인다 */
   @media (max-width:640px) { .coachv.aim .cam { width:calc(100vw - 32px); top:64px; } .coachv.aim .cam video { max-height:30vh; object-fit:cover; } .coachv.aim .imgwrap { padding-left:24px; padding-top:calc(30vh + 84px); } }
   .coachv.aim .cam .guide { display:block; position:absolute; inset:14% 12%; border:3px dashed rgba(255,255,255,.9); border-radius:18px; pointer-events:none; }
-  .hrow .aimqr:not([hidden]) { display:flex; align-items:center; gap:8px; background:#fff; color:#11183a; border-radius:10px; padding:4px 10px 4px 4px; font-size:13px; font-weight:700; } .hrow .aimqr[hidden] { display:none; }  /* 노트북 앞 카메라일 때만: 휴대폰으로 같은 화면을 열어 눈높이에 두게 */
+  .hrow .aimqr:not([hidden]) { display:flex; align-items:center; gap:8px; background:#fff; color:#111318; border-radius:10px; padding:4px 10px 4px 4px; font-size:13px; font-weight:700; } .hrow .aimqr[hidden] { display:none; }  /* 노트북 앞 카메라일 때만: 휴대폰으로 같은 화면을 열어 눈높이에 두게 */
   /* 따라 하는 동안(카메라 켬): 카메라와 카드 그림을 한 줄(.cstage, 만들기 진행판의 .stage 와 다른 이름)에 같은 크기로 나란히. 글만 단계는 그림 칸이 비어 있으니 카메라가 가운데를 쓴다.
      카드 그림(도움 2단계부터)이 곧 이 단계의 목표 모습이라, 학습자는 내 손과 목표를 나란히 본다. 판단 한 줄은 카메라 아래 */
   .coachv .cstage { display:contents; }
@@ -462,7 +462,7 @@
   .coachv.watch .cam .judge::before { content:attr(data-k); font-weight:700; margin-right:6px; }  /* 작동 보기: 카메라를 쓰지 않는다. 오른쪽 칸은 같은 영상이 아니라 카드(사진+번호)를 띄운다(11-04 사용자) */
   .hrow .aimqr.hot:not([hidden]) { box-shadow:0 0 0 3px var(--accent); }  /* 발까지 안 보일 때 휴대폰 길을 눈에 띄게 */  /* 작동 보기: 카메라 자리가 이미 시범 영상이라 오른쪽 시범을 또 띄우면 같은 화면이 둘(11-04 사용자) */
   /* 두 칸이 다 냅킨 영상일 때(움직임 도움) 어느 쪽이 내 카메라인지 */
-  .tab.coachv.follow .cam::before, .tab.coachv.follow:not(.lv1) .imgwrap::before { content:attr(data-label); position:absolute; top:8px; left:8px; z-index:3; background:rgba(17,24,58,.82); color:#fff; font-size:13px; font-weight:700; padding:3px 10px; border-radius:999px; }
+  .tab.coachv.follow .cam::before, .tab.coachv.follow:not(.lv1) .imgwrap::before { content:attr(data-label); position:absolute; top:8px; left:8px; z-index:3; background:rgba(17,19,24,.82); color:#fff; font-size:13px; font-weight:700; padding:3px 10px; border-radius:999px; }
   .tab.coachv.follow .imgwrap { flex-direction:column; justify-content:flex-end; align-items:center; gap:6px; }  /* 꼬리표가 그림 바로 위에 */
   .tab.coachv.follow:not(.lv1) .imgwrap::before { position:static; flex:none; }
   .tab.coachv.follow .imgwrap > * { min-height:0; }
@@ -484,7 +484,7 @@
   .coachv.aim .cam .aimtxt { display:block; white-space:pre-line; position:absolute; left:8px; right:8px; bottom:3%; background:rgba(0,0,0,.62); border-radius:10px; padding:6px 10px !important; text-align:center; color:#fff; font-weight:700; font-size:17px; text-shadow:0 1px 4px #000; padding:0 12px; word-break:keep-all; }
   .coachv .pill { position:absolute; left:8px; top:8px; display:flex; align-items:center; gap:6px; background:rgba(11,16,21,.7); backdrop-filter:blur(8px); font-size:12px; font-weight:600; padding:3px 10px 3px 8px; border-radius:99px; }
   .coachv .pill::before { content:""; width:7px; height:7px; border-radius:50%; background:#ff4d5e; }
-  .againtag { position:absolute; top:18px; left:50%; transform:translateX(-50%); background:var(--accent); color:#fff; padding:10px 22px; border-radius:99px; font-weight:800; font-size:19px; z-index:3; box-shadow:0 8px 24px rgba(47,99,244,.45); }
+  .againtag { position:absolute; top:18px; left:50%; transform:translateX(-50%); background:var(--accent); color:#fff; padding:10px 22px; border-radius:99px; font-weight:800; font-size:19px; z-index:3; box-shadow:0 8px 24px rgba(37,99,235,.45); }
   .coachv .exit { z-index:5; }
   .pairbox { display:flex; align-items:center; gap:12px; text-align:left; background:var(--dark2); border-radius:var(--r); padding:10px 14px; }
   .pairbox img { background:#fff; border-radius:8px; padding:4px; } .pairbox b { letter-spacing:.1em; } .pairbox .d { font-size:12px; }
@@ -509,7 +509,7 @@
   .coachv .cstart ~ .voice { z-index:5; } .coachv.exiting .voice { visibility:hidden; }
   .cstart { position:absolute; inset:0; background:radial-gradient(120% 80% at 50% 0%, #16212c 0%, var(--dark) 60%); display:flex; flex-direction:column; align-items:center; justify-content:safe center; gap:12px; z-index:4; text-align:center; padding:24px; overflow-y:auto; }
   .pairwrap summary { cursor:pointer; color:#9db5ff; font-size:14px; min-height:44px; display:flex; align-items:center; justify-content:center; } .pairwrap summary b { letter-spacing:.1em; } .pairwrap[open] summary { margin-bottom:6px; }
-  .cstart .glyph { width:72px; height:72px; border-radius:22px; background:var(--accent); display:grid; place-items:center; box-shadow:0 12px 32px rgba(47,99,244,.4); }
+  .cstart .glyph { width:72px; height:72px; border-radius:22px; background:var(--accent); display:grid; place-items:center; box-shadow:0 12px 32px rgba(37,99,235,.4); }
   .cstart .glyph .ico { width:36px; height:36px; color:#fff; stroke-width:1.7; }
   .csteps { list-style:none; padding:0; margin:0; display:grid; gap:12px; width:min(540px, 100%); }
   .csteps li { display:flex; gap:12px; align-items:flex-start; background:#18222c; border:1px solid #2a3846; border-radius:16px; padding:14px 16px; text-align:left; }
@@ -626,11 +626,36 @@
   html.mdcs-active .libcard .libimg { flex:none; width:96px; height:72px; border-radius:9999px; overflow:hidden; } html.mdcs-active .libcard .libimg img { width:96px !important; height:72px !important; aspect-ratio:auto !important; filter:brightness(.6) saturate(.9); }
   html.mdcs-active .libcard .libbody { padding:0 !important; gap:0 !important; } html.mdcs-active .libcard strong { font-size:24px !important; line-height:1.25; color:#fff; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   html.mdcs-active .libcard .glgo { position:absolute; inset:0; margin:0 !important; opacity:0; border-radius:9999px; } html.mdcs-active .libcard .glgo:focus { outline:none !important; } html.mdcs-active #steps { display:none; } html.mdcs-active .mhero.full { grid-template-columns:minmax(0,1fr); height:auto; min-height:0; padding:28px 24px 8px; } html.mdcs-active main { padding:16px; } html.mdcs-active .full { width:auto; margin-left:-16px; margin-right:-16px; } html.mdcs-active .mhero .mcopy h2 { font-size:40px; }
+
+  /* ── 자립노트 머리줄과 톤(11-11 통합). 머리줄 값은 자립노트 prototype/css/a11y.css .c-top, 색·모서리는 home-c.css ── */
+  .c-top { --ct-ink:#111318; --ct-sub:#4b5563; --ct-hover:#e9ecf1; max-width:1280px; margin:0 auto; min-height:64px; padding:0 48px; display:flex; flex-wrap:wrap; align-items:center; gap:0 24px; line-height:1.5; }
+  .c-mark { width:34px; height:26px; background:url(/static/lc-mark.png) center/contain no-repeat; flex:0 0 34px; }
+  .c-top .c-logo { display:inline-flex; align-items:center; gap:8px; min-height:44px; font-weight:900; font-size:19px; letter-spacing:-.02em; color:var(--ct-ink); text-decoration:none; }
+  .c-nav { display:flex; flex-wrap:wrap; gap:2px; }
+  .c-top .c-nav a { min-height:44px; display:inline-flex; align-items:center; padding:0 12px; font-size:14px; font-weight:500; color:var(--ct-sub); text-decoration:none; border-radius:999px; white-space:nowrap; }
+  .c-top .c-nav a:hover { background:var(--ct-hover); color:var(--ct-ink); text-decoration:none; }
+  .c-top .c-login { margin-left:auto; min-height:44px; display:inline-flex; align-items:center; padding:0 18px; border-radius:999px; background:var(--ct-ink); color:#f5f6f8; font-size:14px; font-weight:700; text-decoration:none; }
+  .c-top .c-login:hover { text-decoration:none; background:#000; }
+  @media (max-width:720px) { .c-top { padding:4px 16px; gap:0 8px; } .c-nav { order:3; margin-left:-12px; } .c-top .c-login { padding:0 14px; } }
+  body.tabmode .c-top, html.mdcs-active .c-top { display:none; }
+  @media (max-width:700px) and (max-height:700px) and (min-aspect-ratio:4/5) { .c-top { display:none; } }
+  @media print { .c-top { display:none !important; } }
+  header { background:rgba(245,246,248,.94); }
+  .logo { font-weight:800; font-size:16px; } .logo .mark { background:var(--ink); border-radius:10px; }
+  h2, h2.sect { font-weight:800; letter-spacing:-.03em; } h3 { font-weight:800; }
+  .btn { font-weight:700; } .pill { font-weight:800; }
+  body.homepage { background:var(--bg); }
+  .mwarn { max-width:680px; margin:12px auto 0; padding:12px 16px; border-radius:var(--r-s); background:var(--warn-soft); color:var(--warn); font-size:14px; font-weight:600; text-align:center; }
+  .jarip-msg { font-size:14px; margin:6px 0 0; } .jarip-msg:empty { display:none; }
 </style>
 </head>
 <body>
+<div class="c-top" id="ctop">
+  <a class="c-logo" id="clogo" href="./" onclick="if (!window.SC_BASE) { go({}); return false; }"><span class="c-mark" aria-hidden="true"></span>자립노트</a>
+  <nav class="c-nav" id="cnav" aria-label="주 메뉴" hidden></nav>
+</div>
 <header>
-  <span class="logo" onclick="go({})"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="13" height="15" rx="2.5"/><path d="M4 7v11a3 3 0 0 0 3 3h9"/><path d="m10.5 10.5 2 2 4-4"/></svg></span><span>StepCards</span></span>
+  <span class="logo" onclick="go({})"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="13" height="15" rx="2.5"/><path d="M4 7v11a3 3 0 0 0 3 3h9"/><path d="m10.5 10.5 2 2 4-4"/></svg></span><span id="apptitle">영상으로 카드 만들기</span></span>
   <nav class="steps" id="steps"></nav>
   <span style="flex:1"></span>
   <span class="seg" id="uiseg"></span>
@@ -639,6 +664,12 @@
 
 <script>
 const $ = (s, el = document) => el.querySelector(s);
+// 자립노트 안(자립노트 서버의 /cards/ 프록시)에서 열면 머리줄 로고·메뉴가 자립노트 쪽으로 간다(11-11 통합). 단독 실행은 로고가 처음 화면
+if (window.SC_BASE) {
+  $("#clogo").href = "/start.html";
+  const nav = $("#cnav"); nav.hidden = false;
+  nav.innerHTML = [["/staff.html", "내 학생"], ["/tablet.html", "학생 화면"], ["/school.html#/settings", "교사 PC"]].map(([h, t]) => `<a href="${h}">${t}</a>`).join("");
+}
 // 보기는 누구나. 돈이 들거나 카드를 바꾸는 요청이 401(접속 키 필요)이면 키를 한 번 묻고 같은 요청을 다시 보낸다
 const rawFetch = window.fetch.bind(window);
 let keyAsk = null;
@@ -647,6 +678,10 @@ window.fetch = async (u, o = {}) => {
   if (r.status === 402) toast(T("크레딧 상한에 닿아 지금은 AI 기능을 쓸 수 없어요. 보기와 손으로 넘기기는 계속 돼요.", "The credit cap is reached, so AI features are paused. Viewing and turning cards by hand still work."));
   if (r.status === 429) toast(T("오늘 쓸 수 있는 횟수를 다 썼어요. 보기와 손으로 넘기기는 계속 돼요.", "Today's limit is used up. Viewing and turning cards by hand still work."));
   if (r.status !== 401 || !o.method || o.method === "GET" || String(u) === "/login") return r;
+  if (window.SC_BASE) {  // 자립노트 안에서는 접속 키 대신 자립노트 로그인(담당자·사업장)을 쓴다
+    toast(T("영상 넣기와 카드 고치기는 자립노트에 담당자나 사업장으로 들어와야 할 수 있어요.", "Adding videos and editing cards need a Jarip Note staff or workplace login."), T("들어가기", "Log in"), () => { location.href = "/staff.html"; });
+    return r;
+  }
   if (Date.now() - keyDeclined < 60000) return r;  // 방금 '취소'했으면 1분 동안은 다시 묻지 않는다(자동 저장·따라 하기가 창을 계속 띄우지 않게)
   return (await askKey()) ? rawFetch(u, o) : r;
 };
@@ -701,7 +736,7 @@ let lang = (() => { try { return localStorage.getItem("lang") === "x" ? "x" : nu
 let ui = (() => {  // 화면 글자: 주소의 ?ui= → 저장된 값 → 영어
   const q = new URLSearchParams(location.search).get("ui");
   if (q === "ko" || q === "en") return q;
-  const nav = /^ko/i.test(navigator.language || "") ? "ko" : "en";  // 저장값이 없으면 브라우저 언어(한국어 브라우저의 교사가 영어 화면을 먼저 보지 않게)
+  const nav = window.SC_BASE || /^ko/i.test(navigator.language || "") ? "ko" : "en";  // 자립노트 안에서는 한국어가 먼저  // 저장값이 없으면 브라우저 언어(한국어 브라우저의 교사가 영어 화면을 먼저 보지 않게)
   try { return localStorage.getItem("ui") || nav; } catch { return nav; }  // 기본은 영어(심사·해외 사용자). 한국어는 위 단추로
 })();
 const T = (ko, en) => ui === "en" ? en : ko;
@@ -754,6 +789,7 @@ async function routeView() {
 
 /* 위쪽 1·2·3 단계 표시 */
 function header() {
+  $("#apptitle").textContent = T("영상으로 카드 만들기", "Cards from a video");
   document.body.classList.toggle("home", S.view === "home");  // 휴대폰 처음 화면에서는 숫자만 남는 단계 표시를 숨긴다
   const done = !!S.data, cur = ["tablet", "coach"].includes(S.view) ? "use" : S.view === "home" ? "making" : S.view;
   const items = [["making", T("영상 넣기", "Add video"), T("영상", "Video")], ["edit", T("카드 확인·고치기", "Check & edit"), T("고치기", "Edit")], ["use", T("따라 하며 확인", "Follow & check"), T("확인", "Check")]];  // 세 번째는 휴대폰용 짧은 이름
@@ -773,7 +809,7 @@ function imgSrc(c, plain) {  // plain: 인쇄·공유(종이·메신저에는 �
 // 움직임 보기: 그 단계 영상 몇 초를 소리 없이 반복. 인쇄·미리 불러오기는 사진(imgSrc)을 쓴다
 function media(c, attrs = "") {
   if (c.view === "fold" && S.data?.fold?.report?.[c.n] === "no" && S.view !== "edit") return media({ ...c, view: S.data.stage === "archived" ? (c.ill ? "ill" : "photo") : "clip" }, attrs);  // 대조에서 다르다고 나온 3D는 학습자에게 보이지 않고 움직임으로
-  if (c.view === "fold" && S.data?.fold) return `<span class="f3wrap"><canvas class="fold3d" data-n="${c.n}" width="480" height="360" style="background:#f4f1ea url('${imgSrc(c)}') center/cover" role="img" aria-label="${esc(main(c))}" onclick="f3pause(this)" title="${T("누르면 멈춰요", "Tap to pause")}"></canvas><button class="f3speed" onclick="f3slow(event)">${f3slowLabel()}</button></span>`;  // 3D 접기(fold3d.js 가 그린다)
+  if (c.view === "fold" && S.data?.fold) return `<span class="f3wrap"><canvas class="fold3d" data-n="${c.n}" width="480" height="360" style="background:#eef1f5 url('${imgSrc(c)}') center/cover" role="img" aria-label="${esc(main(c))}" onclick="f3pause(this)" title="${T("누르면 멈춰요", "Tap to pause")}"></canvas><button class="f3speed" onclick="f3slow(event)">${f3slowLabel()}</button></span>`;  // 3D 접기(fold3d.js 가 그린다)
   return c.view === "clip" ? `<video src="/api/runs/${S.run}/clip/${c.n}.mp4?t=${c.frame_t ?? c.rep}" poster="${imgSrc(c)}" autoplay muted loop playsinline ${attrs}></video>`
                            : `<img src="${imgSrc(c)}" alt="${esc(main(c))}" ${attrs}>`;  // 사진 설명 = 카드 문장(화면 낭독기, 고른 카드 글자로)
 }
@@ -1014,6 +1050,7 @@ async function home() {
           <button class="on" onclick="makeWhere(false)">${T("Meta API", "Meta API")}</button><button onclick="makeWhere(true)">${T("이 맥에서 (Muse Glimmer)", "On this Mac (Muse Glimmer)")}</button></span>
         <span class="muted" id="mkwhered" hidden></span>
       </label>
+      <p class="mwarn" role="note">${T("올린 영상의 장면과 소리는 Meta의 AI API로 보내 카드를 만들어요. 학생이나 실제 사람의 얼굴이 나오는 영상은 올리지 마세요.", "Frames and sound from the video go to Meta's AI API to make the cards. Don't upload videos that show students' or other real people's faces.")}</p>
       <div class="recrow center"><button class="btn" onclick="recOpen()">${icon("camera")} ${T("카메라로 바로 찍기", "Record with camera")}</button></div>
       <div class="trust center">${[T("영상은 Meta AI가 분석하고, 카드 만들기용으로 이 서버에 보관돼요", "The video is analysed by Meta AI and kept on this server to make the cards"), T("지우면 영상·카드가 함께 지워져요", "Deleting a set deletes its video and cards"), T("마지막은 사람이 정해요", "A person decides")].map(t => `<span>${icon("check")}${t}</span>`).join("")}</div>
     </section>
@@ -1870,6 +1907,9 @@ function use() {
           <div class="ogroup"><b>${T("보내기·보관", "Share and keep")}</b>
             <button class="btn" onclick="shareCards(this)">${icon("share")} ${navigator.canShare ? T("이미지로 보내기", "Send as images") : T("이미지로 저장", "Save as image")}</button>
             <a class="btn" href="/api/runs/${S.run}/export.zip" download>${icon("share")} ${T("백업(.zip)", "Backup (.zip)")}</a>
+            <button class="btn" onclick="toJarip(this, !window.SC_BASE)">${icon("arrow")} ${T("자립노트 직무로 보내기", "Send to Jarip Note as a job")}</button>
+            ${window.SC_BASE ? `<button class="btn" onclick="toJarip(this, true)">${icon("share")} ${T("직무 파일로 받기", "Download job file")}</button>` : ""}
+            <p class="muted jarip-msg" id="jaripmsg" role="status"></p>
             <details class="ofold"><summary class="btn">${icon("check")} ${T("확인 결과 기록", "Check records")}</summary><div class="fh-box">
               <label class="fh-rec"><input type="checkbox" ${S.rec ? "checked" : ""} onchange="setRec(this.checked)"> ${T("이 기기에서 기록 남기기", "Keep records on this device")}</label>
               <span class="muted">${T("이름 없이 날짜·카드·확인 결과·도움 단계만. 사진은 남지 않아요.", "No names: date, card, check result and help level. No photos.")}</span>
@@ -1881,6 +1921,36 @@ function use() {
     </div>
     <div class="printonly">${sheets}${record}</div>`;
   liveBoard(); clearInterval(S.livePoll); S.livePoll = setInterval(liveBoard, 3000);  // use() 는 언어·설정을 바꿀 때마다 다시 불린다: 앞 폴링을 지우고 건다
+}
+/* 자립노트 직무로 보내기(11-11 통합): 카드 한 장 = 동작 하나인 자립노트 직무 파일(kind:'job', 자립노트 js/myjob.js install 이 읽는 꼴)을 만든다.
+   자립노트 안에서는 같은 주소의 브라우저 저장소(jikmu.jobpull)에 맡기고 교사 PC(school.html)로 간다. 교사 PC 가 켜질 때 넣고 바꿀지 묻는다.
+   단독 실행이거나 「직무 파일로 받기」면 파일로 받는다(교사 PC 「직무 파일 넣기」로 넣는다). 그림은 640px JPEG 로 줄인다(직무 파일 그림 한 장 400KB 상한) */
+async function jaripPic(url) {
+  const r = await fetch(url); if (!r.ok) return null;
+  const bm = await createImageBitmap(await r.blob()), k = Math.min(1, 640 / bm.width), cv = document.createElement("canvas");
+  cv.width = Math.round(bm.width * k); cv.height = Math.round(bm.height * k);
+  cv.getContext("2d").drawImage(bm, 0, 0, cv.width, cv.height);
+  return cv.toDataURL("image/jpeg", 0.8);
+}
+async function toJarip(btn, asFile) {
+  const msg = $("#jaripmsg"), cs = S.data.cards, name = String(S.data.title || S.data.video || T("영상으로 만든 카드", "Cards from a video")).replace(/\s*\((견본|sample)\)\s*$/, "").slice(0, 40);
+  btn.disabled = true; msg.textContent = T("직무 파일을 만드는 중…", "Making the job file…");
+  try {
+    const pics = {};
+    for (let i = 0; i < cs.length; i++) { const p = await jaripPic(imgSrc(cs[i], true)).catch(() => null); if (p && p.length < 400000) pics["c" + (i + 1)] = p; }
+    const job = { id: "my-sc" + S.run, name, ver: 1, org: "", made: new Date().toISOString().slice(0, 10), coach: "", consent: "",
+      stages: [{ key: "s1", label: name.slice(0, 30) }],
+      acts: cs.map((c, i) => ({ key: "c" + (i + 1), label: String(c.ko || c.en || "").slice(0, 40), stage: "s1" })) };
+    const file = { v: 1, kind: "job", jobs: [job], pics };
+    if (!asFile) {
+      try { localStorage.setItem("jikmu.jobpull", JSON.stringify(file)); location.href = "/school.html#/settings"; return; }
+      catch { msg.textContent = T("이 브라우저에 넣지 못했어요. 「직무 파일로 받기」로 받아 교사 PC에서 넣어 주세요.", "Could not store it in this browser. Download the job file and add it on the teacher PC."); return; }
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(file)], { type: "application/json" }));
+    a.download = `${name.replace(/[\\/:*?"<>|]/g, "")}_직무파일.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    msg.textContent = T("받은 파일은 자립노트 교사 PC의 설정 → 「직무 파일 넣기」로 넣어요.", "Add the file on the Jarip Note teacher PC: Settings → Add job file.");
+  } finally { btn.disabled = false; }
 }
 /* 한 언어 더(보호자·동료의 언어): Muse Spark 가 옮기고, 원문을 안 본 두 번째 호출이 되옮긴다.
    만든 사람은 그 언어를 못 읽어도 되옮긴 문장으로 뜻을 확인하고 '확인했어요'를 눌러야 학습자 화면에 나온다 */
@@ -2005,7 +2075,7 @@ setInterval(callBar, 6000);
 function cardCanvas(c, n, img, total, title) {
   const W = 1080, IH = 608, cv = document.createElement("canvas"), g = cv.getContext("2d");
   const font = "-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif";
-  const lines = [[main(c), 64, 700, "#11183a"], ...(xOn() && c.x ? [[c.x, 40, 400, "#5f6888"]] : [])];
+  const lines = [[main(c), 64, 700, "#111318"], ...(xOn() && c.x ? [[c.x, 40, 400, "#5f6888"]] : [])];
   const wrap = (t, size, weight) => {  // 띄어쓰기 단위로 줄바꿈(한국어 낱말이 끊기지 않게)
     g.font = `${weight} ${size}px ${font}`; const out = [];
     for (const w of String(t || "").split(" ")) { const l = out.at(-1); if (l !== undefined && g.measureText(l + " " + w).width < W - 120) out[out.length - 1] = l + " " + w; else out.push(w); }
@@ -2017,7 +2087,7 @@ function cardCanvas(c, n, img, total, title) {
   const r = Math.min(W / img.naturalWidth, IH / img.naturalHeight);  // 16:9 칸 안에 다 담는다(세로 영상의 손·작업대가 잘리지 않게)
   g.fillStyle = "#f4f5f8"; g.fillRect(0, 0, W, IH);
   g.drawImage(img, (W - img.naturalWidth * r) / 2, (IH - img.naturalHeight * r) / 2, img.naturalWidth * r, img.naturalHeight * r);
-  g.fillStyle = "#11183a"; g.beginPath(); g.arc(70, 70, 42, 0, 7); g.fill();
+  g.fillStyle = "#111318"; g.beginPath(); g.arc(70, 70, 42, 0, 7); g.fill();
   g.fillStyle = "#fff"; g.font = `700 40px ${font}`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(n, 70, 72);
   g.textAlign = "left"; g.textBaseline = "alphabetic"; let y = IH + 80;
   for (const [t, size, weight, color] of rows) { g.font = `${weight} ${size}px ${font}`; g.fillStyle = color; g.fillText(t, 60, y + size * 0.9); y += size * 1.3; }
@@ -2026,13 +2096,13 @@ function cardCanvas(c, n, img, total, title) {
 }
 async function shareLink(to) {  // QR을 찍을 수 없는 같은 기기(휴대폰)에서는 링크로
   const url = to === "glasses" ? `${location.origin}/glasses?run=${S.run}&lang=${lang}&m=${ui}&s=${pairCode}` : `${location.origin}/?ui=${ui}#run=${S.run}&view=tablet`;
-  try { if (navigator.share) return await navigator.share({ url, title: S.data.title || "StepCards" }); } catch (e) { if (e?.name === "AbortError") return; }
+  try { if (navigator.share) return await navigator.share({ url, title: S.data.title || T("영상으로 만든 카드", "Cards from a video") }); } catch (e) { if (e?.name === "AbortError") return; }
   try { await navigator.clipboard.writeText(url); toast(T("링크를 복사했어요.", "Link copied.")); } catch { toast(url); }
 }
 async function shareCards(btn) {
   btn.disabled = true;
   try {
-    const cs = S.data.cards, name = (S.data.title || "StepCards").replace(/[\\/:*?"<>|]/g, "");
+    const cs = S.data.cards, name = (S.data.title || T("영상으로 만든 카드", "Cards from a video")).replace(/[\\/:*?"<>|]/g, "");
     const imgs = await Promise.all(cs.map(c => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = imgSrc(c, true); })));
     const cvs = cs.map((c, i) => cardCanvas(c, i + 1, imgs[i], cs.length, S.data.title || ""));
     const blob = cv => new Promise(r => cv.toBlob(r, "image/jpeg", 0.88));
@@ -2446,7 +2516,7 @@ function callBtn(coming) {
 }
 // 오늘 한 것 보내기: 이름·사진 없이 한 줄 요약 + 같은 카드 링크(보기 전용)를 공유 창으로. 누를 때만 나간다
 async function shareRun() {
-  const { finished, upto, by } = C.sum, n = S.data.cards.length, title = runTitle(S.data) || "StepCards";
+  const { finished, upto, by } = C.sum, n = S.data.cards.length, title = runTitle(S.data) || T("영상으로 만든 카드", "Cards from a video");
   const done = finished ? T(`「${title}」 ${n}단계를 끝까지 했어요.`, `Finished all ${n} steps of "${title}".`) : T(`「${title}」 ${n}단계 중 카드 ${upto}까지 했어요.`, `Got to card ${upto} of ${n} in "${title}".`);
   const help = by.slice(1).map((ns, j) => ns.length ? T(`${lvName(j + 2)}까지 카드 ${ns.join(", ")}`, `card${ns.length > 1 ? "s" : ""} ${ns.join(", ")} with ${lvName(j + 2).toLowerCase()}`) : "").filter(Boolean);
   const text = done + (help.length ? " " + T(`도움 받은 곳: ${help.join(" · ")}.`, `Needed help on ${help.join("; ")}.`) : "");

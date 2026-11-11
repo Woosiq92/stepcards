@@ -103,8 +103,31 @@ def kst_day():
     return time.strftime("%Y-%m-%d", time.gmtime(time.time() + 9 * 3600))
 
 
+PROXY_SECRET = os.environ.get("STEPCARDS_PROXY_SECRET", "")  # 자립노트 서버가 /cards/ 로 넘길 때 붙이는 비밀값(11-11 통합). 맞으면 자립노트에 들어온 사람을 교사 키처럼 믿는다
+PROXY_USER = re.compile(r"[A-Za-z0-9_-]{1,48}")
+BASE_RE = re.compile(r"(/[A-Za-z0-9_-]{1,40}){0,3}")
+BASE_PATH = os.environ.get("BASE_PATH", "").rstrip("/")  # 앞에 붙는 주소(예: /cards). 자립노트 프록시는 요청마다 x-stepcards-base 로도 알린다
+if not BASE_RE.fullmatch(BASE_PATH):
+    raise SystemExit("BASE_PATH 는 /cards 같은 꼴이어야 합니다")
+
+
+def proxied(request):
+    """자립노트 프록시가 비밀값과 함께 보낸 사용자 이름(담당자·사업장). 비밀값을 모르는 직접 요청은 ''"""
+    u = request.headers.get("x-stepcards-user", "")
+    return u if PROXY_SECRET and eq(request.headers.get("x-stepcards-proxy", ""), PROXY_SECRET) and PROXY_USER.fullmatch(u) else ""
+
+
+def base_of(request):
+    """화면 주소 앞에 붙일 경로: 프록시가 알린 값(꼴이 맞을 때만) → BASE_PATH → 없음(단독 실행)"""
+    b = request.headers.get("x-stepcards-base", "").rstrip("/")
+    return b if b and BASE_RE.fullmatch(b) else BASE_PATH
+
+
 def who(request):
-    """요청한 사람: admin(APP_KEY) / teacher:이름(TEACHER_KEYS) / judge / ''(키 없음). 키를 설정하지 않은 로컬은 admin"""
+    """요청한 사람: admin(APP_KEY) / teacher:이름(TEACHER_KEYS·자립노트 프록시) / judge / ''(키 없음). 키를 설정하지 않은 로컬은 admin"""
+    p = proxied(request)
+    if p:
+        return "teacher:jarip-" + p
     if not APP_KEY:
         return "admin"
     c = request.cookies
@@ -334,9 +357,22 @@ def atomic(out, make):
         tmp.unlink(missing_ok=True)
 
 
+PAGE_URL = re.compile(r"""([`"'(])/(api|runs|static|glasses|login)(?=[/?`"')]|$)""")
+
+
+def page(name, request):
+    """화면 파일을 내준다. 앞 경로(예: /cards)가 있으면 화면 안 주소(/api·/runs·/static·/glasses·/login)에 붙이고
+    window.SC_BASE 로 알린다. 단독 실행(앞 경로 없음)은 파일 그대로"""
+    html, b = (ROOT / "static" / name).read_text(), base_of(request)
+    if b:
+        html = PAGE_URL.sub(lambda m: f"{m.group(1)}{b}/{m.group(2)}", html)
+    html = html.replace("<head>", f"<head>\n<script>window.SC_BASE={json.dumps(b)};</script>", 1)
+    return Response(html, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/")
-def index():
-    return FileResponse(ROOT / "static" / "index.html")
+def index(request: Request):
+    return page("index.html", request)
 
 
 @app.get("/static/{name}")
@@ -344,6 +380,8 @@ def static_js(name: str):
     """3D 접기 카드 스크립트만 내보낸다(리포의 다른 파일은 열지 않는다)"""
     if name in ("hero_en.mp4", "hero_ko.mp4", "hero_en.jpg", "hero_ko.jpg"):  # 처음 화면의 앱 화면 녹화
         return FileResponse(ROOT / "static" / name, media_type="video/mp4" if name.endswith(".mp4") else "image/jpeg")
+    if name == "lc-mark.png":  # 자립노트 머리줄 로고(11-11 통합)
+        return FileResponse(ROOT / "static" / name, media_type="image/png")
     if name not in ("fold.js", "fold3d.js"):
         raise HTTPException(404)
     return FileResponse(ROOT / "static" / name, media_type="text/javascript")
@@ -805,8 +843,8 @@ def coach_check(run_id: str, body: dict, request: Request):
 
 
 @app.get("/glasses")
-def glasses():
-    return FileResponse(ROOT / "static" / "glasses.html")
+def glasses(request: Request):
+    return page("glasses.html", request)
 
 
 @app.get("/api/runs/{run_id}/now")
@@ -1030,7 +1068,10 @@ def qr(run_id: str, request: Request, to: str = "tablet", lang: str = "ko", s: s
     """학생 기기로 넘기는 QR: 태블릿 보기나 안경 화면 주소(보기는 키 없이 된다)"""
     import segno
     run_dir(run_id)
-    base = f"{request.headers.get('x-forwarded-proto', request.url.scheme)}://{request.headers.get('host', request.url.netloc)}"
+    h = request.headers  # 자립노트 프록시를 거치면 사람이 연 주소(호스트·앞 경로)를 x-stepcards-* 로 알린다
+    host = h.get("x-stepcards-host") if proxied(request) else None
+    proto = h.get("x-stepcards-proto") if host else None
+    base = f"{proto or h.get('x-forwarded-proto', request.url.scheme)}://{host or h.get('host', request.url.netloc)}{base_of(request)}"
     lang = lang if lang in ("ko", "en", "both", "x") else "ko"
     m = "en" if m == "en" else "ko"  # lang=x(한 언어 더)일 때 위 줄 언어
     url = f"{base}/glasses?run={run_id}&lang={lang}" + ("&m=en" if lang == "x" and m == "en" else "") + (f"&s={re.sub(r'[^a-z0-9]', '', s.lower())[:8]}" if s else "") if to == "glasses" else f"{base}/?ui={lang if lang in ('ko', 'en') else m}#run={run_id}&view=tablet"
