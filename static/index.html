@@ -6,12 +6,12 @@
 <meta name="theme-color" content="#f5f6f8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>영상으로 카드 만들기 · 자립노트</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%232563eb'/%3E%3Cpath d='m7 12.5 3 3 7-7' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23111318'/%3E%3Cpath d='m7 12.5 3 3 7-7' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
   :root {
-    /* 자립노트 첫 쪽 색(prototype/css/home-c.css, 11-11 통합): 로고의 검정 #111318·파랑 #2563eb, 바탕 #f5f6f8, 흰 카드 */
+    /* 자립노트 첫 쪽 색(prototype/css/home-c.css, 11-11 통합): 검정 #111318·흰색(11-12 흑백 톤, 자립노트 v11과 같게), 바탕 #f5f6f8, 흰 카드 */
     --bg:#f5f6f8; --paper:#fff; --raised:#eef1f5; --ink:#111318; --ink2:#334155; --muted:#4b5563; --line:#e3e6eb; --line2:#d7dbe2; --field:#6b7280;
-    --accent:#2563eb; --accent-h:#1d4ed8; --accent-soft:#e6eeff; --accent-ink:#1d4ed8; --clay:#334155; --clay-soft:#eef2f7; --clay-ink:#334155;
+    --accent:#111318; --accent-h:#2a2f3a; --accent-soft:#eef0f3; --accent-ink:#111318; --clay:#334155; --clay-soft:#eef2f7; --clay-ink:#334155;
     --bad:#c4122f; --bad-soft:#fdecef; --ok:#0a7a35; --ok-soft:#e6f4eb; --warn:#8a5600; --warn-soft:#fff3d9;
     --dark:#0b1015; --dark2:#1a222a; --dark3:#2a343e;
     --r-s:12px; --r:20px; --r-l:28px;
@@ -326,7 +326,7 @@
   .pastbar { display:flex; gap:8px; flex-wrap:wrap; } .pastbar .pq { flex:1; min-width:160px; padding:9px 12px; border:1px solid var(--field); border-radius:10px; font:inherit; }
   .pastbar .psort { padding:9px 10px; border:1px solid var(--line); border-radius:10px; font:inherit; background:#fff; }
   .pchips { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; } .pchips button { border:1px solid var(--line); background:#fff; border-radius:999px; padding:6px 12px; font:inherit; font-size:14px; cursor:pointer; } .pchips button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
-  .pickbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; background:#e6eeff; border-radius:12px; padding:8px 12px; margin-bottom:10px; } .pickbar select { padding:7px 8px; border-radius:8px; border:1px solid var(--line); font:inherit; }
+  .pickbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; background:#eef0f3; border-radius:12px; padding:8px 12px; margin-bottom:10px; } .pickbar select { padding:7px 8px; border-radius:8px; border:1px solid var(--line); font:inherit; }
   .pastcard { position:relative; } .pastcard.picked { outline:3px solid var(--accent); }
   .pickbox { position:absolute; top:8px; left:8px; z-index:2; width:26px; height:26px; border-radius:7px; background:#fff; border:2px solid var(--accent); color:var(--accent); font-weight:800; display:flex; align-items:center; justify-content:center; }
   .ptags { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; } .ptags span { font-size:12px; border-radius:999px; padding:2px 8px; }
